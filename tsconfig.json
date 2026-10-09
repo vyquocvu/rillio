@@ -1,13 +1,24 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "lib": ["ES2022", "DOM"],
-    "types": ["vitest/globals"]
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [
+      "vitest/globals"
+    ],
+    "jsx": "react-jsx",
+    "jsxImportSource": "zui"
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "examples/**/*.tsx"
+  ]
 }
