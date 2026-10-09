@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "test:smoke": "tsc src/reactive.ts --outDir .zui-test --target es2022 --module nodenext --strict --skipLibCheck && node tests/smoke.cjs"
+    "test:smoke": "tsc src/reactive.ts --outDir .zui-test --target es2022 --module nodenext --strict --skipLibCheck && node tests/smoke.cjs",
+    "bench:smoke": "npm run test:smoke && node benchmarks/smoke.cjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
