@@ -106,6 +106,14 @@ export class ReactiveEngine {
     }
   }
 
+  /** Read without subscribing the currently executing computation. */
+  untrack<T>(fn: () => T): T {
+    const previous = this.current;
+    this.current = undefined;
+    try { return fn(); }
+    finally { this.current = previous; }
+  }
+
   createStore<T>(initial: T): Store<T> {
     const source: Source = { observers: new Set() };
     let value = initial;
