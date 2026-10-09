@@ -10,6 +10,7 @@ Research-first TypeScript reactive frontend runtime.
 npm install
 npm run typecheck
 npm test
+npm run test:smoke # Node-only checks; no Vitest installation required
 ```
 
 ## Example
@@ -42,3 +43,13 @@ dispose();
 4. Spike D: optional Flat Index experiments with minimal Map + log and keyed-tree baselines.
 
 This is research code, not a production renderer. Do not claim performance wins until the preregistered benchmarks are executed.
+
+## Verification notes
+
+The standalone smoke runner checks basic reactivity, diamond reads, dynamic branching,
+owner disposal, failure cleanup, nested writes and cycles for both modes. The seeded
+oracle tests live in `tests/oracle.test.ts` and run with Vitest. The cross-engine
+benchmark is not yet performed; do not interpret smoke results as performance claims.
+
+Computed evaluations are read-only. Attempting to write a store while evaluating a
+computed throws `ZUI_COMPUTED_WRITE`.
