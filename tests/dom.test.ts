@@ -54,4 +54,58 @@ describe("frontend MVP", () => {
     expect(target.querySelector('[data-id="a"]')).toBe(nodeA);
     dispose();
   });
+  it("reactively updates keyed item data without replacing its DOM identity", () => {
+    const state = createStore([{ id: "a", label: "Old" }]);
+    const target = document.createElement("div");
+    const dispose = mount(jsx("ul", {
+      children: For({
+        each: select(state, items => items),
+        by: item => item.id,
+        children: (item, current) => jsx("li", {
+          children: select({ get: current, set: () => {} }, value => value.label)
+        })
+      })
+    }), target);
+    const li = target.querySelector("li");
+    state.set([{ id: "a", label: "New" }]);
+    expect(target.querySelector("li")).toBe(li);
+    expect(li?.textContent).toBe("New");
+    dispose();
+  });
+
+  it("updates controlled value without unnecessary DOM writes", () => {
+    const state = createStore("first");
+    const target = document.createElement("div");
+    const dispose = mount(jsx("input", {
+      value: select(state, value => value),
+      onInput: (event: Event) => state.set((event.target as HTMLInputElement).value)
+    }), target);
+    const input = target.querySelector("input")!;
+    expect(input.value).toBe("first");
+    input.value = "edited";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(state.get()).toBe("edited");
+    state.set("final");
+    expect(input.value).toBe("final");
+    dispose();
+  });
+
+  it("does not run disposed conditional text bindings", () => {
+    const state = createStore({ visible: true, text: "One" });
+    const target = document.createElement("div");
+    const dispose = mount(Show({
+      when: select(state, s => s.visible),
+      children: () => jsx("span", {
+        children: select(state, s => s.text)
+      })
+    }), target);
+    expect(target.querySelector("span")?.textContent).toBe("One");
+    state.set({ visible: false, text: "Two" });
+    expect(target.querySelector("span")).toBeNull();
+    state.set({ visible: true, text: "Three" });
+    expect(target.querySelector("span")?.textContent).toBe("Three");
+    dispose();
+    expect(target.childNodes).toHaveLength(0);
+  });
+
 });
