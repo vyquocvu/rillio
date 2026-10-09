@@ -14,9 +14,7 @@ describe("instrumentation and lifecycle regressions", () => {
     expect(e.diagnostics().activeComputations).toBe(0);
   });
 
-  it("graph visits all active effects but evaluates only invalidated effects", () => {
-    // Current graph implementation iterates over all effect entries;
-    // the distinction is evaluation count, not traversal count.
+  it("graph visits and evaluates only invalidated effects", () => {
     const e = createEngine("graph");
     const stores = Array.from({ length: 20 }, (_, i) => e.createStore(i));
     const stops = stores.map(s => e.effect(() => { void s.get(); }));
@@ -24,7 +22,7 @@ describe("instrumentation and lifecycle regressions", () => {
     stores[0]!.set(100);
     const after = e.diagnostics();
     expect(after.selectorEvaluations - before.selectorEvaluations).toBe(1);
-    expect(after.visitedComputations - before.visitedComputations).toBe(20);
+    expect(after.visitedComputations - before.visitedComputations).toBe(1);
     stops.forEach(stop => stop());
   });
 
