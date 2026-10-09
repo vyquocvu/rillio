@@ -1,5 +1,5 @@
 /** Compile with jsxImportSource pointed to the project's src directory. */
-import { createStore, select, mount, Show, For } from "zui";
+import { createStore, select, mount, Show, For } from "zui/legacy";
 
 const store = createStore({ count: 0, show: true, items: [{ id: 1, text: "First" }] });
 let renderCount = 0;
