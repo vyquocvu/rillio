@@ -15,7 +15,8 @@
   "devDependencies": {
     "typescript": "^5.9.3",
     "vitest": "^3.2.4",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "jsdom": "^26.1.0"
   },
   "exports": {
     ".": "./src/dom.ts",
