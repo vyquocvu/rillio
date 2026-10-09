@@ -26,3 +26,7 @@ Historical isolated reactive-only checks are documented in `research/verificatio
 ## Next action
 
 Run G1–G3 first, capture failures, repair them and then complete G4–G7. Once all pass at the same SHA, label MVP v0.1 verified. Until then: **implementation present, MVP not verified**.
+
+## Incremental update — React-friendly dependency isolation
+
+Implemented `ReactiveEngine.untrack`, exported frontend `untrack`, and used it around nested owner construction to avoid spurious conditional-region remounts. Added regression cases for child mount isolation and explicit untracked reads. **New tests have not been executed on the current commit**; all G1–G7 acceptance gates remain unverified until recorded run evidence exists.
