@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { createStore, select, mount, jsx, Show, For } from "../src/dom.js";
+import { createStore, select, derive, mount, jsx, Show, For } from "../src/dom.js";
 
 describe("frontend MVP", () => {
   it("mounts once and patches reactive text", () => {
@@ -62,7 +62,7 @@ describe("frontend MVP", () => {
         each: select(state, items => items),
         by: item => item.id,
         children: (item, current) => jsx("li", {
-          children: select({ get: current, set: () => {} }, value => value.label)
+          children: derive(() => current().label)
         })
       })
     }), target);
