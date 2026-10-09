@@ -1,4 +1,4 @@
-import { createStore, select, derive, mount, Show, For } from "zui";
+import { createStore, select, derive, mount, Show, For } from "zui/legacy";
 
 interface Task { id: number; title: string; done: boolean }
 const app = createStore<{ draft: string; tasks: Task[]; filter: "all" | "active" | "done" }>({
