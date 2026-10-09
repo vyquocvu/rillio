@@ -143,8 +143,16 @@ export class ReactiveEngine {
 
   effect(run: () => void | Dispose): Dispose {
     const node = this.createComputation("effect", () => {
-      node.cleanup?.();
-      node.cleanup = undefined;
+      // Cleanup is not reactive: reads inside cleanup must never become
+      // dependencies of the next effect execution.
+      if (node.cleanup) {
+        const cleanup = node.cleanup;
+        node.cleanup = undefined;
+        const active = this.current;
+        this.current = undefined;
+        try { cleanup(); }
+        finally { this.current = active; }
+      }
       const result = run();
       if (typeof result === "function") node.cleanup = result;
     });
