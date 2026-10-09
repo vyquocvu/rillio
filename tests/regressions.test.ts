@@ -27,6 +27,17 @@ describe("instrumentation and lifecycle regressions", () => {
   });
 
   for (const mode of ["scan", "graph"] as Mode[]) {
+    it(`${mode}: computed cannot mutate stores`, () => {
+      const e = createEngine(mode);
+      const state = e.createStore(1);
+      const invalid = e.computed(() => {
+        state.set(2);
+        return state.get();
+      });
+      expect(() => invalid.get()).toThrow("ZUI_COMPUTED_WRITE");
+      expect(state.get()).toBe(1);
+    });
+
     it(`${mode}: nested batches flush only once after the outer transaction`, () => {
       const e = createEngine(mode);
       const state = e.createStore(0);
