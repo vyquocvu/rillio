@@ -39,6 +39,7 @@ interface Owner {
 export class ReactiveEngine {
   private readonly all = new Set<Computation>();
   private readonly effects = new Set<Computation>();
+  private readonly dirtyEffects = new Set<Computation>();
   private current: Computation | undefined;
   private owner: Owner | undefined;
   private batchDepth = 0;
@@ -65,6 +66,7 @@ export class ReactiveEngine {
       seen.add(observer);
       observer.dirty = true;
       if (observer.kind === "computed") this.invalidate(observer, seen);
+      else this.dirtyEffects.add(observer);
     }
   }
 
@@ -176,6 +178,7 @@ export class ReactiveEngine {
     node.observers.clear();
     node.owner?.computations.delete(node);
     this.effects.delete(node);
+    this.dirtyEffects.delete(node);
     this.all.delete(node);
   }
 
@@ -230,8 +233,12 @@ export class ReactiveEngine {
           throw new Error("ZUI_MAX_FLUSH_ROUNDS");
         }
         this.pending = false;
-        // Snapshot effects first; owners disposed while flushing are skipped.
-        for (const node of [...this.effects]) {
+        // Scan visits every active effect. Graph dequeues only invalidated
+        // effects, preserving a stable snapshot for each flush round.
+        const work = this.mode === "scan"
+          ? [...this.effects] : [...this.dirtyEffects];
+        if (this.mode === "graph") this.dirtyEffects.clear();
+        for (const node of work) {
           if (node.disposed) continue;
           this.visits++;
           if (this.mode === "scan" || node.dirty) this.evaluate(node);
