@@ -118,7 +118,7 @@ export class ReactiveEngine {
         if (this.mode === "graph") this.invalidate(source);
         else for (const computation of this.all)
           if (computation.kind === "computed") computation.dirty = true;
-        if (!this.batchDepth && !this.flushing) this.flush();
+        if (!this.batchDepth && !this.flushing && !this.current) this.flush();
       }
     };
   }
@@ -143,6 +143,9 @@ export class ReactiveEngine {
     this.effects.add(node);
     try { this.evaluate(node); }
     catch (error) { this.disposeComputation(node); throw error; }
+    // A write inside the initial effect execution is deferred until the
+    // effect leaves the evaluation stack; otherwise it recursively executes.
+    if (!this.batchDepth && !this.flushing) this.flush();
     return () => this.disposeComputation(node);
   }
 
