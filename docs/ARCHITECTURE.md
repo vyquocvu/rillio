@@ -51,3 +51,7 @@ Owner scopes dispose effects and nested scopes. `mount` returns a disposer. Cond
 - Intrinsic JSX typing currently permits broad `any`; improve before packaging.
 - Styling/attributes need careful HTML/SVG and security semantics.
 - Flat Index and patch protocol are **research extensions**, not prerequisites for the frontend core.
+
+## Nested mount tracking boundary
+
+The DOM layer calls `engine.untrack(() => engine.createOwner(render))` to isolate nested subtree construction from the parent reactive effect. In particular, a child component's one-time `store.get()` read must not register as a dependency of its enclosing function-child conditional. Children retain their own binding effects and their explicit disposer. This boundary is regression-tested in `tests/react-friendly.test.ts`.
