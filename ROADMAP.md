@@ -1,68 +1,60 @@
-# ZUI Roadmap
+# ZUI Roadmap — React / Preact-first (revised 2026-10-09)
 
-Updated: 2026-10-09. Source of truth for **frontend product** work. Research has a separate track in `research/`.
+> **Architectural decision:** public syntax follows React/Preact (standard JSX, snapshots, hooks, normal conditionals and keyed `.map()`). Compatibility takes precedence over the old mount-once guarantee. Keep legacy runtime available at `zui/legacy`.
 
-## Product objective
+## Product principles
 
-Ship a usable **TypeScript/JSX frontend library**: store-first reactive bindings, mount-once components, direct DOM writes, dynamic keyed regions, deterministic disposal, and no virtual DOM. Do not confuse code presence with verified behavior.
-
-## Status legend
-
-- **Implemented / unverified**: code is present, acceptance gate has not been demonstrated.
-- **In progress**: work exists but has known gaps.
-- **Not started**: no usable implementation.
-- **Verified**: typecheck, tests, build and relevant acceptance checks have actually passed at an identified commit.
+1. Normal React/Preact TSX without `Show`, `For`, `derive` or function children.
+2. Small runtime, direct DOM mutation, predictable keyed identity.
+3. React/Preact behavior must be **tested** before claiming compatibility.
+4. Preserve the reactive research engine under `zui/reactive`, not as mandatory application API.
+5. Avoid CI/CD unless deliberately requested.
 
 ## Milestones
 
-| ID | Milestone | Status | Ship criteria |
+| Phase | Target | Implementation status | Verification |
 |---|---|---|---|
-| M0 | Reactive foundation | Implemented / partially verified | Store/computed/effect/batch, dynamic dependencies, cycle behavior, conformance + disposal tests |
-| M1 | JSX and direct DOM | Implemented / unverified | JSX runtime, mount-once text/props/events, typecheck and DOM conformance pass |
-| M2 | Dynamic UI | In progress | Show fallback, keyed For insert/remove/reorder/update, stable node identity, invalid-key errors |
-| M3 | Lifecycle + correctness | In progress | Full owner cleanup, no stale effects, nested updates deterministic, controlled input semantics |
-| M4 | Developer experience | In progress | Typed JSX/props, package JS + declarations, exports, usable downstream TypeScript project, docs |
-| M5 | MVP acceptance | Not verified | All gates in `docs/TESTING.md` pass; browser Counter/Todo workflows tested |
-| M6 | Post-MVP frontend | Not started | SVG, contexts, portals, SSR/hydration, async boundaries, router integrations only when justified |
-| R1 | Reactive benchmark research | Exploratory only | Independent engine comparison following frozen preregistration |
-| R2 | Flat Index research | Not started | B0/B1/B2 comparison with overhead/benefit acceptance gates |
+| C0 | JSX, createRoot, render | Source implemented | Unverified |
+| C1 | useState, useEffect, useMemo, useCallback, useRef | Source implemented | Unverified |
+| C2 | Component rerender + keyed direct-DOM reconcile | Source implemented | Unverified; coverage incomplete |
+| C3 | Props/events/ref/forms reconciliation | Partially implemented | Unverified |
+| C4 | Hook semantics, scheduler, deterministic batching, cleanup, errors | Not complete | Not verified |
+| C5 | Context, useReducer, useLayoutEffect, memo, forwardRef | Not started | Not verified |
+| C6 | TS JSX prop typing, ESM + declarations package, downstream consumer | Not started | Not verified |
+| C7 | Browser E2E, test matrix, perf/correctness gates and release candidate | Not started | Not verified |
+| R1 | Reactive scan/graph scientific benchmark | Research track | See `research/preregistration.md` |
+| R2 | Flat Index / addressable UI | Research track | Deferred |
 
-## React-friendly DX evolution (incremental)
+## Next tasks — strict priority
 
-- **Implemented / unverified:** `useStore` alias, direct store JSX text/property bindings, function-child reactive regions, object/callback refs.
-- **Next:** reactive JSX compiler experiment to support natural conditional expressions and `.map()` with keyed preservation, without changing the mount-once core. Design explicit transformations and fallback behavior; never promise implicit reactivity for ordinary JS snapshots.
-- **Keep:** `Show`, `For`, `select`, `derive` as low-level primitives while higher-level API matures.
-- **Acceptance:** no component re-render, no effect leaks, preserved keyed identity, strict typecheck, browser test and build evidence.
+1. **P0:** Run `npm run typecheck`, `npm test`, `npm run build` at a pinned SHA; fix all failures and record outputs.
+2. **P0:** Exercise component replacement, keyed reorder/delete/insert, nested hooks, ref attach/detach and 100x mount/unmount.
+3. **P0:** Define scheduler, batching, hook call ordering, render-phase writes, effect commit ordering and exception behavior.
+4. **P0:** Ensure controlled input behavior and event compatibility for `onChange`, `onInput`, focus/caret.
+5. **P1:** Context + remaining common hooks; SSR/portals later.
+6. **P1:** Bundle library as ESM, publish types, test isolated consumer project, improve JSX typing.
+7. **P1:** Browser E2E for Counter/Todo; correctness before benchmarking.
+8. **P2:** Measure against Preact and React on comparable workloads, then optimize selectively.
 
-## Immediate prioritized backlog (execute sequentially)
+## Completion gates for v0.1
 
-### P0 — unblock MVP verification
+- Typecheck, tests and build pass on **the same SHA**.
+- `createRoot`, hooks, conditional JSX and keyed arrays have verified tests.
+- Unmount cleans effects, event listeners and DOM.
+- Separate strict-TS consumer can import JS + .d.ts.
+- Browser Counter/Todo workflows pass.
+- Explicit list of compatible vs unsupported APIs published.
 
-1. Run `npm install`, `npm run typecheck`, `npm test`, `npm run build` against a pinned revision; fix all actual failures.
-2. Fix any JSX TypeScript errors and Node/ESM export mismatches.
-3. Verify `<Show>`, `<For>`, component callbacks and disposal under nested updates, including throws.
-4. Add browser-level Counter/Todo tests (typing, add/edit/toggle/delete/filter/reorder; focus/caret checks).
-5. Add mount/unmount leak assertions using active-computation diagnostics.
+No claim of "React compatible" or "production ready" until all relevant gates are demonstrated.
 
-### P1 — library distribution
+## Legacy and migration
 
-6. Produce separate library build (ESM .js, .d.ts and JSX runtime exports); do not publish raw .ts exports as package entry points.
-7. Test consumer importing `zui` in a separate Vite+TypeScript project.
-8. Document minimal stable public API; minimize `any` and type DOM intrinsic props.
+Previous store-first/mount-once API is available via `zui/legacy`; reactive engine via `zui/reactive`. Legacy source demos retain explicit imports. The root package `zui` is now the compatibility runtime. Consumers must opt in to the breaking change by changing imports or waiting for a stable release. See `docs/COMPATIBILITY.md`.
 
-### P2 — after passing MVP gates
+## Documentation map
 
-9. Measure baseline performance against vanilla DOM/Solid with realistic workloads.
-10. Research Index and UI patch protocol separately; retain only on demonstrated value.
-
-## MVP v0.1 definition of done
-
-All seven conditions must pass **on the same commit**: strict typecheck; Vitest conformance/DOM tests; Vite build; Counter+Todo browser flows; no retained active effects after repeated unmount; stable keyed identity/correct updates; distributable JS+declarations consumed by a separate project. Record command, environment, SHA and actual outputs in `docs/STATUS.md`. No claim of pass without execution evidence.
-
-## Explicit non-goals for MVP
-
-Flat Index, agent-authored patches, SSR, hydration, router, portals, elaborate scheduler benchmarks, performance superiority claims, CI/CD. These must not delay M0–M5.
-
-## Change control
-
-If scope changes, edit this document and `docs/STATUS.md` together; do not retroactively alter research thresholds in `research/preregistration.md`. Keep correctness/verification distinct from implementation progress.
+- `docs/COMPATIBILITY.md`: supported semantics and deliberate gaps.
+- `docs/ARCHITECTURE.md`: historical reactive architecture (legacy context).
+- `docs/TESTING.md`: previous acceptance plan, to be updated for compat.
+- `docs/STATUS.md`: evidence history; requires fresh run on compat commit.
+- `research/`: scientific research isolated from compatibility release.
