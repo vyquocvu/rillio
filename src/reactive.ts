@@ -112,6 +112,9 @@ export class ReactiveEngine {
     return {
       get: () => { this.track(source); return value; },
       set: (update) => {
+        if (this.current?.kind === "computed") {
+          throw new Error("ZUI_COMPUTED_WRITE");
+        }
         const next = typeof update === "function"
           ? (update as (previous: T) => T)(value) : update;
         if (Object.is(value, next)) return;
