@@ -19,9 +19,10 @@
     "jsdom": "^26.1.0"
   },
   "exports": {
-    ".": "./src/dom.ts",
+    ".": "./src/index.ts",
     "./jsx-runtime": "./src/jsx-runtime.ts",
     "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts",
+    "./legacy": "./src/dom.ts",
     "./reactive": "./src/reactive.ts"
   }
 }
