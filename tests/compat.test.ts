@@ -85,4 +85,25 @@ describe("React-style compatibility runtime", () => {
     expect(calculations).toBe(2);
     root.unmount();
   });
+  it("reconciles fragment arrays and null branches without text placeholders", () => {
+    let show!: (visible: boolean) => void;
+    function App() {
+      const [visible, setVisible] = useState(true);
+      show = setVisible;
+      return visible ? [jsx("span", { children: "A" }, "a"), jsx("span", { children: "B" }, "b")] : null;
+    }
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    root.render(jsx(App, {}));
+    const first = container.querySelector("span");
+    expect(container.querySelectorAll("span")).toHaveLength(2);
+    show(false);
+    expect(container.querySelectorAll("span")).toHaveLength(0);
+    show(true);
+    expect(container.querySelectorAll("span")).toHaveLength(2);
+    expect(container.querySelector("span")).not.toBe(first);
+    root.unmount();
+    expect(container.childNodes).toHaveLength(0);
+  });
+
 });
