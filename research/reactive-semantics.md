@@ -17,6 +17,10 @@
 
 A write makes the scan engine visit every active effect at the next flush. It must not use reverse dependency links to skip visiting effects. Computed dependency bookkeeping used for cache invalidation is permitted, not for filtering the set of visited effects. Diagnostics distinguish effect visits from actual expression evaluations.
 
+## Graph scheduling
+
+GraphEngine maintains a dirty-effects queue. It invalidates transitive computed dependents but evaluates only dirty effects during a flush. Nested writes occurring while an effect evaluates leave that effect dirty for the next flush round. The ScanEngine is intentionally not allowed to use the dirty queue for effect selection.
+
 ## Limits
 
 This preliminary implementation shares lifecycle / evaluation mechanics between strategies. It is NOT an independent reference oracle and therefore does not yet establish cross-implementation conformance. Property-based oracle tests and external semantic comparisons remain necessary before official benchmarks.
