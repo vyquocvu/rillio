@@ -16,7 +16,7 @@
 
 ## React-friendly authoring (experimental)
 
-`useStore(initial)` offers familiar naming but returns a **live store**, not React's `[value, setter]` tuple. Use `{store}` for reactive text, `value={store}` for reactive DOM properties, and `{() => store.get().visible ? <Panel /> : null}` for reactive conditional regions. These function regions currently remount on dependency updates; `<For>` remains necessary for stable keyed lists. Automatic reactive `.map()` JSX requires future compiler work. See [API](docs/API.md).
+`useStore(initial)` offers familiar naming but returns a **live store**, not React's `[value, setter]` tuple. Use `{store}` for reactive text, `value={store}` for reactive DOM properties, and `{() => store.get().visible ? <Panel /> : null}` for reactive conditional regions. These function regions currently remount on dependency updates; `<For>` remains necessary for stable keyed lists. Automatic reactive `.map()` JSX requires future compiler work. Nested components mounted inside function regions do not subscribe their parent to incidental child reads (`untrack` boundary). See [API](docs/API.md).
 
 ## Run the MVP demo
 
@@ -25,7 +25,7 @@ npm install
 npm run dev
 ```
 
-Open the Vite URL (default http://127.0.0.1:5173). The Counter demo is `examples/counter.tsx` at `/`, and the Todo demo is `examples/todo.tsx` at `/todo.html`.
+Open the Vite URL (default http://127.0.0.1:5173). The Counter demo is `examples/counter.tsx` at `/`, the Todo demo is at `/todo.html`, and the React-friendly demo is at `/react-friendly.html`.
 
 ```sh
 npm run typecheck
