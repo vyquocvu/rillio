@@ -147,15 +147,24 @@ function renderChild(value: Child | Conditional | Repetition<unknown>, parent: N
 function resolveChild(value: unknown): Child {
   return typeof value === "function" ? (value as () => Child)() : value as Child;
 }
+const previousStyles = new WeakMap<HTMLElement, Record<string, unknown>>();
 function setProperty(element: HTMLElement, name: string, value: unknown): void {
   if (name === "className" || name === "class") { element.className = stringify(value); return; }
   if (name === "style") {
-    if (value && typeof value === "object") {
-      for (const [prop, entry] of Object.entries(value)) {
-        if (prop.startsWith("--")) element.style.setProperty(prop, stringify(entry));
-        else (element.style as any)[prop] = entry ?? "";
-      }
-    } else element.removeAttribute("style");
+    const next = value && typeof value === "object"
+      ? value as Record<string, unknown> : {};
+    const previous = previousStyles.get(element) ?? {};
+    for (const prop of Object.keys(previous)) {
+      if (prop in next) continue;
+      if (prop.startsWith("--")) element.style.removeProperty(prop);
+      else (element.style as any)[prop] = "";
+    }
+    for (const [prop, entry] of Object.entries(next)) {
+      if (Object.is(previous[prop], entry)) continue;
+      if (prop.startsWith("--")) element.style.setProperty(prop, stringify(entry));
+      else (element.style as any)[prop] = entry ?? "";
+    }
+    previousStyles.set(element, { ...next });
     return;
   }
   if (name === "value" || name === "checked" || name === "disabled") {
