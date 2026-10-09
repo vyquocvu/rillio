@@ -2,6 +2,18 @@
 
 **Experimental store-first frontend library** with TypeScript, JSX, fine-grained subscriptions, mount-once components, and direct DOM updates. No Virtual DOM.
 
+## Project documentation
+
+- [Roadmap](ROADMAP.md) — frontend milestones, MVP release gates, separate research track
+- [Architecture](docs/ARCHITECTURE.md) — reactive dataflow, DOM runtime, lifecycle and tradeoffs
+- [API guide](docs/API.md) — current TypeScript/JSX interface and examples
+- [Testing and acceptance](docs/TESTING.md) — required checks and regression scenarios
+- [Status and verification](docs/STATUS.md) — evidence-based implementation/verification state
+- [Contributing](CONTRIBUTING.md) — development conventions and documentation discipline
+- [Research preregistration](research/preregistration.md) — frozen benchmark protocol
+
+**MVP status:** implementation present; frontend typecheck, full tests, build and consumer package gates still need independent verification.
+
 ## Run the MVP demo
 
 ```sh
