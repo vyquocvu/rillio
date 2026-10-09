@@ -1,81 +1,56 @@
 # ZUI
 
-**Experimental store-first frontend library** with TypeScript, JSX, fine-grained subscriptions, mount-once components, and direct DOM updates. No Virtual DOM.
+**Experimental React/Preact-style JSX frontend runtime.** The default entry now implements function components, familiar hooks, plain conditional rendering, keyed arrays and direct DOM reconciliation. This is an early compatibility foundation, **not a production-ready React/Preact replacement**.
 
-## Project documentation
-
-- [Roadmap](ROADMAP.md) — frontend milestones, MVP release gates, separate research track
-- [Architecture](docs/ARCHITECTURE.md) — reactive dataflow, DOM runtime, lifecycle and tradeoffs
-- [API guide](docs/API.md) — current TypeScript/JSX interface and examples
-- [Testing and acceptance](docs/TESTING.md) — required checks and regression scenarios
-- [Status and verification](docs/STATUS.md) — evidence-based implementation/verification state
-- [Contributing](CONTRIBUTING.md) — development conventions and documentation discipline
-- [Research preregistration](research/preregistration.md) — frozen benchmark protocol
-
-**MVP status:** implementation present; frontend typecheck, full tests, build and consumer package gates still need independent verification.
-
-## React-friendly authoring (experimental)
-
-`useStore(initial)` offers familiar naming but returns a **live store**, not React's `[value, setter]` tuple. Use `{store}` for reactive text, `value={store}` for reactive DOM properties, and `{() => store.get().visible ? <Panel /> : null}` for reactive conditional regions. These function regions currently remount on dependency updates; `<For>` remains necessary for stable keyed lists. Automatic reactive `.map()` JSX requires future compiler work. Nested components mounted inside function regions do not subscribe their parent to incidental child reads (`untrack` boundary). See [API](docs/API.md).
-
-## Run the MVP demo
+## Run
 
 ```sh
 npm install
 npm run dev
-```
-
-Open the Vite URL (default http://127.0.0.1:5173). The Counter demo is `examples/counter.tsx` at `/`, the Todo demo is at `/todo.html`, and the React-friendly demo is at `/react-friendly.html`.
-
-```sh
 npm run typecheck
 npm test
 npm run build
 ```
 
-The test suite uses Vitest and jsdom. Research runners are retained as `npm run test:smoke`, `npm run test:oracle`, and `npm run bench:smoke`.
+Open `/compat.html` for the new React-style Todo. Earlier prototypes remain at `/` (Counter), `/todo.html` (Todo), and `/react-friendly.html`; they explicitly import `zui/legacy`.
 
-## Minimal example
+## Default JSX + Hooks
 
 ```tsx
-import { createStore, select, mount, Show, For } from "zui";
+import { createRoot, useState, useEffect } from "zui";
 
-const state = createStore({ count: 0, visible: true, items: [{ id: "a", label: "First" }] });
+function Counter() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    document.title = String(count);
+  }, [count]);
 
-function App() {
-  return <main>
-    <h1>Count: {select(state, s => s.count)}</h1>
-    <button onClick={() => state.set(s => ({ ...s, count: s.count + 1 }))}>Increment</button>
-    <Show when={select(state, s => s.visible)}>
-      {() => <p>Visible!</p>}
-    </Show>
-    <ul><For each={select(state, s => s.items)} by={item => item.id}>
-      {item => <li>{item.label}</li>}
-    </For></ul>
-  </main>;
+  return <button onClick={() => setCount(n => n + 1)}>
+    Count: {count}
+  </button>;
 }
 
-mount(App, document.getElementById("app")!);
+createRoot(document.getElementById("app")!).render(<Counter />);
 ```
 
-JSX uses `jsx: "react-jsx"` and `jsxImportSource: "zui"`; it does **not** import React.
+Configure `jsx: "react-jsx"` and `jsxImportSource: "zui"`. Ordinary `&&`, ternary and keyed `.map()` syntax is supported by component rerenders and a direct DOM reconciler.
 
-### API overview
+## Compatibility scope (experimental)
 
-- `createStore(initial)`: reactive state; `get()`, `set(value | updater)`.
-- `select(store, selector)`: reactive binding descriptor (text or element property).
-- `derive(read)`: reactive binding from a tracked read function.
-- `computed(read)`, `batch(fn)`: derived values and batched updates.
-- `mount(component, target)`: creates UI once; returns disposal function.
-- `<Show when={...}>{() => ...}</Show>`: mount/unmount conditional content.
-- `<For each={...} by={item => item.id}>{item => ...}</For>`: keyed list regions; reorder preserves DOM identity.
+Source-implemented: `createRoot`, `render`, `useState`, `useEffect`, `useMemo`, `useCallback`, `useRef`, `Fragment`, basic intrinsic props/events, keyed reconciliation.
 
-List item callbacks mount once per key. The second callback argument `current()` reads the latest item for that key, so `derive(() => current().title)` updates displayed fields without replacing the DOM node. The first argument is the item from initial mount; use `current()` for changing fields.
+Not yet claimed: full React/Preact hook scheduling, synthetic events, context, reducer, concurrent updates, Suspense, portals, SSR, SVG support, complete JSX types, packaging or ecosystem interoperability. Effects currently run synchronously after DOM commit, unlike React post-paint scheduling. **Full tests/build on the current revision have not been independently verified.**
 
-## Status / limitations
+Legacy mount-once/store-first runtime: `import { createStore, mount, Show, For } from "zui/legacy"`. Research engine: `zui/reactive`.
 
-This is a **frontend MVP prototype**, not a production-ready framework. It includes DOM bindings, elements, events, a TypeScript JSX runtime, conditional regions, keyed list operations and basic lifecycle disposal.
+## Docs
 
-Not implemented: SSR/hydration, router, suspense, portals, component-scoped context, delegated event system, SVG namespaced elements, full CSS and SVG support, Flat Index / addressable patches, and complete security handling for remote-supplied UI. Runtime runs on a single graph engine by default. The Scan/Graph research engine is available separately; preregistered performance studies remain pending.
+- [Roadmap](ROADMAP.md)
+- [Compatibility contract](docs/COMPATIBILITY.md)
+- [Original reactive architecture](docs/ARCHITECTURE.md)
+- [Testing gates](docs/TESTING.md)
+- [Verification status](docs/STATUS.md)
+- [Contributing](CONTRIBUTING.md)
+- [Research preregistration](research/preregistration.md)
 
-**No CI/CD is configured by design.** See `research/` for pre-registration, semantics and earlier verification scope.
+No CI/CD is configured by design.
