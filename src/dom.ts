@@ -3,6 +3,8 @@ import { createEngine, type Store, type Dispose } from "./reactive.js";
 /** Default graph engine powers the standalone frontend runtime. */
 export const engine = createEngine("graph");
 export const createStore = <T>(initial: T): Store<T> => engine.createStore(initial);
+/** React-familiar naming; unlike React useState, returns a live Store (not a snapshot). */
+export const useStore = createStore;
 export const computed = <T>(fn: () => T) => engine.computed(fn);
 export const batch = <T>(fn: () => T) => engine.batch(fn);
 
@@ -17,10 +19,15 @@ export function select<S, T>(store: Store<S>, selector: (state: S) => T): Bindin
 export function derive<T>(read: () => T): Binding<T> {
   return { [BINDING]: true, read };
 }
+function isStore(value: unknown): value is Store<unknown> {
+  return typeof value === "object" && value !== null &&
+    typeof (value as Store<unknown>).get === "function" &&
+    typeof (value as Store<unknown>).set === "function";
+}
 function isBinding(value: unknown): value is Binding<unknown> {
   return typeof value === "object" && value !== null && BINDING in value;
 }
-export type Child = VNode | Binding<unknown> | Conditional | Repetition<any> | string | number | boolean | null | undefined | Child[];
+export type Child = VNode | Store<any> | (() => Child) | Binding<unknown> | Conditional | Repetition<any> | string | number | boolean | null | undefined | Child[];
 export interface VNode {
   readonly type: string | ((props: any) => any);
   readonly props: Record<string, any>;
@@ -90,12 +97,28 @@ function renderChild(value: Child | Conditional | Repetition<unknown>, parent: N
     return () => { for (const dispose of disposers.reverse()) dispose(); };
   }
   if (value == null || typeof value === "boolean") return () => {};
-  if (isBinding(value)) {
+  if (isBinding(value) || isStore(value)) {
+    const read = isBinding(value) ? () => value.read() : () => value.get();
     const text = document.createTextNode("");
     parent.insertBefore(text, before);
     return withOwner(() => {
-      engine.effect(() => { text.data = stringify(value.read()); });
+      engine.effect(() => { text.data = stringify(read()); });
       return () => text.remove();
+    });
+  }
+  if (typeof value === "function") {
+    // Function children are reactive regions. Their result is mounted anew when
+    // tracked stores change; keyed list reconciliation remains a separate API.
+    const { start, end } = createRegion(parent, before);
+    return withOwner(() => {
+      let disposeCurrent: Dispose = () => {};
+      engine.effect(() => {
+        const child = (value as () => Child)();
+        disposeCurrent();
+        clearRange(start, end);
+        disposeCurrent = withOwner(() => renderChild(child, parent, end));
+      });
+      return () => { disposeCurrent(); clearRange(start, end); start.remove(); end.remove(); };
     });
   }
   if (typeof value === "string" || typeof value === "number") {
@@ -131,13 +154,18 @@ function renderChild(value: Child | Conditional | Repetition<unknown>, parent: N
   return withOwner(() => {
     const cleanups: Dispose[] = [];
     for (const [key, val] of Object.entries(node.props)) {
-      if (key === "children" || key === "key" || key === "ref") continue;
+      if (key === "children" || key === "key") continue;
+      if (key === "ref") {
+        if (typeof val === "function") { val(element); cleanups.push(() => val(null)); }
+        else if (val && typeof val === "object") { val.current = element; cleanups.push(() => { val.current = null; }); }
+        continue;
+      }
       if (key.startsWith("on") && typeof val === "function") {
         const event = key.slice(2).toLowerCase();
         element.addEventListener(event, val as EventListener);
         cleanups.push(() => element.removeEventListener(event, val as EventListener));
-      } else if (isBinding(val)) {
-        engine.effect(() => setProperty(element, key, val.read()));
+      } else if (isBinding(val) || isStore(val)) {
+        engine.effect(() => setProperty(element, key, isBinding(val) ? val.read() : val.get()));
       } else setProperty(element, key, val);
     }
     const childDispose = renderChild(node.props.children as Child, element, null);
