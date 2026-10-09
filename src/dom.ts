@@ -20,9 +20,9 @@ export function derive<T>(read: () => T): Binding<T> {
 function isBinding(value: unknown): value is Binding<unknown> {
   return typeof value === "object" && value !== null && BINDING in value;
 }
-export type Child = VNode | Binding<unknown> | string | number | boolean | null | undefined | Child[];
+export type Child = VNode | Binding<unknown> | Conditional | Repetition<any> | string | number | boolean | null | undefined | Child[];
 export interface VNode {
-  readonly type: string | ((props: Record<string, any>) => Child);
+  readonly type: string | ((props: any) => any);
   readonly props: Record<string, any>;
   readonly key?: string | number;
 }
@@ -140,7 +140,7 @@ function renderChild(value: Child | Conditional | Repetition<unknown>, parent: N
         engine.effect(() => setProperty(element, key, val.read()));
       } else setProperty(element, key, val);
     }
-    const childDispose = renderChild(node.props.children, element, null);
+    const childDispose = renderChild(node.props.children as Child, element, null);
     return () => { childDispose(); cleanups.forEach(fn => fn()); element.remove(); };
   });
 }
