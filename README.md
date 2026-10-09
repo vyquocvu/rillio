@@ -1,55 +1,65 @@
 # ZUI
 
-Research-first TypeScript reactive frontend runtime.
+**Experimental store-first frontend library** with TypeScript, JSX, fine-grained subscriptions, mount-once components, and direct DOM updates. No Virtual DOM.
 
-**Status: Spike 0 prototype.** This repository currently implements reactive primitives, not the JSX/DOM framework yet. No CI/CD is configured.
-
-## Getting started
+## Run the MVP demo
 
 ```sh
 npm install
+npm run dev
+```
+
+Open the Vite URL (default http://127.0.0.1:5173). The demo is `examples/counter.tsx`.
+
+```sh
 npm run typecheck
 npm test
-npm run test:smoke # Node-only checks; no Vitest installation required
+npm run build
 ```
 
-## Example
+The test suite uses Vitest and jsdom. Research runners are retained as `npm run test:smoke`, `npm run test:oracle`, and `npm run bench:smoke`.
 
-```ts
-import { createEngine } from "./src/index.js";
+## Minimal example
 
-const engine = createEngine("graph"); // or "scan"
-const counter = engine.createStore(0);
-const doubled = engine.computed(() => counter.get() * 2);
-const dispose = engine.effect(() => console.log(doubled.get()));
-counter.set(1);
-engine.batch(() => { counter.set(2); counter.set(3); });
-dispose();
+```tsx
+import { createStore, select, mount, Show, For } from "zui";
+
+const state = createStore({ count: 0, visible: true, items: [{ id: "a", label: "First" }] });
+
+function App() {
+  return <main>
+    <h1>Count: {select(state, s => s.count)}</h1>
+    <button onClick={() => state.set(s => ({ ...s, count: s.count + 1 }))}>Increment</button>
+    <Show when={select(state, s => s.visible)}>
+      {() => <p>Visible!</p>}
+    </Show>
+    <ul><For each={select(state, s => s.items)} by={item => item.id}>
+      {item => <li>{item.label}</li>}
+    </For></ul>
+  </main>;
+}
+
+mount(App, document.getElementById("app")!);
 ```
 
-## Architecture
+JSX uses `jsx: "react-jsx"` and `jsxImportSource: "zui"`; it does **not** import React.
 
-- **ScanEngine**: full visits of active effects on every committed write; does not use reverse dependencies to select effects. Computed nodes still cache results within an epoch.
-- **GraphEngine**: dependency-linked invalidation, including runtime updates to dynamic dependencies.
-- Both engines expose the same store, computed, effect, batch, owner and flush API.
-- State commits are synchronous. Effects flush after commits, and writes made during effects queue another flush round.
-- Ownership scopes dispose effects and nested scopes.
+### API overview
 
-## Roadmap
+- `createStore(initial)`: reactive state; `get()`, `set(value | updater)`.
+- `select(store, selector)`: reactive binding descriptor (text or element property).
+- `derive(read)`: reactive binding from a tracked read function.
+- `computed(read)`, `batch(fn)`: derived values and batched updates.
+- `mount(component, target)`: creates UI once; returns disposal function.
+- `<Show when={...}>{() => ...}</Show>`: mount/unmount conditional content.
+- `<For each={...} by={item => item.id}>{item => ...}</For>`: keyed list regions; reorder preserves DOM identity.
 
-1. Spike 0: conformance oracle and tests, deterministic semantics.
-2. Spike A/B: independently implemented Scan and Graph engines, crossover benchmarks.
-3. Spike C: mount-once DOM bindings, dynamic regions and keyed lists.
-4. Spike D: optional Flat Index experiments with minimal Map + log and keyed-tree baselines.
+List item callbacks capture the item at creation time. To update a field while keeping the same key, use a reactive binding inside the item; a newly supplied object with the same key does not automatically rerun its initializer.
 
-This is research code, not a production renderer. Do not claim performance wins until the preregistered benchmarks are executed.
+## Status / limitations
 
-## Verification notes
+This is a **frontend MVP prototype**, not a production-ready framework. It includes DOM bindings, elements, events, a TypeScript JSX runtime, conditional regions, keyed list operations and basic lifecycle disposal.
 
-The standalone smoke runner checks basic reactivity, diamond reads, dynamic branching,
-owner disposal, failure cleanup, nested writes and cycles for both modes. The seeded
-oracle tests live in `tests/oracle.test.ts` and run with Vitest. The cross-engine
-benchmark is not yet performed; do not interpret smoke results as performance claims.
+Not implemented: SSR/hydration, router, suspense, portals, component-scoped context, delegated event system, SVG namespaced elements, production-grade style diffing, Flat Index / addressable patches, and complete security handling for remote-supplied UI. Runtime runs on a single graph engine by default. The Scan/Graph research engine is available separately; preregistered performance studies remain pending.
 
-Computed evaluations are read-only. Attempting to write a store while evaluating a
-computed throws `ZUI_COMPUTED_WRITE`.
+**No CI/CD is configured by design.** See `research/` for pre-registration, semantics and earlier verification scope.
