@@ -8,10 +8,19 @@
     "typecheck": "tsc --noEmit",
     "test:smoke": "tsc src/reactive.ts --outDir .zui-test --target es2022 --module nodenext --strict --skipLibCheck && node tests/smoke.cjs",
     "bench:smoke": "npm run test:smoke && node benchmarks/smoke.cjs",
-    "test:oracle": "npm run test:smoke && node tests/oracle-smoke.cjs"
+    "test:oracle": "npm run test:smoke && node tests/oracle-smoke.cjs",
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "vite": "^6.3.5"
+  },
+  "exports": {
+    ".": "./src/dom.ts",
+    "./jsx-runtime": "./src/jsx-runtime.ts",
+    "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts",
+    "./reactive": "./src/reactive.ts"
   }
 }
