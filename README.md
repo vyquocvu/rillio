@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Open the Vite URL (default http://127.0.0.1:5173). The demo is `examples/counter.tsx`.
+Open the Vite URL (default http://127.0.0.1:5173). The Counter demo is `examples/counter.tsx` at `/`, and the Todo demo is `examples/todo.tsx` at `/todo.html`.
 
 ```sh
 npm run typecheck
@@ -54,12 +54,12 @@ JSX uses `jsx: "react-jsx"` and `jsxImportSource: "zui"`; it does **not** import
 - `<Show when={...}>{() => ...}</Show>`: mount/unmount conditional content.
 - `<For each={...} by={item => item.id}>{item => ...}</For>`: keyed list regions; reorder preserves DOM identity.
 
-List item callbacks capture the item at creation time. To update a field while keeping the same key, use a reactive binding inside the item; a newly supplied object with the same key does not automatically rerun its initializer.
+List item callbacks mount once per key. The second callback argument `current()` reads the latest item for that key, so `derive(() => current().title)` updates displayed fields without replacing the DOM node. The first argument is the item from initial mount; use `current()` for changing fields.
 
 ## Status / limitations
 
 This is a **frontend MVP prototype**, not a production-ready framework. It includes DOM bindings, elements, events, a TypeScript JSX runtime, conditional regions, keyed list operations and basic lifecycle disposal.
 
-Not implemented: SSR/hydration, router, suspense, portals, component-scoped context, delegated event system, SVG namespaced elements, production-grade style diffing, Flat Index / addressable patches, and complete security handling for remote-supplied UI. Runtime runs on a single graph engine by default. The Scan/Graph research engine is available separately; preregistered performance studies remain pending.
+Not implemented: SSR/hydration, router, suspense, portals, component-scoped context, delegated event system, SVG namespaced elements, full CSS and SVG support, Flat Index / addressable patches, and complete security handling for remote-supplied UI. Runtime runs on a single graph engine by default. The Scan/Graph research engine is available separately; preregistered performance studies remain pending.
 
 **No CI/CD is configured by design.** See `research/` for pre-registration, semantics and earlier verification scope.
