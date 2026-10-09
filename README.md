@@ -14,6 +14,10 @@
 
 **MVP status:** implementation present; frontend typecheck, full tests, build and consumer package gates still need independent verification.
 
+## React-friendly authoring (experimental)
+
+`useStore(initial)` offers familiar naming but returns a **live store**, not React's `[value, setter]` tuple. Use `{store}` for reactive text, `value={store}` for reactive DOM properties, and `{() => store.get().visible ? <Panel /> : null}` for reactive conditional regions. These function regions currently remount on dependency updates; `<For>` remains necessary for stable keyed lists. Automatic reactive `.map()` JSX requires future compiler work. See [API](docs/API.md).
+
 ## Run the MVP demo
 
 ```sh
