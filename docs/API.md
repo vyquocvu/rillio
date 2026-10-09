@@ -62,3 +62,28 @@ A component is invoked on **mount**, not rerun on state change. Destructured or 
 ## Unsupported or not guaranteed
 
 SSR/hydration, portals, context, router, SVG parity, complex CSS normalization, external untrusted JSX/props, React hooks, implicit JSX reactivity, and production-grade library packaging. No official compatibility or performance claim against React/Solid.
+
+## React-friendly authoring (experimental)
+
+ZUI supports `useStore(initial)` as a familiar naming alias for `createStore(initial)`. **This is not React's `useState`**: the returned object has `get()` and `set()` methods and is a live reactive store; components still mount once.
+
+```tsx
+import { useStore, mount } from "zui";
+function App() {
+  const count = useStore(0);
+  const visible = useStore(true);
+  return <main>
+    <button onClick={() => count.set(n => n + 1)}>Count: {count}</button>
+    <input value={count} />
+    {() => visible.get() ? <span>Visible</span> : null}
+  </main>;
+}
+mount(<App />, document.getElementById("app")!);
+```
+
+- `{store}` directly binds a text node; `value={store}` binds an element property.
+- `{() => expression}` creates a reactive region for conditional JSX. **The current implementation remounts the region on each tracked dependency change**; do not rely on keyed identity in this pattern yet.
+- `ref={objectRef}` and `ref={node => ...}` follow React-like mount and unmount behavior for intrinsic elements.
+- Ordinary `store.get()` inside JSX is a one-time snapshot, not a live JSX binding.
+- Plain `store.get().items.map(...)` does **not** automatically become reactive; continue using `<For>` for stable keyed lists until the compiler/reconciler milestone.
+- `Show`, `For`, `select` and `derive` remain supported and useful advanced primitives.
