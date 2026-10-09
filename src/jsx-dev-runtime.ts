@@ -1,1 +1,1 @@
-export { jsx as jsxDEV, Fragment } from "./dom.js";
+export { jsxDEV, Fragment } from "./compat.js";
