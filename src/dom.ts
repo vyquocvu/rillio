@@ -42,12 +42,12 @@ interface Repetition<T> {
   kind: "for";
   each: readonly T[] | Binding<readonly T[]>;
   by: (item: T) => string | number;
-  children: (item: T) => Child;
+  children: (item: T, current: () => T) => Child;
 }
 export function Show(props: { when: boolean | Binding<unknown>; fallback?: Child | (() => Child); children: Child | (() => Child) }): Conditional {
   return { kind: "show", ...props };
 }
-export function For<T>(props: { each: readonly T[] | Binding<readonly T[]>; by: (item: T) => string | number; children: (item: T) => Child }): Repetition<T> {
+export function For<T>(props: { each: readonly T[] | Binding<readonly T[]>; by: (item: T) => string | number; children: (item: T, current: () => T) => Child }): Repetition<T> {
   return { kind: "for", ...props };
 }
 function isConditional(value: unknown): value is Conditional {
@@ -159,7 +159,8 @@ function setProperty(element: HTMLElement, name: string, value: unknown): void {
     return;
   }
   if (name === "value" || name === "checked" || name === "disabled") {
-    (element as any)[name] = value ?? (name === "value" ? "" : false);
+    const normalized = value ?? (name === "value" ? "" : false);
+    if ((element as any)[name] !== normalized) (element as any)[name] = normalized;
     return;
   }
   if (value == null || value === false) element.removeAttribute(name);
@@ -168,7 +169,7 @@ function setProperty(element: HTMLElement, name: string, value: unknown): void {
 }
 function renderList<T>(spec: Repetition<T>, parent: Node, before: Node | null): Dispose {
   const { start, end } = createRegion(parent, before);
-  type Item = { start: Comment; end: Comment; dispose: Dispose; value: T };
+  type Item = { start: Comment; end: Comment; dispose: Dispose; value: T; state: Store<T> };
   return withOwner(() => {
     let items = new Map<string | number, Item>();
     engine.effect(() => {
@@ -196,13 +197,17 @@ function renderList<T>(spec: Repetition<T>, parent: Node, before: Node | null): 
         let entry = items.get(key);
         if (!entry) {
           const region = createRegion(parent, anchor);
+          const state = createStore(value);
           entry = {
-            ...region, value,
-            dispose: withOwner(() => renderChild(spec.children(value), parent, region.end))
+            ...region, value, state,
+            dispose: withOwner(() => renderChild(spec.children(value, () => state.get()), parent, region.end))
           };
         } else {
-          // A keyed item has stable identity: changed object values must be
-          // represented by reactive bindings inside the item or a new key.
+          // Keyed content stays mounted; current() reflects replacement data.
+          if (!Object.is(entry.value, value)) {
+            entry.value = value;
+            entry.state.set(value);
+          }
           const fragment = document.createDocumentFragment();
           let node: Node | null = entry.start;
           while (node) {
