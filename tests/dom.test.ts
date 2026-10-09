@@ -109,14 +109,14 @@ describe("frontend MVP", () => {
   });
 
   it("removes stale styles when a reactive style binding changes", () => {
-    const state = createStore({ color: "red", display: "block" });
+    const state = createStore<{ color: string; display?: string }>({ color: "red", display: "block" });
     const target = document.createElement("div");
     const dispose = mount(jsx("div", {
       style: select(state, value => value)
     }), target);
     const node = target.querySelector("div")!;
     expect(node.style.color).toBe("red");
-    state.set({ color: "blue" } as { color: string; display: string });
+    state.set({ color: "blue" });
     expect(node.style.color).toBe("blue");
     expect(node.style.display).toBe("");
     dispose();
