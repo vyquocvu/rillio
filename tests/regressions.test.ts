@@ -27,6 +27,22 @@ describe("instrumentation and lifecycle regressions", () => {
   });
 
   for (const mode of ["scan", "graph"] as Mode[]) {
+    it(`${mode}: cleanup reads must not subscribe the effect`, () => {
+      const e = createEngine(mode);
+      const value = e.createStore(0);
+      const unrelated = e.createStore(0);
+      const calls: number[] = [];
+      const dispose = e.effect(() => {
+        calls.push(value.get());
+        return () => { unrelated.get(); };
+      });
+      value.set(1);
+      const count = calls.length;
+      unrelated.set(1);
+      if (mode === "graph") expect(calls).toHaveLength(count);
+      dispose();
+    });
+
     it(`${mode}: computed cannot mutate stores`, () => {
       const e = createEngine(mode);
       const state = e.createStore(1);
