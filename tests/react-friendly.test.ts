@@ -45,4 +45,54 @@ describe("React-friendly ZUI DX", () => {
     dispose();
     expect(ref.current).toBeNull();
   });
+  it("does not remount a conditional branch when only a nested component store changes", () => {
+    const visible = useStore(true);
+    const nested = useStore("before");
+    const root = document.createElement("div");
+    let mounts = 0;
+    const baseline = engine.diagnostics().activeComputations;
+    function Child() {
+      mounts++;
+      // This plain read runs during initial child mounting. It must not
+      // subscribe the parent's conditional reactive computation.
+      nested.get();
+      return jsx("strong", { children: nested });
+    }
+    const dispose = mount(jsx("section", {
+      children: () => visible.get() ? jsx(Child, {}) : null
+    }), root);
+    const node = root.querySelector("strong");
+    expect(mounts).toBe(1);
+    nested.set("after");
+    expect(root.querySelector("strong")).toBe(node);
+    expect(node?.textContent).toBe("after");
+    expect(mounts).toBe(1);
+    visible.set(false);
+    expect(root.querySelector("strong")).toBeNull();
+    visible.set(true);
+    expect(mounts).toBe(2);
+    dispose();
+    expect(engine.diagnostics().activeComputations).toBe(baseline);
+  });
+
+  it("untrack prevents unintentional subscriptions", () => {
+    const trigger = useStore(0);
+    const ignored = useStore(0);
+    const root = document.createElement("div");
+    let evaluations = 0;
+    const dispose = mount(jsx("div", {
+      children: () => {
+        evaluations++;
+        const v = trigger.get();
+        engine.untrack(() => ignored.get());
+        return jsx("span", { children: String(v) });
+      }
+    }), root);
+    ignored.set(1);
+    expect(evaluations).toBe(1);
+    trigger.set(2);
+    expect(evaluations).toBe(2);
+    dispose();
+  });
+
 });
