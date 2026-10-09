@@ -87,3 +87,9 @@ mount(<App />, document.getElementById("app")!);
 - Ordinary `store.get()` inside JSX is a one-time snapshot, not a live JSX binding.
 - Plain `store.get().items.map(...)` does **not** automatically become reactive; continue using `<For>` for stable keyed lists until the compiler/reconciler milestone.
 - `Show`, `For`, `select` and `derive` remain supported and useful advanced primitives.
+
+## Dependency isolation
+
+`untrack(() => read())` reads without subscribing the active reactive computation. ZUI uses this internally when mounting nested JSX subtrees so child stores do not accidentally invalidate parent conditional regions. Use sparingly: deliberately untracked values do not trigger updates themselves.
+
+`{() => expression}` currently remounts the returned subtree when its **own** tracked reads change. Stores accessed exclusively during child component mounting are isolated from the parent expression. This is still not React reconciliation and does not preserve keyed nodes across changes to an entire function region.
