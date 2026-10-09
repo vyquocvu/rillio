@@ -77,6 +77,7 @@ export class ReactiveEngine {
       return node.value;
     }
     node.evaluating = true;
+    node.dirty = false; // re-invalidation during execution must survive
     // Capture the next dependencies separately. A failed evaluation must not
     // leave a half-subscribed computation in the graph.
     const oldDeps = node.dependencies;
@@ -91,7 +92,6 @@ export class ReactiveEngine {
       }
       node.value = next;
       node.initialized = true;
-      node.dirty = false;
       return next;
     } catch (error) {
       for (const dep of node.dependencies) {
