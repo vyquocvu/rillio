@@ -7,6 +7,7 @@ export const createStore = <T>(initial: T): Store<T> => engine.createStore(initi
 export const useStore = createStore;
 export const computed = <T>(fn: () => T) => engine.computed(fn);
 export const batch = <T>(fn: () => T) => engine.batch(fn);
+export const untrack = <T>(fn: () => T): T => engine.untrack(fn);
 
 const BINDING = Symbol("zui.binding");
 export interface Binding<T> {
@@ -70,7 +71,8 @@ function stringify(value: unknown): string {
   return value == null || typeof value === "boolean" ? "" : String(value);
 }
 function withOwner(fn: () => Dispose): Dispose {
-  const scope = engine.createOwner(fn);
+  // Creating a nested subtree must not subscribe its parent region effect.
+  const scope = engine.untrack(() => engine.createOwner(fn));
   let disposed = false;
   return () => {
     if (disposed) return;
