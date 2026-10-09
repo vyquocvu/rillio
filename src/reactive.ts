@@ -44,7 +44,6 @@ export class ReactiveEngine {
   private batchDepth = 0;
   private flushing = false;
   private pending = false;
-  private epoch = 0;
   private visits = 0;
   private evaluations = 0;
   private readonly maxRounds: number;
@@ -76,17 +75,29 @@ export class ReactiveEngine {
       return node.value;
     }
     node.evaluating = true;
-    for (const dep of node.dependencies) dep.observers.delete(node);
-    node.dependencies.clear();
+    // Capture the next dependencies separately. A failed evaluation must not
+    // leave a half-subscribed computation in the graph.
+    const oldDeps = node.dependencies;
+    node.dependencies = new Set();
     const previous = this.current;
     this.current = node;
     try {
       this.evaluations++;
       const next = node.run();
+      for (const dep of oldDeps) {
+        if (!node.dependencies.has(dep)) dep.observers.delete(node);
+      }
       node.value = next;
       node.initialized = true;
       node.dirty = false;
       return next;
+    } catch (error) {
+      for (const dep of node.dependencies) {
+        if (!oldDeps.has(dep)) dep.observers.delete(node);
+      }
+      node.dependencies = oldDeps;
+      node.dirty = true;
+      throw error;
     } finally {
       this.current = previous;
       node.evaluating = false;
@@ -103,7 +114,6 @@ export class ReactiveEngine {
           ? (update as (previous: T) => T)(value) : update;
         if (Object.is(value, next)) return;
         value = next;
-        this.epoch++;
         this.pending = true;
         if (this.mode === "graph") this.invalidate(source);
         else for (const computation of this.all)
@@ -131,7 +141,8 @@ export class ReactiveEngine {
       if (typeof result === "function") node.cleanup = result;
     });
     this.effects.add(node);
-    this.evaluate(node);
+    try { this.evaluate(node); }
+    catch (error) { this.disposeComputation(node); throw error; }
     return () => this.disposeComputation(node);
   }
 
@@ -152,7 +163,10 @@ export class ReactiveEngine {
     node.cleanup?.();
     for (const dep of node.dependencies) dep.observers.delete(node);
     node.dependencies.clear();
-    for (const observer of node.observers) observer.dependencies.delete(node);
+    for (const observer of node.observers) {
+      observer.dependencies.delete(node);
+      observer.dirty = true;
+    }
     node.observers.clear();
     node.owner?.computations.delete(node);
     this.effects.delete(node);
@@ -205,7 +219,10 @@ export class ReactiveEngine {
     let rounds = 0;
     try {
       while (this.pending) {
-        if (++rounds > this.maxRounds) throw new Error("ZUI_MAX_FLUSH_ROUNDS");
+        if (++rounds > this.maxRounds) {
+          this.pending = false;
+          throw new Error("ZUI_MAX_FLUSH_ROUNDS");
+        }
         this.pending = false;
         // Snapshot effects first; owners disposed while flushing are skipped.
         for (const node of [...this.effects]) {
