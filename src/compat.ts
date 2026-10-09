@@ -194,8 +194,8 @@ function renderComponent(inst: Instance): void {
   } finally {
     active = prev;
   }
-  const old = inst.child ?? null;
-  inst.child = reconcile(old, result, inst.parent!, inst.end!);
+  // A component can return null, one node, a fragment or an array.
+  inst.children = reconcileChildren(inst.children ?? [], normalize(result), inst.parent!, inst.end!);
 }
 function updateComponent(inst: Instance): void {
   if (inst.disposed) return;
@@ -214,7 +214,7 @@ function mountValue(value: Child, parent: Node, before: Node | null): Instance {
     parent.insertBefore(start, before);
     parent.insertBefore(end, before);
     const inst: Instance = { value, type: value.type, key: value.key, props: value.props,
-      start, end, parent, hooks: [], child: null };
+      start, end, parent, hooks: [], children: [] };
     renderComponent(inst);
     return inst;
   }
