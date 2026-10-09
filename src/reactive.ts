@@ -127,8 +127,11 @@ export class ReactiveEngine {
     const node = this.createComputation("computed", calculate);
     return {
       get: () => {
+        // Do not create a self-edge on recursive computed reads.
+        if (node.evaluating) throw new Error("ZUI_REACTIVE_CYCLE");
+        const value = this.evaluate(node) as T;
         this.track(node);
-        return this.evaluate(node) as T;
+        return value;
       }
     };
   }
