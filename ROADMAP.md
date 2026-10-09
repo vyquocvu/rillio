@@ -27,6 +27,13 @@ Ship a usable **TypeScript/JSX frontend library**: store-first reactive bindings
 | R1 | Reactive benchmark research | Exploratory only | Independent engine comparison following frozen preregistration |
 | R2 | Flat Index research | Not started | B0/B1/B2 comparison with overhead/benefit acceptance gates |
 
+## React-friendly DX evolution (incremental)
+
+- **Implemented / unverified:** `useStore` alias, direct store JSX text/property bindings, function-child reactive regions, object/callback refs.
+- **Next:** reactive JSX compiler experiment to support natural conditional expressions and `.map()` with keyed preservation, without changing the mount-once core. Design explicit transformations and fallback behavior; never promise implicit reactivity for ordinary JS snapshots.
+- **Keep:** `Show`, `For`, `select`, `derive` as low-level primitives while higher-level API matures.
+- **Acceptance:** no component re-render, no effect leaks, preserved keyed identity, strict typecheck, browser test and build evidence.
+
 ## Immediate prioritized backlog (execute sequentially)
 
 ### P0 — unblock MVP verification
