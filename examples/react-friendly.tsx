@@ -1,4 +1,4 @@
-import { useStore, mount } from "zui";
+import { useStore, mount } from "zui/legacy";
 
 function Counter() {
   const count = useStore(0);
