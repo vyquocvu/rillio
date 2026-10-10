@@ -187,7 +187,13 @@ export class ReactiveEngine {
   private disposeComputation(node: Computation): void {
     if (node.disposed) return;
     node.disposed = true;
-    node.cleanup?.();
+    const cleanup = node.cleanup;
+    node.cleanup = undefined;
+    let failure: unknown;
+    if (cleanup) {
+      try { this.untrack(cleanup); }
+      catch (error) { failure = error; }
+    }
     for (const dep of node.dependencies) dep.observers.delete(node);
     node.dependencies.clear();
     for (const observer of node.observers) {
@@ -199,6 +205,7 @@ export class ReactiveEngine {
     this.effects.delete(node);
     this.dirtyEffects.delete(node);
     this.all.delete(node);
+    if (failure) throw failure;
   }
 
   createOwner<T>(fn: () => T): { value: T; dispose: Dispose } {
@@ -224,12 +231,18 @@ export class ReactiveEngine {
   private disposeOwner(owner: Owner): void {
     if (owner.disposed) return;
     owner.disposed = true;
-    for (const child of [...owner.children]) this.disposeOwner(child);
-    for (const computation of [...owner.computations]) this.disposeComputation(computation);
-    for (const cleanup of owner.cleanups) cleanup();
+    let failure: unknown;
+    const capture = (fn: () => void): void => {
+      try { fn(); }
+      catch (error) { failure ??= error; }
+    };
+    for (const child of [...owner.children]) capture(() => this.disposeOwner(child));
+    for (const computation of [...owner.computations]) capture(() => this.disposeComputation(computation));
+    for (const cleanup of owner.cleanups) capture(() => this.untrack(cleanup));
     owner.parent?.children.delete(owner);
     owner.children.clear();
     owner.cleanups.clear();
+    if (failure) throw failure;
   }
 
   batch<T>(fn: () => T): T {

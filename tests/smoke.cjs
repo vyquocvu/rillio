@@ -1,11 +1,12 @@
 const assert = require("node:assert/strict");
-const { createEngine } = require("../.zui-test/reactive.js");
-let checks = 0;
-function test(name, run) {
-  try { run(); checks++; }
-  catch (error) { console.error("FAIL", name, error); process.exitCode = 1; }
-}
-for (const mode of ["scan", "graph"]) {
+(async () => {
+  const { createEngine } = await import("../.zui-test/reactive.js");
+  let checks = 0;
+  function test(name, run) {
+    try { run(); checks++; }
+    catch (error) { console.error("FAIL", name, error); process.exitCode = 1; }
+  }
+  for (const mode of ["scan", "graph"]) {
   test(mode + " diamond", () => {
     const e = createEngine(mode), s = e.createStore(1);
     const a = e.computed(() => s.get() + 1), b = e.computed(() => s.get() * 2);
@@ -65,6 +66,10 @@ for (const mode of ["scan", "graph"]) {
     assert.throws(() => s.set(1), /ZUI_MAX_FLUSH_ROUNDS/);
     stop(); e.flush();
   });
-}
-console.log(`Smoke checks passed: ${checks}/16`);
-if (process.exitCode) process.exit(process.exitCode);
+  }
+  console.log(`Smoke checks passed: ${checks}/16`);
+  if (process.exitCode) process.exit(process.exitCode);
+})().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

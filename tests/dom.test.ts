@@ -122,4 +122,13 @@ describe("frontend MVP", () => {
     dispose();
   });
 
+  it("maps double-click props to the native dblclick event", () => {
+    const target = document.createElement("div");
+    let clicks = 0;
+    const dispose = mount(jsx("button", { onDoubleClick: () => clicks++ }), target);
+    target.querySelector("button")?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    expect(clicks).toBe(1);
+    dispose();
+  });
+
 });

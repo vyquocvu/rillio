@@ -10,9 +10,14 @@ npm run dev
 npm run typecheck
 npm test
 npm run build
+npm run bench:reactive
+npm run test:consumer
+npm run test:browser
 ```
 
-Open `/compat.html` for the new React-style Todo. Earlier prototypes remain at `/` (Counter), `/todo.html` (Todo), and `/react-friendly.html`; they explicitly import `zui/legacy`.
+Open `/demos.html` for the full example catalog. The default runtime examples include `/compat.html` for the React-style Todo, `/hooks.html` for hooks/forms, `/keyed.html` for keyed list identity, and `/benchmark.html` for browser DOM measurements. Legacy examples include `/` (Counter), `/todo.html` (Todo), `/react-friendly.html`, and `/legacy-benchmark.html`; they explicitly import `zui/legacy`.
+
+The exploratory reactive benchmark runs with `npm run bench:reactive`; `npm run test:consumer` verifies generated package artifacts from a separate strict TypeScript fixture, and `npm run test:browser` runs Counter, keyed input, and Todo browser flows with local Chrome/Chromium. Benchmark limitations and interpretation guidance are documented in `benchmarks/README.md`.
 
 ## Default JSX + Hooks
 
@@ -39,7 +44,7 @@ Configure `jsx: "react-jsx"` and `jsxImportSource: "zui"`. Ordinary `&&`, ternar
 
 Source-implemented: `createRoot`, `render`, `useState`, `useEffect`, `useMemo`, `useCallback`, `useRef`, `Fragment`, basic intrinsic props/events, keyed reconciliation.
 
-Not yet claimed: full React/Preact hook scheduling, synthetic events, context, reducer, concurrent updates, Suspense, portals, SSR, SVG support, complete JSX types, packaging or ecosystem interoperability. Effects currently run synchronously after DOM commit, unlike React post-paint scheduling. **Full tests/build on the current revision have not been independently verified.**
+Not yet claimed: full React/Preact hook scheduling, synthetic events, context, reducer, concurrent updates, Suspense, portals, SSR, SVG support, complete JSX types, or ecosystem-wide interoperability. Effects currently run synchronously after DOM commit, unlike React post-paint scheduling. See [verification status](docs/STATUS.md) for the commands run on the current working tree.
 
 Legacy mount-once/store-first runtime: `import { createStore, mount, Show, For } from "zui/legacy"`. Research engine: `zui/reactive`.
 

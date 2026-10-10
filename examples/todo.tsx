@@ -60,3 +60,55 @@ function Todo() {
   </main>;
 }
 mount(Todo, document.getElementById("app")!);
+
+if (new URLSearchParams(location.search).has("e2e")) {
+  const errors: string[] = [];
+  window.addEventListener("error", event => errors.push(event.message));
+  window.addEventListener("unhandledrejection", event => errors.push(String(event.reason)));
+  const assert: (condition: unknown, message: string) => asserts condition = (condition, message) => {
+    if (!condition) throw new Error(message);
+  };
+  const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  const runTodoSmoke = async () => {
+    await nextFrame();
+    const taskInput = document.querySelector<HTMLInputElement>('input[aria-label="Task"]')!;
+    const form = taskInput.form!;
+    const addTask = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    const remaining = [...document.querySelectorAll("main p")].find(node => node.textContent?.startsWith("Remaining:"))!;
+    const editInputs = () => [...document.querySelectorAll<HTMLInputElement>('input[aria-label="Edit task"]')];
+    const deleteButtons = () => [...document.querySelectorAll<HTMLButtonElement>("ul button")];
+
+    taskInput.value = "Ship release";
+    taskInput.dispatchEvent(new Event("input", { bubbles: true }));
+    addTask.click();
+    assert(editInputs().length === 3, "todo add flow failed");
+
+    const edited = editInputs()[1]!;
+    edited.value = "Test keyed rows updated";
+    edited.dispatchEvent(new Event("input", { bubbles: true }));
+    assert(edited.value === "Test keyed rows updated", "todo edit flow failed");
+
+    const firstCheckbox = document.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    firstCheckbox.click();
+    assert(remaining.textContent === "Remaining: 3", `todo toggle flow failed: ${remaining.textContent}; checked=${firstCheckbox.checked}`);
+
+    const filterButtons = [...document.querySelectorAll<HTMLButtonElement>("nav button")];
+    filterButtons[1]!.click();
+    assert(editInputs().length === 3, "active filter flow failed");
+    filterButtons[2]!.click();
+    assert(editInputs().length === 0, "done filter flow failed");
+    assert(document.body.textContent?.includes("No matching tasks."), "empty filter fallback failed");
+
+    filterButtons[0]!.click();
+    while (deleteButtons().length) deleteButtons()[0]!.click();
+    assert(editInputs().length === 0, "todo delete flow failed");
+    assert(document.body.textContent?.includes("No matching tasks."), "empty todo fallback failed");
+    assert(errors.length === 0, `todo runtime errors: ${errors.join(" | ")}`);
+    document.body.dataset.e2eStatus = "pass";
+    document.body.dataset.e2eChecks = "todo-add,edit,toggle,filter,delete,empty";
+  };
+  runTodoSmoke().catch(error => {
+    document.body.dataset.e2eStatus = "fail";
+    document.body.dataset.e2eError = error instanceof Error ? error.message : String(error);
+  });
+}

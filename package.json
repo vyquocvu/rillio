@@ -1,28 +1,63 @@
 {
   "name": "zui",
   "version": "0.0.1",
-  "private": true,
+  "private": false,
   "type": "module",
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "build:package": "tsc -p tsconfig.build.json",
     "test:smoke": "tsc src/reactive.ts --outDir .zui-test --target es2022 --module nodenext --strict --skipLibCheck && node tests/smoke.cjs",
     "bench:smoke": "npm run test:smoke && node benchmarks/smoke.cjs",
+    "bench:reactive": "npm run test:smoke && node benchmarks/reactive.cjs",
+    "bench:compat": "npm run build:package && node benchmarks/compat.cjs",
+    "bench:all": "npm run bench:reactive && npm run bench:compat",
     "test:oracle": "npm run test:smoke && node tests/oracle-smoke.cjs",
+    "test:consumer": "npm run build:package && node tests/consumer-smoke.cjs",
+    "test:browser": "npm run build && node tests/browser-smoke.cjs",
     "dev": "vite --host 127.0.0.1",
-    "build": "vite build"
+    "build": "vite build",
+    "build:release": "npm run build && npm run build:package",
+    "prepack": "npm run build:package"
   },
   "devDependencies": {
+    "jsdom": "^26.1.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4",
     "vite": "^6.3.5",
-    "jsdom": "^26.1.0"
+    "vitest": "^5.0.3"
   },
+  "files": [
+    "dist/package",
+    "README.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "docs"
+  ],
   "exports": {
-    ".": "./src/index.ts",
-    "./jsx-runtime": "./src/jsx-runtime.ts",
-    "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts",
-    "./legacy": "./src/dom.ts",
-    "./reactive": "./src/reactive.ts"
+    ".": {
+      "types": "./dist/package/index.d.ts",
+      "import": "./dist/package/index.js",
+      "default": "./dist/package/index.js"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/package/jsx-runtime.d.ts",
+      "import": "./dist/package/jsx-runtime.js",
+      "default": "./dist/package/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/package/jsx-dev-runtime.d.ts",
+      "import": "./dist/package/jsx-dev-runtime.js",
+      "default": "./dist/package/jsx-dev-runtime.js"
+    },
+    "./legacy": {
+      "types": "./dist/package/dom.d.ts",
+      "import": "./dist/package/dom.js",
+      "default": "./dist/package/dom.js"
+    },
+    "./reactive": {
+      "types": "./dist/package/reactive.d.ts",
+      "import": "./dist/package/reactive.js",
+      "default": "./dist/package/reactive.js"
+    }
   }
 }

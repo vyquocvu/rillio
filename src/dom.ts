@@ -70,16 +70,36 @@ function evaluate<T>(input: T | Binding<T>): T {
 function stringify(value: unknown): string {
   return value == null || typeof value === "boolean" ? "" : String(value);
 }
-function withOwner(fn: () => Dispose): Dispose {
-  // Creating a nested subtree must not subscribe its parent region effect.
-  const scope = engine.untrack(() => engine.createOwner(fn));
-  let disposed = false;
-  return () => {
-    if (disposed) return;
-    disposed = true;
-    scope.dispose();
-    scope.value();
-  };
+function eventName(name: string): string {
+  if (name === "onChange") return "change";
+  if (name === "onDoubleClick") return "dblclick";
+  return name.slice(2).toLowerCase();
+}
+function withOwner(fn: () => Dispose, onError: Dispose = () => {}): Dispose {
+  try {
+    // Creating a nested subtree must not subscribe its parent region effect.
+    const scope = engine.untrack(() => engine.createOwner(() => {
+      const cleanup = fn();
+      let cleaned = false;
+      const ownedCleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        cleanup();
+      };
+      engine.onCleanup(ownedCleanup);
+      return ownedCleanup;
+    }));
+    let disposed = false;
+    return () => {
+      if (disposed) return;
+      disposed = true;
+      scope.dispose();
+      scope.value();
+    };
+  } catch (error) {
+    onError();
+    throw error;
+  }
 }
 function createRegion(parent: Node, before: Node | null) {
   const start = document.createComment("zui:start");
@@ -106,7 +126,7 @@ function renderChild(value: Child | Conditional | Repetition<unknown>, parent: N
     return withOwner(() => {
       engine.effect(() => { text.data = stringify(read()); });
       return () => text.remove();
-    });
+    }, () => text.remove());
   }
   if (typeof value === "function") {
     // Function children are reactive regions. Their result is mounted anew when
@@ -121,7 +141,7 @@ function renderChild(value: Child | Conditional | Repetition<unknown>, parent: N
         disposeCurrent = withOwner(() => renderChild(child, parent, end));
       });
       return () => { disposeCurrent(); clearRange(start, end); start.remove(); end.remove(); };
-    });
+    }, () => { clearRange(start, end); start.remove(); end.remove(); });
   }
   if (typeof value === "string" || typeof value === "number") {
     const text = document.createTextNode(String(value));
@@ -144,14 +164,15 @@ function renderChild(value: Child | Conditional | Repetition<unknown>, parent: N
           renderChild(resolveChild(visible ? value.children : value.fallback), parent, end));
       });
       return () => { disposeCurrent(); clearRange(start, end); start.remove(); end.remove(); };
-    });
+    }, () => { clearRange(start, end); start.remove(); end.remove(); });
   }
   if (isRepetition(value)) return renderList(value, parent, before);
   const node = value as VNode;
-  if (typeof node.type === "function") {
-    return withOwner(() => renderChild(node.type({ ...node.props, key: node.key }), parent, before));
+  const tag = node.type;
+  if (typeof tag === "function") {
+    return withOwner(() => renderChild(tag({ ...node.props, key: node.key }), parent, before));
   }
-  const element = document.createElement(node.type);
+  const element = document.createElement(tag);
   parent.insertBefore(element, before);
   return withOwner(() => {
     const cleanups: Dispose[] = [];
@@ -163,7 +184,7 @@ function renderChild(value: Child | Conditional | Repetition<unknown>, parent: N
         continue;
       }
       if (key.startsWith("on") && typeof val === "function") {
-        const event = key.slice(2).toLowerCase();
+        const event = eventName(key);
         element.addEventListener(event, val as EventListener);
         cleanups.push(() => element.removeEventListener(event, val as EventListener));
       } else if (isBinding(val) || isStore(val)) {
@@ -172,7 +193,7 @@ function renderChild(value: Child | Conditional | Repetition<unknown>, parent: N
     }
     const childDispose = renderChild(node.props.children as Child, element, null);
     return () => { childDispose(); cleanups.forEach(fn => fn()); element.remove(); };
-  });
+  }, () => element.remove());
 }
 function resolveChild(value: unknown): Child {
   return typeof value === "function" ? (value as () => Child)() : value as Child;
@@ -236,7 +257,7 @@ function renderList<T>(spec: Repetition<T>, parent: Node, before: Node | null): 
         let entry = items.get(key);
         if (!entry) {
           const region = createRegion(parent, anchor);
-          const state = createStore(value);
+          const state = createStore<T>(value);
           entry = {
             ...region, value, state,
             dispose: withOwner(() => renderChild(spec.children(value, () => state.get()), parent, region.end))
@@ -257,6 +278,7 @@ function renderList<T>(spec: Repetition<T>, parent: Node, before: Node | null): 
           }
           parent.insertBefore(fragment, anchor);
         }
+        if (!entry) throw new Error("ZUI_LIST_ENTRY");
         reordered.set(key, entry);
         anchor = entry.start;
       }
@@ -271,14 +293,17 @@ function renderList<T>(spec: Repetition<T>, parent: Node, before: Node | null): 
       items.clear();
       start.remove(); end.remove();
     };
-  });
+  }, () => { clearRange(start, end); start.remove(); end.remove(); });
 }
 /** Mount the root once. Reactive bindings handle all subsequent data changes. */
 export function mount(component: (() => Child) | Child, target: Element): Dispose {
+  const existing = new Set(Array.from(target.childNodes));
   const dispose = withOwner(() => renderChild(
     typeof component === "function" ? (component as () => Child)() : component,
     target,
     null
-  ));
+  ), () => {
+    for (const node of Array.from(target.childNodes)) if (!existing.has(node)) node.remove();
+  });
   return dispose;
 }

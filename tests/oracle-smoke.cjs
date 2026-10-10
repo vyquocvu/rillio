@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
-const { createEngine } = require("../.zui-test/reactive.js");
+(async () => {
+const { createEngine } = await import("../.zui-test/reactive.js");
 
 function random(seed) {
   let state = seed | 0;
@@ -62,3 +63,7 @@ for (const mode of ["scan", "graph"]) {
   }
 }
 console.log("Oracle updates verified: " + count);
+})().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

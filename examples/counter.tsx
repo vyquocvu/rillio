@@ -24,3 +24,28 @@ function App() {
   </main>;
 }
 mount(App, document.getElementById("app")!);
+
+if (new URLSearchParams(location.search).has("e2e")) {
+  const errors: string[] = [];
+  window.addEventListener("error", event => errors.push(event.message));
+  window.addEventListener("unhandledrejection", event => errors.push(String(event.reason)));
+  const assert: (condition: unknown, message: string) => asserts condition = (condition, message) => {
+    if (!condition) throw new Error(message);
+  };
+  const runCounterSmoke = async () => {
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    const increment = [...document.querySelectorAll<HTMLButtonElement>("button")]
+      .find(button => button.textContent === "Increment")!;
+    const count = [...document.querySelectorAll("main p")]
+      .find(node => node.textContent?.startsWith("Count:"))!;
+    increment.click();
+    assert(count.textContent === "Count: 1", `counter flow failed: ${count.textContent}`);
+    assert(errors.length === 0, `counter runtime errors: ${errors.join(" | ")}`);
+    document.body.dataset.e2eStatus = "pass";
+    document.body.dataset.e2eChecks = "counter-increment";
+  };
+  runCounterSmoke().catch(error => {
+    document.body.dataset.e2eStatus = "fail";
+    document.body.dataset.e2eError = error instanceof Error ? error.message : String(error);
+  });
+}

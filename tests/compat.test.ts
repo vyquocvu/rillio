@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { createRoot, jsx, useState, useEffect, useMemo, useRef } from "../src/compat.js";
+import { createRoot, render, jsx, useState, useEffect, useMemo, useRef } from "../src/compat.js";
 
 describe("React-style compatibility runtime", () => {
   it("rerenders function component state while preserving host DOM identity", () => {
@@ -65,6 +65,28 @@ describe("React-style compatibility runtime", () => {
     expect(log).toEqual(["mount 0", "cleanup 0", "mount 1", "cleanup 1"]);
   });
 
+  it("does not run a superseded effect twice when cleanup updates state", () => {
+    let update!: (next: number) => void;
+    const log: string[] = [];
+    function App() {
+      const [value, setValue] = useState(0);
+      update = setValue;
+      useEffect(() => {
+        log.push("effect " + value);
+        return () => {
+          log.push("cleanup " + value);
+          if (value === 0) update(2);
+        };
+      }, [value]);
+      return jsx("span", { children: value });
+    }
+    const root = createRoot(document.createElement("div"));
+    root.render(jsx(App, {}));
+    update(1);
+    expect(log).toEqual(["effect 0", "cleanup 0", "effect 2"]);
+    root.unmount();
+  });
+
   it("supports memo and ref hook slots across rerenders", () => {
     let change!: (n: number) => void;
     let calculations = 0;
@@ -104,6 +126,71 @@ describe("React-style compatibility runtime", () => {
     expect(container.querySelector("span")).not.toBe(first);
     root.unmount();
     expect(container.childNodes).toHaveLength(0);
+  });
+
+  it("reuses the root when the public render helper is called again", () => {
+    const container = document.createElement("div");
+    let update!: (next: number) => void;
+    function App(props: { label: string }) {
+      const [count, setCount] = useState(0);
+      update = setCount;
+      return jsx("button", { children: `${props.label}:${count}` });
+    }
+    render(jsx(App, { label: "first" }), container);
+    const button = container.querySelector("button");
+    update(1);
+    render(jsx(App, { label: "second" }), container);
+    expect(container.querySelector("button")).toBe(button);
+    expect(button?.textContent).toBe("second:1");
+  });
+
+  it("keeps roots on different containers independent", () => {
+    const first = document.createElement("div");
+    const second = document.createElement("div");
+    render(jsx("span", { children: "first" }), first);
+    render(jsx("span", { children: "second" }), second);
+    const firstNode = first.firstChild;
+    const secondNode = second.firstChild;
+    createRoot(first).unmount();
+    render(jsx("span", { children: "updated" }), second);
+    expect(first.childNodes).toHaveLength(0);
+    expect(second.firstChild).toBe(secondNode);
+    expect(second.textContent).toBe("updated");
+    expect(firstNode).not.toBe(secondNode);
+  });
+
+  it("rejects hook order changes and render-phase state writes", () => {
+    const container = document.createElement("div");
+    let setEnabled!: (next: boolean) => void;
+    function ConditionalHooks() {
+      const [enabled, set] = useState(false);
+      setEnabled = set;
+      if (enabled) useRef(null);
+      return jsx("span", { children: "ok" });
+    }
+    const root = createRoot(container);
+    root.render(jsx(ConditionalHooks, {}));
+    expect(() => setEnabled(true)).toThrow("ZUI_HOOK_ORDER");
+    root.unmount();
+
+    function WritesDuringRender() {
+      const [value, setValue] = useState(0);
+      if (value === 0) setValue(1);
+      return jsx("span", { children: value });
+    }
+    expect(() => createRoot(document.createElement("div")).render(jsx(WritesDuringRender, {})))
+      .toThrow("ZUI_RENDER_PHASE_UPDATE");
+  });
+
+  it("removes partially mounted nodes when rendering throws", () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    function Broken() {
+      return [jsx("span", { children: "one" }, "same"), jsx("span", { children: "two" }, "same")];
+    }
+    expect(() => root.render(jsx(Broken, {}))).toThrow("ZUI_DUPLICATE_KEY");
+    expect(container.childNodes).toHaveLength(0);
+    root.unmount();
   });
 
 });

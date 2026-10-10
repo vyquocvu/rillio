@@ -24,6 +24,7 @@ interface Hook {
   deps?: readonly unknown[];
   cleanup?: () => void;
   effect?: () => void | (() => void);
+  disposed?: boolean;
 }
 interface Instance {
   value: Child;
@@ -35,13 +36,16 @@ interface Instance {
   children?: Instance[];
   hooks?: Hook[];
   cursor?: number;
+  hookCount?: number;
+  rendering?: boolean;
   parent?: Node;
   end?: Comment;
   start?: Comment;
   disposed?: boolean;
 }
 let active: Instance | undefined;
-const roots = new WeakMap<Element, () => void>();
+let renderingDepth = 0;
+const roots = new WeakMap<Element, Root>();
 const equalDeps = (a?: readonly unknown[], b?: readonly unknown[]) =>
   a !== undefined && b !== undefined && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
 function hook(): Hook {
@@ -55,6 +59,7 @@ export function useState<T>(initial: T | (() => T)): [T, (next: T | ((prev: T) =
   if (!("value" in slot)) slot.value = typeof initial === "function" ? (initial as () => T)() : initial;
   return [slot.value as T, next => {
     if (!owner || owner.disposed) return;
+    if (renderingDepth > 0) throw new Error("ZUI_RENDER_PHASE_UPDATE");
     const value = typeof next === "function" ? (next as (previous: T) => T)(slot.value) : next;
     if (Object.is(value, slot.value)) return;
     slot.value = value;
@@ -85,13 +90,24 @@ export function useEffect(effect: () => void | (() => void), deps?: readonly unk
   }
 }
 const pendingEffects = new Set<Hook>();
+let flushingEffects = false;
 function flushEffects(): void {
-  for (const slot of [...pendingEffects]) {
-    pendingEffects.delete(slot);
-    slot.cleanup?.();
-    slot.cleanup = undefined;
-    const result = slot.effect?.();
-    if (typeof result === "function") slot.cleanup = result;
+  if (flushingEffects) return;
+  flushingEffects = true;
+  try {
+    while (pendingEffects.size) {
+      const slot = pendingEffects.values().next().value as Hook;
+      pendingEffects.delete(slot);
+      if (slot.disposed) continue;
+      const cleanup = slot.cleanup;
+      slot.cleanup = undefined;
+      cleanup?.();
+      if (slot.disposed || pendingEffects.has(slot)) continue;
+      const result = slot.effect?.();
+      if (!slot.disposed && typeof result === "function") slot.cleanup = result;
+    }
+  } finally {
+    flushingEffects = false;
   }
 }
 function normalize(value: Child): Child[] {
@@ -113,6 +129,16 @@ function last(inst: Instance): Node {
   return inst.end ?? inst.node!;
 }
 function move(inst: Instance, parent: Node, before: Node | null): void {
+  const focused = document.activeElement;
+  const focusable = focused instanceof HTMLElement && inst.node instanceof Element &&
+    (inst.node === focused || inst.node.contains(focused));
+  const selection = focusable && "selectionStart" in focused && "selectionEnd" in focused
+    ? {
+      start: (focused as HTMLInputElement | HTMLTextAreaElement).selectionStart,
+      end: (focused as HTMLInputElement | HTMLTextAreaElement).selectionEnd,
+      direction: (focused as HTMLInputElement | HTMLTextAreaElement).selectionDirection
+    }
+    : undefined;
   const fragment = document.createDocumentFragment();
   let n: Node | null = first(inst);
   const end = last(inst);
@@ -123,6 +149,12 @@ function move(inst: Instance, parent: Node, before: Node | null): void {
     n = next;
   }
   parent.insertBefore(fragment, before);
+  if (focusable && focused.isConnected) {
+    (focused as HTMLElement).focus({ preventScroll: true });
+    if (selection && "setSelectionRange" in focused && selection.start !== null && selection.end !== null) {
+      (focused as HTMLInputElement | HTMLTextAreaElement).setSelectionRange(selection.start, selection.end, selection.direction ?? undefined);
+    }
+  }
 }
 function dispose(inst: Instance): void {
   if (inst.disposed) return;
@@ -130,8 +162,10 @@ function dispose(inst: Instance): void {
   inst.child && dispose(inst.child);
   inst.children?.forEach(dispose);
   for (const h of inst.hooks ?? []) {
+    h.disposed = true;
     pendingEffects.delete(h);
     h.cleanup?.();
+    h.cleanup = undefined;
   }
   if (inst.node && inst.props && inst.node instanceof Element) patchProps(inst.node, inst.props, {});
   const start = first(inst), end = last(inst);
@@ -185,15 +219,22 @@ function patchProps(el: Element, old: Record<string, any>, next: Record<string, 
   }
 }
 function renderComponent(inst: Instance): void {
+  if (inst.rendering) throw new Error("ZUI_RENDER_PHASE_UPDATE");
   const prev = active;
   active = inst;
   inst.cursor = 0;
+  inst.rendering = true;
+  renderingDepth++;
   let result: Child;
   try {
     result = (inst.type as Component)(inst.props!);
   } finally {
+    renderingDepth--;
     active = prev;
+    inst.rendering = false;
   }
+  if (inst.hookCount === undefined) inst.hookCount = inst.cursor;
+  else if (inst.cursor !== inst.hookCount) throw new Error("ZUI_HOOK_ORDER");
   // A component can return null, one node, a fragment or an array.
   inst.children = reconcileChildren(inst.children ?? [], normalize(result), inst.parent!, inst.end!);
 }
@@ -215,16 +256,26 @@ function mountValue(value: Child, parent: Node, before: Node | null): Instance {
     parent.insertBefore(end, before);
     const inst: Instance = { value, type: value.type, key: value.key, props: value.props,
       start, end, parent, hooks: [], children: [] };
-    renderComponent(inst);
-    return inst;
+    try {
+      renderComponent(inst);
+      return inst;
+    } catch (error) {
+      dispose(inst);
+      throw error;
+    }
   }
   const el = document.createElement(value.type);
   parent.insertBefore(el, before);
   const inst: Instance = { value, type: value.type, key: value.key, node: el,
     parent, props: value.props, children: [] };
-  patchProps(el, {}, value.props);
-  inst.children = reconcileChildren([], normalize(value.props.children), el, null);
-  return inst;
+  try {
+    patchProps(el, {}, value.props);
+    inst.children = reconcileChildren([], normalize(value.props.children), el, null);
+    return inst;
+  } catch (error) {
+    dispose(inst);
+    throw error;
+  }
 }
 function reconcile(old: Instance | null, next: Child, parent: Node, before: Node | null): Instance {
   if (!old) return mountValue(next, parent, before);
@@ -258,40 +309,45 @@ function reconcileChildren(old: Instance[], children: Child[], parent: Node, bef
   const seen = new Set<Key>();
   const next: Instance[] = [];
   let unkeyedCursor = 0;
-  for (const value of children) {
-    const key = isVNode(value) ? value.key : undefined;
-    if (key !== undefined) {
-      if (seen.has(key)) throw new Error("ZUI_DUPLICATE_KEY");
-      seen.add(key);
+  try {
+    for (const value of children) {
+      const key = isVNode(value) ? value.key : undefined;
+      if (key !== undefined) {
+        if (seen.has(key)) throw new Error("ZUI_DUPLICATE_KEY");
+        seen.add(key);
+      }
+      const prior = key === undefined ? unkeyed[unkeyedCursor++] : keyed.get(key);
+      const item = reconcile(prior ?? null, value, parent, before);
+      item.key = key;
+      next.push(item);
     }
-    const prior = key === undefined ? unkeyed[unkeyedCursor++] : keyed.get(key);
-    const item = reconcile(prior ?? null, value, parent, before);
-    item.key = key;
-    next.push(item);
+    for (const item of old) if (!next.includes(item)) dispose(item);
+    let anchor = before;
+    for (let i = next.length - 1; i >= 0; i--) {
+      const item = next[i]!;
+      move(item, parent, anchor);
+      anchor = first(item);
+    }
+    return next;
+  } catch (error) {
+    for (const item of next) if (!old.includes(item)) dispose(item);
+    throw error;
   }
-  for (const item of old) if (!next.includes(item)) dispose(item);
-  let anchor = before;
-  for (let i = next.length - 1; i >= 0; i--) {
-    const item = next[i]!;
-    move(item, parent, anchor);
-    anchor = first(item);
-  }
-  return next;
 }
 export interface Root { render(value: Child): void; unmount(): void }
 export function createRoot(container: Element): Root {
-  roots.get(container)?.();
+  roots.get(container)?.unmount();
   let current: Instance[] = [];
   let disposed = false;
+  let root: Root;
   const unmount = () => {
     if (disposed) return;
     disposed = true;
     current.forEach(dispose);
     current = [];
-    roots.delete(container);
+    if (roots.get(container) === root) roots.delete(container);
   };
-  roots.set(container, unmount);
-  return {
+  root = {
     render(value) {
       if (disposed) throw new Error("ZUI_ROOT_UNMOUNTED");
       current = reconcileChildren(current, normalize(value), container, null);
@@ -299,8 +355,10 @@ export function createRoot(container: Element): Root {
     },
     unmount
   };
+  roots.set(container, root);
+  return root;
 }
 export function render(value: Child, container: Element): void {
-  const root = createRoot(container);
+  const root = roots.get(container) ?? createRoot(container);
   root.render(value);
 }

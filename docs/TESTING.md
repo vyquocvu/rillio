@@ -9,9 +9,15 @@ npm test
 npm run build
 npm run test:smoke
 npm run test:oracle
+npm run bench:reactive
+npm run bench:compat
+npm run test:consumer
+npm run test:browser
 ```
 
-`npm run dev` serves Counter at `/` and Todo at `/todo.html`. These commands are **instructions**, not claims that the current revision passed.
+`npm run dev` serves all HTML entries, including the hooks playground at `/hooks.html`, keyed list playground at `/keyed.html`, browser benchmark at `/benchmark.html`, and browser smoke fixture at `/e2e.html`. `npm run test:browser` builds the pages, starts Vite preview, and drives the legacy Counter, focused runtime smoke, and legacy Todo flow with a local Chrome/Chromium binary. Set `BROWSER_BIN` when the browser is not in a standard path.
+
+`npm run bench:reactive` and `npm run bench:compat` are exploratory only. They compare scan/graph invalidation and keyed DOM reconciliation locally; neither command should be used to alter preregistered research thresholds.
 
 ## MVP gates
 
@@ -37,6 +43,8 @@ All gates must be recorded against one commit SHA in `docs/STATUS.md`, with envi
 - Dynamic branches that throw during creation clean up partially allocated DOM and effects.
 - CSS style removal and URL-sensitive attributes; untrusted data never interpreted as HTML.
 - SSR and agent UI security cases deferred until those features exist.
+
+The browser smoke fixture covers state updates, controlled input, focus, keyed DOM identity, caret retention, and uncaught runtime errors. The consumer fixture compiles `tests/consumer-fixture` from a temporary external package directory against generated `dist/package` artifacts.
 
 ## Reporting template
 

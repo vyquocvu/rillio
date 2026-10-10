@@ -27,6 +27,48 @@ describe("instrumentation and lifecycle regressions", () => {
   });
 
   for (const mode of ["scan", "graph"] as Mode[]) {
+    it(`${mode}: cleanup failures still detach the computation`, () => {
+      const e = createEngine(mode);
+      const source = e.createStore(0);
+      const unrelated = e.createStore(0);
+      const stop = e.effect(() => {
+        source.get();
+        return () => {
+          unrelated.get();
+          throw new Error("cleanup failed");
+        };
+      });
+      expect(() => stop()).toThrow("cleanup failed");
+      expect(e.diagnostics().activeComputations).toBe(0);
+      expect(e.diagnostics().dependencyEdges).toBe(0);
+    });
+
+    it(`${mode}: disposal cleanup reads do not subscribe the parent`, () => {
+      const e = createEngine(mode);
+      const visible = e.createStore(true);
+      const trigger = e.createStore(0);
+      const unrelated = e.createStore(0);
+      let child: { dispose(): void } | undefined;
+      let evaluations = 0;
+      const stop = e.effect(() => {
+        evaluations++;
+        if (visible.get()) {
+          child ??= e.createOwner(() => e.effect(() => {
+            trigger.get();
+            return () => { unrelated.get(); };
+          }));
+        } else {
+          child?.dispose();
+          child = undefined;
+        }
+      });
+      visible.set(false);
+      const before = evaluations;
+      unrelated.set(1);
+      if (mode === "graph") expect(evaluations).toBe(before);
+      stop();
+    });
+
     it(`${mode}: cleanup reads must not subscribe the effect`, () => {
       const e = createEngine(mode);
       const value = e.createStore(0);
