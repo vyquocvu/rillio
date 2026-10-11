@@ -4,17 +4,27 @@
 
 The Flat Index is the only source of truth for rendered node identity, parent/sibling structure, ownership, and lifecycle. The browser DOM is a projection of that index. Render planners may keep temporary maps while planning a transaction, but they must not retain an authoritative child tree.
 
-```text
-TSX / JSX
-   -> jsx-runtime: VNode descriptors
-   -> JSX planner or explicit reactive planner
-   -> PatchTransaction
-        validate
-        commit
-        dispose
-   -> NodeRegistry (Flat Index)
-   -> PatchEngine
-   -> browser DOM
+```mermaid
+flowchart TB
+    accTitle: Flat Index source of truth
+    accDescr: Both public planning surfaces send addressable operations through one transaction, registry, and patch engine; the browser DOM is only the resulting projection.
+
+    jsx_input([📥 JSX input]) --> jsx_runtime[⚙️ JSX runtime]
+    reactive_input([📥 Reactive input]) --> reactive_planner[⚙️ Reactive planner]
+    jsx_runtime --> patch_transaction[[🔄 PatchTransaction]]
+    reactive_planner --> patch_transaction
+
+    node_registry[(📝 NodeRegistry)]
+    patch_engine[⚙️ PatchEngine]
+    browser_dom[(🌐 Browser DOM)]
+    reactive_engine[⚙️ ReactiveEngine]
+
+    reactive_planner --> reactive_engine
+    patch_transaction -->|validate and plan| node_registry
+    patch_transaction -->|commit and dispose| patch_engine
+    node_registry -.->|read indexed state| patch_engine
+    patch_engine -->|project mutations| browser_dom
+    reactive_engine -->|OwnerHost integration| node_registry
 ```
 
 The two public planning surfaces are:
@@ -40,6 +50,27 @@ Parent/sibling links are stored in the registry. `children(parentId)` walks thos
 
 `RootId` and `OwnerId` are never reused. Disposed records remain as tombstones for diagnostics, while active traversals reject disposed records.
 
+The registry keeps two related graphs: solid links describe DOM/index structure, while dashed links describe owner nesting. A node can move in the structure graph without changing its stable `NodeId` or its owner.
+
+```mermaid
+flowchart TB
+    accTitle: Flat Index and ownership
+    accDescr: The diagram separates indexed parent-child structure from owner nesting and shows how stable node, root, and owner identifiers relate.
+
+    root_record([🏁 Root record<br/>RootId])
+    root_owner[[🛡️ Root owner<br/>OwnerId]]
+    component_owner[[🛡️ Component owner<br/>OwnerId]]
+    component_boundary[[🔄 Component boundary<br/>NodeId + range]]
+    host_node[📦 Host node<br/>NodeId + version]
+    text_node[📝 Text node<br/>NodeId + version]
+
+    root_record -->|owns| root_owner
+    root_owner -.->|parents| component_owner
+    component_owner -.->|owns| component_boundary
+    component_boundary -->|contains| host_node
+    host_node -->|contains| text_node
+```
+
 ## Transaction lifecycle
 
 All browser writes go through `PatchEngine`:
@@ -52,6 +83,33 @@ All browser writes go through `PatchEngine`:
 
 Nested reactive updates join the active transaction for the same root. This is important for initial effects and list item updates: they cannot bypass the transaction boundary or mutate DOM independently.
 
+```mermaid
+sequenceDiagram
+    accTitle: Patch transaction lifecycle
+    accDescr: A planner queues indexed operations, validation checks the registry before any browser write, and the patch engine commits and disposes through one boundary.
+
+    participant planner as ⚙️ Planner
+    participant transaction as 🔄 PatchTransaction
+    participant registry as 📝 NodeRegistry
+    participant patch_engine as ⚙️ PatchEngine
+    participant browser_dom as 🌐 Browser DOM
+
+    planner->>transaction: Queue create, move, patch, remove
+    transaction->>registry: Validate roots, anchors, cycles
+    registry-->>transaction: ✅ Return indexed state
+
+    alt ✅ Validation passes
+        transaction->>patch_engine: Commit structural and property ops
+        patch_engine->>browser_dom: Apply the DOM mutation boundary
+        patch_engine->>registry: Link nodes and bump versions
+        transaction->>patch_engine: Dispose removed ranges
+        patch_engine->>registry: Cleanup owners and tombstone nodes
+        transaction-->>planner: ✅ Return committed result
+    else ❌ Validation fails
+        transaction-->>planner: Reject before browser writes
+    end
+```
+
 ## JSX runtime lifecycle
 
 `createRoot(container)` creates a root record and root owner. Rendering reads indexed children, matches keyed/type-compatible records, and produces a new ordered list of `NodeId` values only for the current plan. The registry remains authoritative.
@@ -61,6 +119,23 @@ Nested reactive updates join the active transaction for the same root. This is i
 - Compatible components retain their boundary `NodeId` and hook state, then rerun their component function.
 - New nodes are created through the transaction and moved into final order by key.
 - Removed nodes are disposed after the commit, including descendant effects, listeners, refs, and component cleanups.
+
+Keyed reconciliation reads the current `NodeId` order from the registry. The next child array is a planning result, not a second source-of-truth tree.
+
+```mermaid
+flowchart TB
+    accTitle: Keyed reconciliation flow
+    accDescr: Keyed updates read indexed children, reuse matching node ids, create missing records, move the resulting order, and dispose ids that disappear.
+
+    next_values([📥 Next keyed values]) --> indexed_children[🔍 Read indexed children]
+    indexed_children --> match_key{🏷️ Match key and type?}
+    match_key -->|Yes| reuse_node[✅ Reuse NodeId]
+    match_key -->|No| create_node[📦 Create record]
+    reuse_node --> order_nodes[🔄 Queue final order]
+    create_node --> order_nodes
+    order_nodes --> remove_missing[🗑️ Queue missing ids]
+    remove_missing --> commit_children([🏁 Commit and dispose])
+```
 
 Hooks are attached to component payloads stored on component records. A state setter addresses the owning component by `NodeId`; it cannot update a disposed record or write during render. Effects are flushed after the root transaction.
 
@@ -82,6 +157,21 @@ Ordinary JavaScript values are still snapshots in the mount-once surface. Use `s
 `NodeRegistry` provides the owner tree. `ReactiveEngine` accepts an `OwnerHost`; the DOM engine passes the registry as that host, and computation ownership is attached to the same `OwnerId` used by DOM nodes. Standalone reactive-engine tests use an in-memory owner host, which does not participate in a DOM root.
 
 Disposal is idempotent. A removed boundary disposes descendants first, then listeners/refs/effects, then its own owner and index record. Root disposal removes indexed children before disposing the root owner.
+
+```mermaid
+stateDiagram-v2
+    accTitle: Indexed node lifecycle
+    accDescr: An indexed node moves from allocation through registry linking and DOM mounting, then reaches disposal or rollback while retaining a diagnostic tombstone.
+
+    [*] --> Allocated: 📦 Create record
+    Allocated --> Indexed: 🏷️ Assign ids and owner
+    Indexed --> Mounted: ✅ Commit insert or move
+    Mounted --> Mounted: ✏️ Patch text, props, events
+    Mounted --> Removing: 🗑️ Queue removal
+    Removing --> Disposed: 🧹 Cleanup and tombstone
+    Indexed --> Disposed: ❌ Planning failure
+    Disposed --> [*]: 🏁 Retain diagnostics
+```
 
 ## Files
 

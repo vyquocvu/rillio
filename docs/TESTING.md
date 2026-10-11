@@ -16,6 +16,22 @@ npm run bench:flat
 npm run test:browser
 ```
 
+The verification order separates static, runtime, package, browser, and measurement evidence. The final status report records all results against one code revision.
+
+```mermaid
+flowchart LR
+    accTitle: ZUI verification pipeline
+    accDescr: Verification moves from a code revision through static checks, runtime tests, package and browser checks, and measured benchmarks before status evidence is recorded.
+
+    code_revision([🏁 Code revision]) --> static_checks[🔍 Typecheck]
+    static_checks --> runtime_tests[🧪 Unit and index tests]
+    runtime_tests --> package_build[📦 Package build]
+    package_build --> browser_flows[🌐 Browser flows]
+    package_build --> measured_benchmarks[📊 Measured benchmarks]
+    browser_flows --> status_evidence([📝 Status evidence])
+    measured_benchmarks --> status_evidence
+```
+
 `npm run dev` serves all HTML entries, including the hooks playground at `/hooks.html`, keyed list playground at `/keyed.html`, browser benchmark at `/benchmark.html`, and browser smoke fixture at `/e2e.html`. `npm run test:browser` builds the pages, starts Vite preview, and drives the legacy Counter, focused runtime smoke, and legacy Todo flow with a local Chrome/Chromium binary. Set `BROWSER_BIN` when the browser is not in a standard path.
 
 `npm run bench:reactive`, `npm run bench:compat`, and `npm run bench:flat` are exploratory only. They report measured local behavior for reactive invalidation and addressable keyed DOM reconciliation; none should be used to alter preregistered research thresholds or presented as a cross-framework performance claim.

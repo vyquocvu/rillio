@@ -30,6 +30,23 @@ ZUI is a small addressable-DOM runtime. JSX is the authoring syntax; the Flat In
 
 ## Work plan
 
+```mermaid
+flowchart LR
+    accTitle: Flat Index migration milestones
+    accDescr: The migration progresses from contract and registry invariants through JSX and reactive adoption before release hardening.
+
+    m0([🏁 M0 Contract]) --> m1[🧱 M1 Foundation]
+    m1 --> m2[⚙️ M2 JSX runtime]
+    m2 --> m3[🔄 M3 Reactive surface]
+    m3 --> m4[🔧 M4 Release hardening]
+
+    classDef complete fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
+    classDef next fill:#fef9c3,stroke:#ca8a04,stroke-width:2px,color:#713f12
+
+    class m0,m1,m2,m3 complete
+    class m4 next
+```
+
 ### M0 — Contract and invariants — complete
 
 - [x] Define Flat Index as the source of truth for node identity and structure.

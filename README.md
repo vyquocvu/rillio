@@ -4,14 +4,35 @@ ZUI is an experimental addressable-DOM runtime. It preserves familiar JSX author
 
 The production DOM write path is one transactional `PatchEngine`:
 
-```text
-JSX or explicit reactive planner
-  -> PatchTransaction: validate -> commit -> dispose
-  -> NodeRegistry / Flat Index
-  -> browser DOM
+```mermaid
+flowchart LR
+    accTitle: ZUI addressable architecture
+    accDescr: JSX and explicit reactive planners share one transaction, registry, and patch engine before the browser DOM is updated.
+
+    jsx_input([📥 JSX input])
+    reactive_input([📥 Reactive input])
+
+    subgraph planning ["🧠 Planning"]
+        jsx_planner[⚙️ JSX planner]
+        reactive_planner[⚙️ Reactive planner]
+    end
+
+    patch_transaction[[🔄 Patch transaction]]
+    node_registry[(📝 NodeRegistry)]
+    patch_engine[⚙️ PatchEngine]
+    browser_dom[(🌐 Browser DOM)]
+
+    jsx_input --> jsx_planner
+    reactive_input --> reactive_planner
+    jsx_planner --> patch_transaction
+    reactive_planner --> patch_transaction
+    patch_transaction --> node_registry
+    patch_transaction --> patch_engine
+    node_registry -.-> patch_engine
+    patch_engine --> browser_dom
 ```
 
-The React-like spelling is syntax inspiration only. ZUI does not promise React or Preact behavioral compatibility.
+The React-like spelling is syntax inspiration only. ZUI does not promise React or Preact behavioral compatibility. Both planners share the same indexed identity and DOM mutation boundary.
 
 ## Run
 
