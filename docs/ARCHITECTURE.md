@@ -1,57 +1,102 @@
-# Architecture
+# Addressable DOM architecture
 
-## Overview
+## Core invariant
+
+The Flat Index is the only source of truth for rendered node identity, parent/sibling structure, ownership, and lifecycle. The browser DOM is a projection of that index. Render planners may keep temporary maps while planning a transaction, but they must not retain an authoritative child tree.
 
 ```text
-TSX / JSX authoring
-   -> zui/jsx-runtime (jsx, jsxs, Fragment)
-   -> VNode descriptors + Show/For region descriptors
-   -> mount() / renderChild() (one-time component invocation)
-   -> DOM Nodes + per-property bindings
-   -> reactive engine (store, computed, effect, batch, owner)
+TSX / JSX
+   -> jsx-runtime: VNode descriptors
+   -> JSX planner or explicit reactive planner
+   -> PatchTransaction
+        validate
+        commit
+        dispose
+   -> NodeRegistry (Flat Index)
+   -> PatchEngine
+   -> browser DOM
 ```
 
-ZUI currently has **no Virtual DOM diff loop**. JSX produces descriptors during initial mount; subsequent state changes execute subscribed effects and mutate DOM nodes. The browser DOM remains a tree; this does not mean ZUI has already implemented a Flat Index.
+The two public planning surfaces are:
 
-## Current files
+- the JSX component runtime in `src/compat.ts`, which reruns a component for hook state updates;
+- the explicit reactive surface in `src/dom.ts`, which mounts a subtree once and binds reactive text, properties, regions, and list items.
 
-- `src/reactive.ts`: Store/Computed/effect, scan vs graph invalidation modes, batching, owners and diagnostics.
-- `src/dom.ts`: graph-engine-backed frontend API, binding descriptors, JSX renderer, Show/For regions, props, DOM disposal.
+They share the same `NodeRegistry`, `PatchEngine`, DOM operation helpers, and owner host. They are not independent DOM mutation implementations.
+
+## Flat Index records
+
+Each indexed record has:
+
+- monotonic `NodeId`;
+- `RootId` and `OwnerId`;
+- `version`, incremented on structural, metadata, property, event, and lifecycle changes;
+- node kind: root, element, text, comment, or boundary;
+- DOM start/end boundary nodes;
+- `parentId`, `prevSibling`, `nextSibling`, `firstChild`, and `lastChild`;
+- key, type, props/value metadata, listeners, ref, and cleanup state.
+
+Parent/sibling links are stored in the registry. `children(parentId)` walks those links and checks the index invariants. Components and structural regions use two comment nodes as one addressable boundary record, so their children are still indexed without a second virtual tree.
+
+`RootId` and `OwnerId` are never reused. Disposed records remain as tombstones for diagnostics, while active traversals reject disposed records.
+
+## Transaction lifecycle
+
+All browser writes go through `PatchEngine`:
+
+1. A planner creates addressable records and queues operations in a `PatchTransaction`.
+2. Validation checks root membership, node state, parent/anchor validity, cycles, duplicate operations, and operation-kind constraints.
+3. Commit inserts or moves ranges, patches text/properties/events/refs, and updates the Flat Index.
+4. Remove operations run after structural/property changes. The engine clears bindings, runs cleanup, and disposes removed records.
+5. Planning failures discard newly created records. Commit failures remove newly inserted ranges where possible and preserve the original exception.
+
+Nested reactive updates join the active transaction for the same root. This is important for initial effects and list item updates: they cannot bypass the transaction boundary or mutate DOM independently.
+
+## JSX runtime lifecycle
+
+`createRoot(container)` creates a root record and root owner. Rendering reads indexed children, matches keyed/type-compatible records, and produces a new ordered list of `NodeId` values only for the current plan. The registry remains authoritative.
+
+- Text changes queue a text patch on the existing `NodeId`.
+- Compatible host nodes retain identity and queue property/child patches.
+- Compatible components retain their boundary `NodeId` and hook state, then rerun their component function.
+- New nodes are created through the transaction and moved into final order by key.
+- Removed nodes are disposed after the commit, including descendant effects, listeners, refs, and component cleanups.
+
+Hooks are attached to component payloads stored on component records. A state setter addresses the owning component by `NodeId`; it cannot update a disposed record or write during render. Effects are flushed after the root transaction.
+
+## Explicit reactive lifecycle
+
+The explicit API uses the same index for mount-once subtrees:
+
+- a store/binding creates an indexed text node plus an owned effect;
+- a reactive property creates an owned property effect;
+- function children, `Show`, and `For` create boundary records;
+- keyed list entries are addressable boundary records and preserve their `NodeId` while moving;
+- `current()` updates an item store without recreating the item boundary;
+- owners are hosted by `NodeRegistry`, so computation disposal and DOM subtree disposal share owner identity.
+
+Ordinary JavaScript values are still snapshots in the mount-once surface. Use `select`, `derive`, stores, or explicit reactive regions for live values.
+
+## Ownership
+
+`NodeRegistry` provides the owner tree. `ReactiveEngine` accepts an `OwnerHost`; the DOM engine passes the registry as that host, and computation ownership is attached to the same `OwnerId` used by DOM nodes. Standalone reactive-engine tests use an in-memory owner host, which does not participate in a DOM root.
+
+Disposal is idempotent. A removed boundary disposes descendants first, then listeners/refs/effects, then its own owner and index record. Root disposal removes indexed children before disposing the root owner.
+
+## Files
+
+- `src/flat.ts`: `NodeRegistry`, `PatchTransaction`, and the single `PatchEngine` mutation boundary.
+- `src/compat.ts`: JSX component planner, hooks, reconciliation, and root API.
+- `src/dom.ts`: explicit reactive planner and `Show`/`For` regions using the shared engine.
+- `src/reactive.ts`: stores, computed values, effects, batching, and owner-host integration.
 - `src/jsx-runtime.ts`, `src/jsx-dev-runtime.ts`: automatic JSX transform entries.
-- `examples/counter.tsx`, `examples/todo.tsx`: integration demos.
-- `tests/`: reactive conformance, oracle/fuzz, DOM regressions and smoke runners.
+- `tests/flat.test.ts`: registry and transaction unit tests.
+- `tests/flat-random.test.ts`: seeded keyed randomized consistency checks.
+- `tests/lifecycle.test.ts`: repeated disposal and owner/node leak checks.
 
-## Dataflow and lifecycle
+## Current limitations
 
-`createStore` creates an observable snapshot. `select(store, selector)` and `derive(read)` defer reads until a binding effect executes. At initial mount `renderChild` installs effects for dynamic text/props; event callbacks write stores; a flush updates only affected bindings in graph mode.
-
-Owner scopes dispose effects and nested scopes. `mount` returns a disposer. Conditional branches have anchor comments and replace their owned subtree when visibility changes. Keyed lists have per-key anchor ranges and a latest-item accessor `current()`: keys preserve node identity while reactive fields can update. Replacing data with the same key does **not** rerun arbitrary item initializer code.
-
-## Scheduler contract (current intended semantics)
-
-- Store writes update synchronously; `Object.is` equality suppresses no-op writes.
-- `batch()` flushes after the outer batch.
-- Writes triggered from effects go through later flush rounds instead of direct recursive execution; runaway cycles are bounded.
-- Computed reads must be pure; writes during computed evaluation throw.
-- Correctness of nested mutation, owner cleanup and exception recovery still needs complete browser tests. See `docs/TESTING.md`.
-
-## Design constraints
-
-1. Mount-once means ordinary JS values evaluated once are **not** reactive. Use `select` or `derive` and explicit `Show`/`For`.
-2. Do not silently add VDOM reconciliation for state updates.
-3. Avoid DOM mutations after dispose; disposed owners must not retain effects.
-4. Prefer stable keys to positional identity; dynamic items can carry reactive `current()`.
-5. One DOM property should have one authoritative writer in any future agent patch layer.
-6. Default singleton graph engine is an MVP limitation; root isolation requires a deliberate design before SSR/concurrent apps.
-
-## Risks and decisions pending
-
-- Reactive engine and DOM owner interactions may leak effects when regions are replaced.
-- Fine-grained updates inside list reconciliation must avoid re-entrant structural mutations.
-- Intrinsic JSX typing currently permits broad `any`; improve before packaging.
-- Styling/attributes need careful HTML/SVG and security semantics.
-- Flat Index and patch protocol are **research extensions**, not prerequisites for the frontend core.
-
-## Nested mount tracking boundary
-
-The DOM layer calls `engine.untrack(() => engine.createOwner(render))` to isolate nested subtree construction from the parent reactive effect. In particular, a child component's one-time `store.get()` read must not register as a dependency of its enclosing function-child conditional. Children retain their own binding effects and their explicit disposer. This boundary is regression-tested in `tests/react-friendly.test.ts`.
+- Metadata/state rollback after a failed update is not yet fully snapshot-based; release hardening tracks this as M4.
+- DOM property normalization is intentionally scoped and does not yet provide full SVG/custom-element parity.
+- The engine uses a singleton registry per module instance and browser `document`; SSR and concurrent server rendering are out of scope.
+- No independent DOM writes are allowed outside `PatchEngine`; future features must extend its operation set rather than add renderer-specific mutation helpers.

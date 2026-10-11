@@ -1,95 +1,119 @@
-# ZUI Frontend API — experimental v0.1
+# ZUI API — experimental v0.1
 
-This describes the **current source API**, not a stable published NPM release.
+ZUI uses standard JSX syntax through `jsxImportSource: "zui"`, but its runtime semantics are ZUI-owned. The Flat Index and Patch Engine are the implementation contract behind both public rendering surfaces.
 
-## Install/run source demo
+## JSX runtime
 
-```sh
-npm install
-npm run dev
+```tsx
+import { createRoot, useState, useEffect } from "zui";
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    document.title = String(count);
+  }, [count]);
+  return <button onClick={() => setCount(n => n + 1)}>{count}</button>;
+}
+
+createRoot(document.getElementById("app")!).render(<Counter />);
 ```
 
-Use `jsx: "react-jsx"`, `jsxImportSource: "zui"` for TSX. Current self-referencing exports point at source `.ts` and need modern tooling; packaged JS/types are pending M4.
+Supported JSX output includes:
 
-## Reactive primitives
+- intrinsic elements and function components;
+- text, fragments, arrays, `null`, booleans, and numbers;
+- ordinary `&&`/ternary conditional expressions;
+- keyed `.map()` output;
+- refs, events, class/style, controlled `value`/`checked`/`disabled`, and basic DOM properties.
+
+`createRoot(container)` returns `{ render(value), unmount() }`. `render(value, container)` reuses the addressable root for that container.
+
+## Hooks
+
+The current component hooks are:
+
+- `useState(initial)` — snapshot state; a changed setter schedules synchronous component reconciliation.
+- `useEffect(effect, deps?)` — dependency-aware effect with cleanup, flushed after the root transaction.
+- `useMemo(calculate, deps?)` — ordered memo slot.
+- `useCallback(fn, deps?)` — memoized callback slot.
+- `useRef(initial)` — stable mutable ref slot.
+
+Hook ordering is checked. State writes during component evaluation throw `ZUI_RENDER_PHASE_UPDATE`; updates after disposal are ignored.
+
+ZUI does not claim React hook scheduling, batching, synthetic event, Context, Suspense, or ecosystem compatibility.
+
+## Addressable DOM API
+
+The root export includes:
 
 ```ts
-import { createStore, select, derive, computed, batch } from "zui";
-const tasks = createStore([{ id: 1, title: "First" }]);
-const count = computed(() => tasks.get().length);
-const title = select(tasks, s => s[0]?.title ?? "");
-const length = derive(() => count.get());
-batch(() => tasks.set(s => [...s, { id: 2, title: "Next" }]));
+import {
+  NodeRegistry,
+  PatchEngine,
+  nodeRegistry,
+  patchEngine
+} from "zui";
 ```
 
-- `store.get()` returns latest snapshot; `store.set(next | updater)` updates synchronously. Use **immutable** updates; mutating the same object and setting it again will be ignored by `Object.is`.
-- `select` and `derive` return **binding descriptors**, not immediate display values. Bind them to child text and element properties.
-- `computed` caches derivations and must not write state during evaluation.
-- `batch` combines write notifications until transaction exit; it does not roll back store writes on exception.
+`NodeRegistry` exposes stable `NodeId`, `RootId`, and `OwnerId` records, linked parent/sibling structure, ownership, and versions. `PatchEngine` exposes transactional operations for renderer authors. Application code normally uses the JSX or explicit reactive planner rather than calling low-level patch methods.
 
-## Components and mounting
+The low-level implementation is also available from `zui/flat`.
+
+## Explicit reactive API
+
+The `zui/legacy` subpath is a compatibility alias for the explicit reactive surface:
 
 ```tsx
-import { mount, createStore, select } from "zui";
-const state = createStore(0);
-function Counter() {
-  return <button onClick={() => state.set(n => n + 1)}>
-    Count: {select(state, n => n)}
-  </button>;
-}
-const dispose = mount(Counter, document.getElementById("app")!);
-// dispose() unmounts and cleans bindings.
+import { createStore, select, mount } from "zui/legacy";
+
+const count = createStore(0);
+mount(() => <button onClick={() => count.set(n => n + 1)}>
+  {select(count, value => value)}
+</button>, document.getElementById("app")!);
 ```
 
-A component is invoked on **mount**, not rerun on state change. Destructured or ordinary static props are not implicitly live.
+Exports include:
 
-## Structural regions
+- `createStore`, `useStore` — synchronous immutable snapshot store;
+- `select(store, selector)` — deferred binding descriptor;
+- `derive(read)` — deferred binding descriptor;
+- `computed`, `batch`, `untrack`;
+- `mount`, `Show`, and `For`.
+
+`Show` owns a conditional boundary. `For` requires stable unique keys and preserves the boundary `NodeId` for an item while its position or current value changes.
 
 ```tsx
-<Show when={select(state, s => s.visible)} fallback={() => <p>Hidden</p>}>
-  {() => <section>Visible</section>}
+<Show when={select(state, value => value.visible)} fallback={<p>Hidden</p>}>
+  <p>Visible</p>
 </Show>
 
-<For each={select(state, s => s.items)} by={item => item.id}>
+<For each={select(state, value => value.items)} by={item => item.id}>
   {(initialItem, current) => <li>{derive(() => current().title)}</li>}
 </For>
 ```
 
-- `Show` takes a reactive `when` to mount/dispose a branch; use a child **function** for delayed JSX creation.
-- `For` requires stable, unique keys. `initialItem` is fixed at first mount for that key, while `current()` returns latest data and can be used in a reactive binding. Duplicate keys throw `ZUI_DUPLICATE_KEY`.
-- Event props are `onClick`, `onInput`, etc. Controlled inputs bind `value`/`checked` to reactive descriptors and use event handlers to update state.
+Ordinary `store.get()` reads during mount are snapshots. Use a binding or a reactive region for live DOM updates.
 
-## Unsupported or not guaranteed
+## Reactive engine
 
-SSR/hydration, portals, context, router, SVG parity, complex CSS normalization, external untrusted JSX/props, React hooks, implicit JSX reactivity, and production-grade library packaging. No official compatibility or performance claim against React/Solid.
+`zui/reactive` exposes the standalone `ReactiveEngine` used by the explicit runtime:
 
-## React-friendly authoring (experimental)
+```ts
+import { createEngine } from "zui/reactive";
 
-ZUI supports `useStore(initial)` as a familiar naming alias for `createStore(initial)`. **This is not React's `useState`**: the returned object has `get()` and `set()` methods and is a live reactive store; components still mount once.
-
-```tsx
-import { useStore, mount } from "zui";
-function App() {
-  const count = useStore(0);
-  const visible = useStore(true);
-  return <main>
-    <button onClick={() => count.set(n => n + 1)}>Count: {count}</button>
-    <input value={count} />
-    {() => visible.get() ? <span>Visible</span> : null}
-  </main>;
-}
-mount(<App />, document.getElementById("app")!);
+const engine = createEngine("graph");
+const state = engine.createStore(0);
+const stop = engine.effect(() => console.log(state.get()));
+state.set(1);
+stop();
 ```
 
-- `{store}` directly binds a text node; `value={store}` binds an element property.
-- `{() => expression}` creates a reactive region for conditional JSX. **The current implementation remounts the region on each tracked dependency change**; do not rely on keyed identity in this pattern yet.
-- `ref={objectRef}` and `ref={node => ...}` follow React-like mount and unmount behavior for intrinsic elements.
-- Ordinary `store.get()` inside JSX is a one-time snapshot, not a live JSX binding.
-- Plain `store.get().items.map(...)` does **not** automatically become reactive; continue using `<For>` for stable keyed lists until the compiler/reconciler milestone.
-- `Show`, `For`, `select` and `derive` remain supported and useful advanced primitives.
+The graph engine tracks dependencies, batches writes, bounds flush rounds, rejects computed writes, and supports an `OwnerHost`. The DOM runtime passes `NodeRegistry` as that host so DOM and reactive ownership share `OwnerId` values.
 
-## Dependency isolation
+## Mutation and lifecycle contract
 
-`untrack(() => read())` reads without subscribing the active reactive computation. ZUI uses this internally when mounting nested JSX subtrees so child stores do not accidentally invalidate parent conditional regions. Use sparingly: deliberately untracked values do not trigger updates themselves.
+Renderers must use `PatchEngine` for every browser DOM write. A transaction validates operations, commits structural/property changes, and then disposes removed subtrees. Direct `createElement`, `insertBefore`, `remove`, event-listener, attribute, style, and ref writes belong only in `src/flat.ts`.
 
-`{() => expression}` currently remounts the returned subtree when its **own** tracked reads change. Stores accessed exclusively during child component mounting are isolated from the parent expression. This is still not React reconciliation and does not preserve keyed nodes across changes to an entire function region.
+## Not currently guaranteed
+
+SSR/hydration, portals, async resources, Suspense, full SVG semantics, compiler output, router integration, devtools, broad accessibility/property normalization, and React/Preact drop-in compatibility.

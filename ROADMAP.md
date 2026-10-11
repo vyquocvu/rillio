@@ -1,97 +1,88 @@
 # ZUI Release Roadmap
 
-ZUI is moving from a prototype toward a small, dependable frontend runtime. The first public release targets a deliberately narrow API: JSX, function components, basic hooks, direct DOM reconciliation, and a separately maintained legacy reactive runtime.
+ZUI is a small addressable-DOM runtime. JSX is the authoring syntax; the Flat Index is the runtime architecture. React/Preact compatibility is not a product goal.
 
 ## Release policy
 
 - Release target: `v0.1.0`.
-- Stability target: reliable for small browser applications, not React/Preact drop-in compatibility.
-- Compatibility claims: only APIs covered by the release test matrix are supported.
-- Breaking changes: allowed before `v1.0.0`, but must be documented in the changelog and migration notes.
-- Legacy runtime: remains available at `zui/legacy`; it is not silently mixed with the default runtime.
+- Stability target: dependable small browser applications.
+- Breaking changes are allowed before `v1.0.0`, but must be documented.
+- `zui/legacy` remains a compatibility alias for the explicit reactive API while the public naming settles.
+- There is one production DOM mutation path: `PatchEngine`.
 
 ## v0.1 scope
 
 ### Included
 
-- JSX runtime with `jsx`, `jsxs`, `jsxDEV`, and `Fragment`.
-- Function components returning elements, text, arrays, fragments, or null.
-- `createRoot`, root rendering, and unmounting.
-- `useState`, `useEffect`, `useMemo`, `useCallback`, and `useRef`.
-- Keyed reconciliation with DOM identity preservation.
-- Basic intrinsic attributes, events, refs, styles, and controlled form properties.
-- Built ESM JavaScript and TypeScript declarations.
-- Legacy store-first runtime under `zui/legacy`.
+- Automatic JSX runtime with `jsx`, `jsxs`, `jsxDEV`, and `Fragment`.
+- Function components, `useState`, `useEffect`, `useMemo`, `useCallback`, and `useRef`.
+- Conditional rendering, fragments, arrays, keyed `.map()`, and stable keyed DOM identity.
+- Explicit stores, bindings, `Show`, `For`, batching, ownership, and disposal through the same flat runtime.
+- `NodeRegistry` with stable `NodeId`, `RootId`, `OwnerId`, linked structure, and versioning.
+- Transactional `PatchEngine` with validate → commit → dispose semantics.
+- ESM JavaScript, declarations, strict external consumer verification, lifecycle tests, randomized consistency tests, and measured benchmarks.
 
 ### Explicitly excluded
 
-- Context, `useReducer`, `useLayoutEffect`, `memo`, and `forwardRef`.
-- Synthetic events and React scheduling/batching parity.
-- Concurrent rendering, Suspense, portals, SSR, and hydration.
-- Full SVG/property normalization and broad React ecosystem compatibility.
+- React API parity, synthetic events, React scheduling semantics, and ecosystem drop-in compatibility.
+- SSR/hydration/streaming, portals, async resources, Suspense, and server components.
+- Full SVG/property normalization, compiler optimizations, devtools, and router/data-layer integrations.
 
 ## Work plan
 
-### R0 — Baseline and scope freeze
+### M0 — Contract and invariants — complete
 
-- [ ] Record the exact starting commit, supported Node/browser versions, and package manager.
-- [ ] Run typecheck, unit tests, smoke tests, oracle tests, and production build.
-- [ ] Convert every known failure into a tracked issue or an explicit limitation.
-- [ ] Add a changelog and define the public export surface.
+- [x] Define Flat Index as the source of truth for node identity and structure.
+- [x] Define stable root/owner/node ids and versioning.
+- [x] Define the single Patch Engine mutation boundary.
 
-### R1 — Runtime correctness
+### M1 — Addressable foundation — complete
 
-- [ ] Make repeated `render()` calls update the existing root instead of remounting it.
-- [ ] Validate hook ordering and fail clearly on render-phase state writes.
-- [ ] Define effect ordering, cleanup errors, re-entrant updates, and batching behavior.
-- [ ] Roll back partially mounted DOM and subscriptions when rendering throws.
-- [ ] Verify root, component, keyed child, and effect disposal under repeated mount/unmount.
+- [x] Implement `NodeRegistry` and linked parent/sibling index.
+- [x] Implement transactional creation, insertion, movement, property patching, removal, and disposal.
+- [x] Add unit tests for ids, rollback, refs, events, ownership, and index consistency.
 
-### R2 — DOM and interaction contract
+### M2 — JSX runtime migration — complete
 
-- [ ] Test insert, remove, reorder, replacement, duplicate keys, and nested keyed components.
-- [ ] Test event replacement/removal, refs, class/style diffing, attributes, and boolean properties.
-- [ ] Test controlled `value`, `checked`, focus, caret, and selection behavior.
-- [ ] Define and test the supported native event name mapping.
-- [ ] Either implement the scoped SVG behavior or document SVG as unsupported in the release contract.
+- [x] Replace the renderer's authoritative `Instance` tree with registry node ids.
+- [x] Preserve hooks, effects, fragments, conditional output, keyed arrays, focus, and caret behavior.
+- [x] Keep DOM writes inside `PatchEngine`.
 
-### R3 — Package and developer experience
+### M3 — Reactive surface migration — complete
 
-- [ ] Build distributable ESM JavaScript and `.d.ts` files.
-- [ ] Replace source-TS package exports with the generated release artifacts.
-- [ ] Add a lockfile and a clean-install verification path.
-- [ ] Add a strict external consumer fixture using JSX and the published package shape.
-- [ ] Document installation, supported APIs, migration from legacy imports, and known limitations.
+- [x] Route the explicit reactive surface through the same registry and patch engine.
+- [x] Attach reactive computation ownership to the registry owner host.
+- [x] Add randomized keyed consistency and repeated lifecycle disposal tests.
+- [x] Add a flat-index benchmark that reports measured local output only.
 
-### R4 — Release verification
+### M4 — Release hardening — next
 
-- [ ] Run all checks from a clean checkout on the release commit.
-- [ ] Exercise Counter and Todo browser flows without console errors.
-- [ ] Run lifecycle stress tests for 100 repeated mount/unmount cycles.
-- [ ] Verify no active computations, listeners, or DOM regions remain after disposal.
-- [ ] Record results, environment, and commit SHA in `docs/STATUS.md`.
-- [ ] Tag `v0.1.0-rc.1`, fix release blockers, then tag `v0.1.0`.
+- [ ] Add transaction snapshots for renderer metadata and state rollback on failed updates.
+- [ ] Expand the DOM contract for SVG namespaces, form properties, custom elements, and accessibility-oriented properties.
+- [ ] Strengthen TypeScript JSX intrinsic types and event types.
+- [ ] Add memory-retention diagnostics for removed nodes, owners, listeners, and effects.
+- [ ] Run all gates from a clean checkout and record the exact code revision.
+
+## Post-v0.1 options
+
+- Async resources and an explicit loading/error primitive.
+- Portal support through addressable mount targets.
+- SSR/hydration if a server-rendered use case is confirmed.
+- Compiler and devtools work only after the runtime contract is stable.
 
 ## Release gates
 
-The release is blocked until all gates pass on the same commit:
-
 | Gate | Requirement |
 |---|---|
-| API | Public exports and documented limitations match the implementation |
-| Correctness | Typecheck, unit tests, smoke tests, and oracle tests pass |
-| DOM | Keyed identity, props, events, refs, forms, and unmount behavior pass |
-| Lifecycle | Repeated mount/unmount leaves no retained effects, listeners, or DOM |
-| Browser | Counter and Todo workflows pass in supported browsers |
-| Package | Clean external consumer imports built JS and declarations successfully |
-| Docs | README, API docs, migration notes, changelog, and status evidence are current |
-
-## Post-v0.1 backlog
-
-- `v0.2`: context, reducer, improved scheduling, memoization, and broader form support.
-- `v0.3`: SVG parity, stronger JSX types, accessibility-oriented DOM properties, and performance profiling.
-- `v1.0`: only after a compatibility contract, semver process, consumer suite, and long-term maintenance policy are established.
+| API | Public exports and semantic contract match implementation |
+| Index | Registry parent/sibling/owner invariants pass randomized checks |
+| Transactions | Invalid patches fail before commit; removed subtrees dispose once |
+| DOM | Props, events, refs, forms, keyed identity, focus, and caret pass |
+| Lifecycle | Repeated mount/unmount leaves no active indexed nodes or owners |
+| Browser | Counter, keyed, smoke, and Todo flows pass without uncaught errors |
+| Package | Built ESM/declarations resolve from an external consumer |
+| Docs | README, roadmap, API, architecture, changelog, and status agree |
 
 ## Definition of done
 
-ZUI is no longer treated as a prototype when `v0.1.0` passes every release gate, ships generated artifacts, has a reproducible clean-install workflow, and publishes evidence for the exact release commit. Until then, documentation must distinguish implemented behavior from verified behavior.
+ZUI is ready for `v0.1.0` when the release gates pass on one recorded code revision, the package is reproducible from a clean install, and the documentation distinguishes measured evidence from future work.

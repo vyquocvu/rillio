@@ -12,12 +12,13 @@ npm run test:oracle
 npm run bench:reactive
 npm run bench:compat
 npm run test:consumer
+npm run bench:flat
 npm run test:browser
 ```
 
 `npm run dev` serves all HTML entries, including the hooks playground at `/hooks.html`, keyed list playground at `/keyed.html`, browser benchmark at `/benchmark.html`, and browser smoke fixture at `/e2e.html`. `npm run test:browser` builds the pages, starts Vite preview, and drives the legacy Counter, focused runtime smoke, and legacy Todo flow with a local Chrome/Chromium binary. Set `BROWSER_BIN` when the browser is not in a standard path.
 
-`npm run bench:reactive` and `npm run bench:compat` are exploratory only. They compare scan/graph invalidation and keyed DOM reconciliation locally; neither command should be used to alter preregistered research thresholds.
+`npm run bench:reactive`, `npm run bench:compat`, and `npm run bench:flat` are exploratory only. They report measured local behavior for reactive invalidation and addressable keyed DOM reconciliation; none should be used to alter preregistered research thresholds or presented as a cross-framework performance claim.
 
 ## MVP gates
 
@@ -30,6 +31,7 @@ npm run test:browser
 | G5 | Lists / inputs | Insert, remove, reorder, replace by key, duplicate-key failure; controlled input/checkbox caret/focus sanity |
 | G6 | Browser flows | Counter increment; Todo add/edit/toggle/delete/filter and zero-task fallback with no console errors |
 | G7 | Consumer package | Built ESM JS + `.d.ts` imported from a separate strict TypeScript/Vite consumer; JSX runtime resolves |
+| G8 | Flat Index | Registry structure, transaction validation, seeded randomized updates, and lifecycle disposal remain consistent |
 
 All gates must be recorded against one commit SHA in `docs/STATUS.md`, with environment and commands. Passing older reactive tests **does not** verify newer DOM code.
 

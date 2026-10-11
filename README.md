@@ -1,6 +1,17 @@
 # ZUI
 
-**Experimental React/Preact-style JSX frontend runtime.** The default entry now implements function components, familiar hooks, plain conditional rendering, keyed arrays and direct DOM reconciliation. This is an early compatibility foundation, **not a production-ready React/Preact replacement**.
+ZUI is an experimental addressable-DOM runtime. It preserves familiar JSX authoring, while DOM identity, structure, ownership, and lifecycle are owned by a Flat Index rather than by a Virtual DOM tree.
+
+The production DOM write path is one transactional `PatchEngine`:
+
+```text
+JSX or explicit reactive planner
+  -> PatchTransaction: validate -> commit -> dispose
+  -> NodeRegistry / Flat Index
+  -> browser DOM
+```
+
+The React-like spelling is syntax inspiration only. ZUI does not promise React or Preact behavioral compatibility.
 
 ## Run
 
@@ -10,19 +21,18 @@ npm run dev
 npm run typecheck
 npm test
 npm run build
-npm run bench:reactive
+npm run build:package
 npm run test:consumer
 npm run test:browser
+npm run bench:all
 ```
 
-Open `/demos.html` for the full example catalog. The default runtime examples include `/compat.html` for the React-style Todo, `/hooks.html` for hooks/forms, `/keyed.html` for keyed list identity, and `/benchmark.html` for browser DOM measurements. Legacy examples include `/` (Counter), `/todo.html` (Todo), `/react-friendly.html`, and `/legacy-benchmark.html`; they explicitly import `zui/legacy`.
+Open `/demos.html` for the example catalog. The default JSX runtime includes `/compat.html`, `/hooks.html`, `/keyed.html`, `/benchmark.html`, and `/e2e.html`. The explicit reactive API is demonstrated by `/`, `/todo.html`, `/react-friendly.html`, and `/legacy-benchmark.html`.
 
-The exploratory reactive benchmark runs with `npm run bench:reactive`; `npm run test:consumer` verifies generated package artifacts from a separate strict TypeScript fixture, and `npm run test:browser` runs Counter, keyed input, and Todo browser flows with local Chrome/Chromium. Benchmark limitations and interpretation guidance are documented in `benchmarks/README.md`.
-
-## Default JSX + Hooks
+## JSX runtime
 
 ```tsx
-import { createRoot, useState, useEffect } from "zui";
+import { createRoot, useEffect, useState } from "zui";
 
 function Counter() {
   const [count, setCount] = useState(0);
@@ -30,32 +40,39 @@ function Counter() {
     document.title = String(count);
   }, [count]);
 
-  return <button onClick={() => setCount(n => n + 1)}>
-    Count: {count}
-  </button>;
+  return <button onClick={() => setCount(n => n + 1)}>{count}</button>;
 }
 
 createRoot(document.getElementById("app")!).render(<Counter />);
 ```
 
-Configure `jsx: "react-jsx"` and `jsxImportSource: "zui"`. Ordinary `&&`, ternary and keyed `.map()` syntax is supported by component rerenders and a direct DOM reconciler.
+Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "zui"`. Function components, ordinary conditional expressions, fragments, and keyed `.map()` output are supported.
 
-## Compatibility scope (experimental)
+## Explicit reactive API
 
-Source-implemented: `createRoot`, `render`, `useState`, `useEffect`, `useMemo`, `useCallback`, `useRef`, `Fragment`, basic intrinsic props/events, keyed reconciliation.
+```tsx
+import { createStore, select, mount } from "zui/legacy";
 
-Not yet claimed: full React/Preact hook scheduling, synthetic events, context, reducer, concurrent updates, Suspense, portals, SSR, SVG support, complete JSX types, or ecosystem-wide interoperability. Effects currently run synchronously after DOM commit, unlike React post-paint scheduling. See [verification status](docs/STATUS.md) for the commands run on the current working tree.
+const count = createStore(0);
+mount(() => <button onClick={() => count.set(n => n + 1)}>
+  {select(count, value => value)}
+</button>, document.getElementById("app")!);
+```
 
-Legacy mount-once/store-first runtime: `import { createStore, mount, Show, For } from "zui/legacy"`. Research engine: `zui/reactive`.
+`zui/legacy` is a compatibility alias for the explicit reactive surface during the pre-1.0 migration. It uses the same `NodeRegistry` and `PatchEngine`; it is not an independent DOM renderer.
 
-## Docs
+## Architecture guarantees
 
-- [Roadmap](ROADMAP.md)
-- [Compatibility contract](docs/COMPATIBILITY.md)
-- [Original reactive architecture](docs/ARCHITECTURE.md)
-- [Testing gates](docs/TESTING.md)
-- [Verification status](docs/STATUS.md)
-- [Contributing](CONTRIBUTING.md)
-- [Research preregistration](research/preregistration.md)
+- `NodeRegistry` assigns monotonic `NodeId`, `RootId`, and `OwnerId` values and tracks parent/sibling structure plus versions.
+- `PatchEngine` is the only module that creates, inserts, moves, patches, removes, or disposes browser DOM nodes.
+- Reconciliation and reactive regions address nodes through the Flat Index; they do not retain a second authoritative child tree.
+- A transaction validates operations, commits structural/property changes, then disposes removed subtrees.
+- `useState`, `useEffect`, `Show`, `For`, keyed identity, refs, controlled values, focus, and caret behavior remain covered by tests.
+
+## Scope
+
+ZUI currently targets small client-side browser applications. SSR/hydration, portals, async resources, SVG parity, broad JSX intrinsic typing, devtools, and a compiler are future work rather than compatibility promises.
+
+See [the roadmap](ROADMAP.md), [the API contract](docs/API.md), [the architecture](docs/ARCHITECTURE.md), [testing](docs/TESTING.md), and [verification status](docs/STATUS.md).
 
 No CI/CD is configured by design.
