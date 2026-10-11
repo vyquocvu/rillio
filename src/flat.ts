@@ -459,13 +459,18 @@ export class PatchTransaction {
           this.engine.registry.updateNode(operation.nodeId, operation.patch);
         }
       }
-      for (const operation of removals) this.engine.removeSubtree(operation.nodeId);
       this.committed = true;
+      let disposalFailure: unknown;
+      for (const operation of removals) {
+        try { this.engine.removeSubtree(operation.nodeId); }
+        catch (error) { disposalFailure ??= error; }
+      }
+      if (disposalFailure) throw disposalFailure;
     } catch (error) {
       // DOM writes are deliberately centralized here. If a browser rejects a
       // commit, remove every newly-created range and leave old records intact
       // wherever possible; the caller still receives the original exception.
-      for (const nodeId of [...inserted].reverse()) {
+      if (!this.committed) for (const nodeId of [...inserted].reverse()) {
         if (this.engine.registry.hasNode(nodeId) && !this.engine.registry.getNode(nodeId).disposed) {
           this.engine.removeSubtree(nodeId);
         }
@@ -486,6 +491,10 @@ export class PatchTransaction {
   private validate(): void {
     const removed = new Set<NodeId>();
     const inserted = new Set<NodeId>();
+    const projectedParents = new Map<NodeId, NodeId | null>();
+    for (const node of this.engine.registry.allNodes()) {
+      if (!node.disposed) projectedParents.set(node.id, node.parentId);
+    }
     for (const operation of this.operations) {
       const node = this.engine.registry.getNode(operation.nodeId);
       if (node.rootId !== this.rootId || node.disposed) throw new Error("ZUI_TRANSACTION_NODE");
@@ -501,14 +510,26 @@ export class PatchTransaction {
         if (operation.beforeId !== null) {
           const before = this.engine.registry.getNode(operation.beforeId);
           if (before.rootId !== this.rootId || before.disposed) throw new Error("ZUI_TRANSACTION_ANCHOR");
+          if (operation.beforeId === operation.nodeId || projectedParents.get(operation.beforeId) !== operation.parentId) {
+            throw new Error("ZUI_INVALID_ANCHOR");
+          }
+        }
+        if (operation.kind === "insert" && projectedParents.get(operation.nodeId) !== null) {
+          throw new Error("ZUI_TRANSACTION_INSERT_ATTACHED");
         }
         if (inserted.has(operation.nodeId) && operation.kind === "insert") {
           throw new Error("ZUI_TRANSACTION_DUPLICATE_INSERT");
         }
         inserted.add(operation.nodeId);
+        let ancestor: NodeId | null = operation.parentId;
+        while (ancestor !== null) {
+          if (ancestor === operation.nodeId) throw new Error("ZUI_TRANSACTION_CYCLE");
+          ancestor = projectedParents.get(ancestor) ?? null;
+        }
         if (operation.nodeId === operation.parentId || this.engine.registry.isDescendant(operation.nodeId, operation.parentId)) {
           throw new Error("ZUI_TRANSACTION_CYCLE");
         }
+        projectedParents.set(operation.nodeId, operation.parentId);
       }
       if (operation.kind === "text" && node.kind !== "text") throw new Error("ZUI_TRANSACTION_TEXT");
       if (operation.kind === "props" && node.kind !== "element") throw new Error("ZUI_TRANSACTION_PROPS");
