@@ -278,7 +278,6 @@ function reconcile(
   }
 
   const fresh = mountValue(value, parentId, ownerId, root, tx);
-  tx.remove(oldId);
   return fresh;
 }
 

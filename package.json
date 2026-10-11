@@ -11,7 +11,8 @@
     "bench:smoke": "npm run test:smoke && node benchmarks/smoke.cjs",
     "bench:reactive": "npm run test:smoke && node benchmarks/reactive.cjs",
     "bench:compat": "npm run build:package && node benchmarks/compat.cjs",
-    "bench:all": "npm run bench:reactive && npm run bench:compat",
+    "bench:flat": "npm run build:package && node benchmarks/flat.cjs",
+    "bench:all": "npm run bench:reactive && npm run bench:compat && npm run bench:flat",
     "test:oracle": "npm run test:smoke && node tests/oracle-smoke.cjs",
     "test:consumer": "npm run build:package && node tests/consumer-smoke.cjs",
     "test:browser": "npm run build && node tests/browser-smoke.cjs",
@@ -58,6 +59,11 @@
       "types": "./dist/package/reactive.d.ts",
       "import": "./dist/package/reactive.js",
       "default": "./dist/package/reactive.js"
+    },
+    "./flat": {
+      "types": "./dist/package/flat.d.ts",
+      "import": "./dist/package/flat.js",
+      "default": "./dist/package/flat.js"
     }
   }
 }

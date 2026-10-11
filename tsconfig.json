@@ -12,7 +12,8 @@
       "zui/jsx-runtime": ["src/jsx-runtime.ts"],
       "zui/jsx-dev-runtime": ["src/jsx-dev-runtime.ts"],
       "zui/legacy": ["src/dom.ts"],
-      "zui/reactive": ["src/reactive.ts"]
+      "zui/reactive": ["src/reactive.ts"],
+      "zui/flat": ["src/flat.ts"]
     },
     "lib": [
       "ES2022",

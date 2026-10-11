@@ -522,10 +522,17 @@ export class PatchTransaction {
  * property changes, then dispose removed subtrees.
  */
 export class PatchEngine {
+  private activeTransaction: PatchTransaction | undefined;
+
   constructor(readonly registry: NodeRegistry, readonly document: Document = globalThis.document) {}
 
   transaction<T>(rootId: RootId, work: (tx: PatchTransaction) => T): T {
+    if (this.activeTransaction) {
+      if (this.activeTransaction.rootId !== rootId) throw new Error("ZUI_NESTED_ROOT_TRANSACTION");
+      return work(this.activeTransaction);
+    }
     const tx = new PatchTransaction(this, rootId);
+    this.activeTransaction = tx;
     try {
       const value = work(tx);
       tx.commit();
@@ -534,11 +541,15 @@ export class PatchEngine {
     } catch (error) {
       tx.rollback();
       throw error;
+    } finally {
+      this.activeTransaction = undefined;
     }
   }
 
   update<T>(rootId: RootId, work: (tx: PatchTransaction) => T): T {
-    return this.transaction(rootId, work);
+    return this.activeTransaction?.rootId === rootId
+      ? work(this.activeTransaction)
+      : this.transaction(rootId, work);
   }
 
   insertRange(nodeId: NodeId, parentId: NodeId, beforeId: NodeId | null): void {

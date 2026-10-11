@@ -4,6 +4,8 @@
  * Graph tracks dependencies and schedules only affected effects.
  * Effects observe settled computed values, never intermediary diamond values.
  */
+import type { OwnerHost, OwnerId, RootId } from "./flat.js";
+
 export type Dispose = () => void;
 export type Mode = "scan" | "graph";
 export interface Store<T> { get(): T; set(value: T | ((previous: T) => T)): void }
@@ -25,15 +27,59 @@ interface Computation extends Source {
   evaluating: boolean;
   value: unknown;
   initialized: boolean;
-  owner: Owner | undefined;
+  ownerId: OwnerId | undefined;
   cleanup: Dispose | undefined;
 }
-interface Owner {
-  parent: Owner | undefined;
-  children: Set<Owner>;
-  computations: Set<Computation>;
-  cleanups: Set<Dispose>;
+
+interface EngineOptions {
+  maxRounds?: number;
+  ownerHost?: OwnerHost;
+  ownerRootId?: RootId;
+}
+
+interface MemoryOwner {
+  id: OwnerId;
+  rootId: RootId;
+  parentId: OwnerId | null;
+  children: Set<OwnerId>;
   disposed: boolean;
+}
+
+class MemoryOwnerHost implements OwnerHost {
+  private nextId = 1;
+  private readonly owners = new Map<OwnerId, MemoryOwner>();
+
+  createOwner(rootId: RootId, parentId: OwnerId | null = null): OwnerId {
+    if (parentId !== null && this.get(parentId).rootId !== rootId) throw new Error("ZUI_OWNER_ROOT_MISMATCH");
+    const id = this.nextId++;
+    const owner: MemoryOwner = { id, rootId, parentId, children: new Set(), disposed: false };
+    this.owners.set(id, owner);
+    if (parentId !== null) this.get(parentId).children.add(id);
+    return id;
+  }
+
+  ownerParent(ownerId: OwnerId): OwnerId | null {
+    return this.get(ownerId).parentId;
+  }
+
+  ownerChildren(ownerId: OwnerId): readonly OwnerId[] {
+    return [...this.get(ownerId).children];
+  }
+
+  disposeOwner(ownerId: OwnerId): void {
+    const owner = this.get(ownerId);
+    if (owner.disposed) return;
+    owner.disposed = true;
+    for (const child of [...owner.children]) this.disposeOwner(child);
+    if (owner.parentId !== null) this.get(owner.parentId).children.delete(ownerId);
+    owner.children.clear();
+  }
+
+  private get(ownerId: OwnerId): MemoryOwner {
+    const owner = this.owners.get(ownerId);
+    if (!owner) throw new Error("ZUI_UNKNOWN_OWNER");
+    return owner;
+  }
 }
 
 export class ReactiveEngine {
@@ -41,7 +87,12 @@ export class ReactiveEngine {
   private readonly effects = new Set<Computation>();
   private readonly dirtyEffects = new Set<Computation>();
   private current: Computation | undefined;
-  private owner: Owner | undefined;
+  private ownerId: OwnerId | undefined;
+  private readonly ownerHost: OwnerHost;
+  private readonly ownerRootId: RootId;
+  private readonly computationsByOwner = new Map<OwnerId, Set<Computation>>();
+  private readonly cleanupsByOwner = new Map<OwnerId, Set<Dispose>>();
+  private readonly disposingOwners = new Set<OwnerId>();
   private batchDepth = 0;
   private flushing = false;
   private pending = false;
@@ -49,8 +100,10 @@ export class ReactiveEngine {
   private evaluations = 0;
   private readonly maxRounds: number;
 
-  constructor(readonly mode: Mode, options: { maxRounds?: number } = {}) {
+  constructor(readonly mode: Mode, options: EngineOptions = {}) {
     this.maxRounds = options.maxRounds ?? 100;
+    this.ownerHost = options.ownerHost ?? new MemoryOwnerHost();
+    this.ownerRootId = options.ownerRootId ?? 0;
   }
 
   private track(source: Source): void {
@@ -177,10 +230,14 @@ export class ReactiveEngine {
     const node: Computation = {
       kind, run, dependencies: new Set(), observers: new Set(),
       dirty: true, disposed: false, evaluating: false,
-      value: undefined, initialized: false, owner: this.owner, cleanup: undefined
+      value: undefined, initialized: false, ownerId: this.ownerId, cleanup: undefined
     };
     this.all.add(node);
-    this.owner?.computations.add(node);
+    if (node.ownerId !== undefined) {
+      let computations = this.computationsByOwner.get(node.ownerId);
+      if (!computations) this.computationsByOwner.set(node.ownerId, computations = new Set());
+      computations.add(node);
+    }
     return node;
   }
 
@@ -201,48 +258,53 @@ export class ReactiveEngine {
       observer.dirty = true;
     }
     node.observers.clear();
-    node.owner?.computations.delete(node);
+    if (node.ownerId !== undefined) this.computationsByOwner.get(node.ownerId)?.delete(node);
     this.effects.delete(node);
     this.dirtyEffects.delete(node);
     this.all.delete(node);
     if (failure) throw failure;
   }
 
-  createOwner<T>(fn: () => T): { value: T; dispose: Dispose } {
-    const parent = this.owner;
-    const scope: Owner = {
-      parent, children: new Set(), computations: new Set(),
-      cleanups: new Set(), disposed: false
-    };
-    parent?.children.add(scope);
-    this.owner = scope;
+  createOwner<T>(fn: () => T, options: { ownerId?: OwnerId; rootId?: RootId } = {}): { value: T; ownerId: OwnerId; dispose: Dispose } {
+    const parentId = this.ownerId ?? null;
+    const ownerId = options.ownerId ?? this.ownerHost.createOwner(options.rootId ?? this.ownerRootId, parentId);
+    if (options.ownerId !== undefined && parentId !== null && this.ownerHost.ownerParent(ownerId) !== parentId) {
+      throw new Error("ZUI_OWNER_PARENT_MISMATCH");
+    }
+    this.ownerId = ownerId;
     let value: T;
     try { value = fn(); }
-    catch (error) { this.disposeOwner(scope); throw error; }
-    finally { this.owner = parent; }
-    return { value, dispose: () => this.disposeOwner(scope) };
+    catch (error) { this.disposeOwner(ownerId); throw error; }
+    finally { this.ownerId = parentId === null ? undefined : parentId; }
+    return { value, ownerId, dispose: () => this.disposeOwner(ownerId) };
   }
 
   onCleanup(fn: Dispose): void {
-    if (!this.owner) throw new Error("ZUI_NO_OWNER");
-    this.owner.cleanups.add(fn);
+    if (this.ownerId === undefined) throw new Error("ZUI_NO_OWNER");
+    let cleanups = this.cleanupsByOwner.get(this.ownerId);
+    if (!cleanups) this.cleanupsByOwner.set(this.ownerId, cleanups = new Set());
+    cleanups.add(fn);
   }
 
-  private disposeOwner(owner: Owner): void {
-    if (owner.disposed) return;
-    owner.disposed = true;
+  private disposeOwner(ownerId: OwnerId): void {
+    if (this.disposingOwners.has(ownerId)) return;
+    this.disposingOwners.add(ownerId);
     let failure: unknown;
     const capture = (fn: () => void): void => {
       try { fn(); }
       catch (error) { failure ??= error; }
     };
-    for (const child of [...owner.children]) capture(() => this.disposeOwner(child));
-    for (const computation of [...owner.computations]) capture(() => this.disposeComputation(computation));
-    for (const cleanup of owner.cleanups) capture(() => this.untrack(cleanup));
-    owner.parent?.children.delete(owner);
-    owner.children.clear();
-    owner.cleanups.clear();
-    if (failure) throw failure;
+    try {
+      for (const child of this.ownerHost.ownerChildren(ownerId)) capture(() => this.disposeOwner(child));
+      for (const computation of [...(this.computationsByOwner.get(ownerId) ?? [])]) capture(() => this.disposeComputation(computation));
+      for (const cleanup of this.cleanupsByOwner.get(ownerId) ?? []) capture(() => this.untrack(cleanup));
+      this.computationsByOwner.delete(ownerId);
+      this.cleanupsByOwner.delete(ownerId);
+      this.ownerHost.disposeOwner(ownerId);
+      if (failure) throw failure;
+    } finally {
+      this.disposingOwners.delete(ownerId);
+    }
   }
 
   batch<T>(fn: () => T): T {
@@ -291,6 +353,6 @@ export class ReactiveEngine {
   }
 }
 
-export function createEngine(mode: Mode, options?: { maxRounds?: number }): ReactiveEngine {
+export function createEngine(mode: Mode, options?: EngineOptions): ReactiveEngine {
   return new ReactiveEngine(mode, options);
 }

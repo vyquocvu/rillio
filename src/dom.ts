@@ -1,9 +1,20 @@
+/**
+ * Explicit reactive DOM API.
+ *
+ * This is the mount-once surface of ZUI. It shares the addressable registry
+ * and PatchEngine with the JSX runtime; it does not maintain a second DOM
+ * tree or mutate browser nodes directly.
+ */
 import { createEngine, type Store, type Dispose } from "./reactive.js";
+import { nodeRegistry, patchEngine } from "./compat.js";
+import type { Key, NodeId, OwnerId, PatchTransaction, RootHandle } from "./flat.js";
 
-/** Default graph engine powers the standalone frontend runtime. */
-export const engine = createEngine("graph");
+export const registry = nodeRegistry;
+export const patches = patchEngine;
+/** Graph engine powers the explicit reactive frontend surface. */
+export const engine = createEngine("graph", { ownerHost: registry });
 export const createStore = <T>(initial: T): Store<T> => engine.createStore(initial);
-/** React-familiar naming; unlike React useState, returns a live Store (not a snapshot). */
+/** React-familiar naming; unlike React useState, returns a live Store. */
 export const useStore = createStore;
 export const computed = <T>(fn: () => T) => engine.computed(fn);
 export const batch = <T>(fn: () => T) => engine.batch(fn);
@@ -20,6 +31,7 @@ export function select<S, T>(store: Store<S>, selector: (state: S) => T): Bindin
 export function derive<T>(read: () => T): Binding<T> {
   return { [BINDING]: true, read };
 }
+
 function isStore(value: unknown): value is Store<unknown> {
   return typeof value === "object" && value !== null &&
     typeof (value as Store<unknown>).get === "function" &&
@@ -28,13 +40,20 @@ function isStore(value: unknown): value is Store<unknown> {
 function isBinding(value: unknown): value is Binding<unknown> {
   return typeof value === "object" && value !== null && BINDING in value;
 }
+function readReactive(value: Store<unknown> | Binding<unknown>): unknown {
+  return isBinding(value) ? value.read() : value.get();
+}
+function stringify(value: unknown): string {
+  return value == null || typeof value === "boolean" ? "" : String(value);
+}
+
 export type Child = VNode | Store<any> | (() => Child) | Binding<unknown> | Conditional | Repetition<any> | string | number | boolean | null | undefined | Child[];
 export interface VNode {
   readonly type: string | ((props: any) => any);
   readonly props: Record<string, any>;
-  readonly key?: string | number;
+  readonly key?: Key;
 }
-export function jsx(type: VNode["type"], props: Record<string, any> | null, key?: string | number): VNode {
+export function jsx(type: VNode["type"], props: Record<string, any> | null, key?: Key): VNode {
   return { type, props: props ?? {}, key };
 }
 export const jsxs = jsx;
@@ -42,20 +61,20 @@ export const Fragment = (props: { children?: Child }): Child => props.children;
 
 interface Conditional {
   kind: "show";
-  when: boolean | Binding<unknown>;
+  when: boolean | Binding<unknown> | Store<unknown>;
   fallback?: Child | (() => Child);
   children: Child | (() => Child);
 }
 interface Repetition<T> {
   kind: "for";
-  each: readonly T[] | Binding<readonly T[]>;
-  by: (item: T) => string | number;
+  each: readonly T[] | Binding<readonly T[]> | Store<readonly T[]>;
+  by: (item: T) => Key;
   children: (item: T, current: () => T) => Child;
 }
-export function Show(props: { when: boolean | Binding<unknown>; fallback?: Child | (() => Child); children: Child | (() => Child) }): Conditional {
+export function Show(props: { when: boolean | Binding<unknown> | Store<unknown>; fallback?: Child | (() => Child); children: Child | (() => Child) }): Conditional {
   return { kind: "show", ...props };
 }
-export function For<T>(props: { each: readonly T[] | Binding<readonly T[]>; by: (item: T) => string | number; children: (item: T, current: () => T) => Child }): Repetition<T> {
+export function For<T>(props: { each: readonly T[] | Binding<readonly T[]> | Store<readonly T[]>; by: (item: T) => Key; children: (item: T, current: () => T) => Child }): Repetition<T> {
   return { kind: "for", ...props };
 }
 function isConditional(value: unknown): value is Conditional {
@@ -64,246 +83,268 @@ function isConditional(value: unknown): value is Conditional {
 function isRepetition(value: unknown): value is Repetition<unknown> {
   return typeof value === "object" && value !== null && (value as Repetition<unknown>).kind === "for";
 }
-function evaluate<T>(input: T | Binding<T>): T {
-  return isBinding(input) ? input.read() as T : input;
-}
-function stringify(value: unknown): string {
-  return value == null || typeof value === "boolean" ? "" : String(value);
-}
-function eventName(name: string): string {
-  if (name === "onChange") return "change";
-  if (name === "onDoubleClick") return "dblclick";
-  return name.slice(2).toLowerCase();
-}
-function withOwner(fn: () => Dispose, onError: Dispose = () => {}): Dispose {
-  try {
-    // Creating a nested subtree must not subscribe its parent region effect.
-    const scope = engine.untrack(() => engine.createOwner(() => {
-      const cleanup = fn();
-      let cleaned = false;
-      const ownedCleanup = () => {
-        if (cleaned) return;
-        cleaned = true;
-        cleanup();
-      };
-      engine.onCleanup(ownedCleanup);
-      return ownedCleanup;
-    }));
-    let disposed = false;
-    return () => {
-      if (disposed) return;
-      disposed = true;
-      scope.dispose();
-      scope.value();
-    };
-  } catch (error) {
-    onError();
-    throw error;
-  }
-}
-function createRegion(parent: Node, before: Node | null) {
-  const start = document.createComment("zui:start");
-  const end = document.createComment("zui:end");
-  parent.insertBefore(start, before);
-  parent.insertBefore(end, before);
-  return { start, end };
-}
-function clearRange(start: Node, end: Node): void {
-  while (start.nextSibling && start.nextSibling !== end) {
-    start.parentNode?.removeChild(start.nextSibling);
-  }
-}
-function renderChild(value: Child | Conditional | Repetition<unknown>, parent: Node, before: Node | null): Dispose {
-  if (Array.isArray(value)) {
-    const disposers = value.map(v => renderChild(v, parent, before));
-    return () => { for (const dispose of disposers.reverse()) dispose(); };
-  }
-  if (value == null || typeof value === "boolean") return () => {};
-  if (isBinding(value) || isStore(value)) {
-    const read = isBinding(value) ? () => value.read() : () => value.get();
-    const text = document.createTextNode("");
-    parent.insertBefore(text, before);
-    return withOwner(() => {
-      engine.effect(() => { text.data = stringify(read()); });
-      return () => text.remove();
-    }, () => text.remove());
-  }
-  if (typeof value === "function") {
-    // Function children are reactive regions. Their result is mounted anew when
-    // tracked stores change; keyed list reconciliation remains a separate API.
-    const { start, end } = createRegion(parent, before);
-    return withOwner(() => {
-      let disposeCurrent: Dispose = () => {};
-      engine.effect(() => {
-        const child = (value as () => Child)();
-        disposeCurrent();
-        clearRange(start, end);
-        disposeCurrent = withOwner(() => renderChild(child, parent, end));
-      });
-      return () => { disposeCurrent(); clearRange(start, end); start.remove(); end.remove(); };
-    }, () => { clearRange(start, end); start.remove(); end.remove(); });
-  }
-  if (typeof value === "string" || typeof value === "number") {
-    const text = document.createTextNode(String(value));
-    parent.insertBefore(text, before);
-    return () => text.remove();
-  }
-  if (isConditional(value)) {
-    const { start, end } = createRegion(parent, before);
-    return withOwner(() => {
-      let present: boolean | undefined;
-      let disposeCurrent: Dispose = () => {};
-      engine.effect(() => {
-        const visible = Boolean(evaluate(value.when));
-        if (visible === present) return;
-        present = visible;
-        disposeCurrent();
-        clearRange(start, end);
-        // Ownership for the currently mounted branch is reset on replacement.
-        disposeCurrent = withOwner(() =>
-          renderChild(resolveChild(visible ? value.children : value.fallback), parent, end));
-      });
-      return () => { disposeCurrent(); clearRange(start, end); start.remove(); end.remove(); };
-    }, () => { clearRange(start, end); start.remove(); end.remove(); });
-  }
-  if (isRepetition(value)) return renderList(value, parent, before);
-  const node = value as VNode;
-  const tag = node.type;
-  if (typeof tag === "function") {
-    return withOwner(() => renderChild(tag({ ...node.props, key: node.key }), parent, before));
-  }
-  const element = document.createElement(tag);
-  parent.insertBefore(element, before);
-  return withOwner(() => {
-    const cleanups: Dispose[] = [];
-    for (const [key, val] of Object.entries(node.props)) {
-      if (key === "children" || key === "key") continue;
-      if (key === "ref") {
-        if (typeof val === "function") { val(element); cleanups.push(() => val(null)); }
-        else if (val && typeof val === "object") { val.current = element; cleanups.push(() => { val.current = null; }); }
-        continue;
-      }
-      if (key.startsWith("on") && typeof val === "function") {
-        const event = eventName(key);
-        element.addEventListener(event, val as EventListener);
-        cleanups.push(() => element.removeEventListener(event, val as EventListener));
-      } else if (isBinding(val) || isStore(val)) {
-        engine.effect(() => setProperty(element, key, isBinding(val) ? val.read() : val.get()));
-      } else setProperty(element, key, val);
-    }
-    const childDispose = renderChild(node.props.children as Child, element, null);
-    return () => { childDispose(); cleanups.forEach(fn => fn()); element.remove(); };
-  }, () => element.remove());
+function evaluate<T>(input: T | Binding<T> | Store<T>): T {
+  return (isBinding(input) || isStore(input)) ? readReactive(input) as T : input as T;
 }
 function resolveChild(value: unknown): Child {
   return typeof value === "function" ? (value as () => Child)() : value as Child;
 }
-const previousStyles = new WeakMap<HTMLElement, Record<string, unknown>>();
-function setProperty(element: HTMLElement, name: string, value: unknown): void {
-  if (name === "className" || name === "class") { element.className = stringify(value); return; }
-  if (name === "style") {
-    const next = value && typeof value === "object"
-      ? value as Record<string, unknown> : {};
-    const previous = previousStyles.get(element) ?? {};
-    for (const prop of Object.keys(previous)) {
-      if (prop in next) continue;
-      if (prop.startsWith("--")) element.style.removeProperty(prop);
-      else (element.style as any)[prop] = "";
-    }
-    for (const [prop, entry] of Object.entries(next)) {
-      if (Object.is(previous[prop], entry)) continue;
-      if (prop.startsWith("--")) element.style.setProperty(prop, stringify(entry));
-      else (element.style as any)[prop] = entry ?? "";
-    }
-    previousStyles.set(element, { ...next });
-    return;
-  }
-  if (name === "value" || name === "checked" || name === "disabled") {
-    const normalized = value ?? (name === "value" ? "" : false);
-    if ((element as any)[name] !== normalized) (element as any)[name] = normalized;
-    return;
-  }
-  if (value == null || value === false) element.removeAttribute(name);
-  else if (value === true) element.setAttribute(name, "");
-  else element.setAttribute(name, String(value));
+
+interface Scope<T> {
+  readonly ownerId: OwnerId;
+  readonly value: T;
+  dispose(): void;
 }
-function renderList<T>(spec: Repetition<T>, parent: Node, before: Node | null): Dispose {
-  const { start, end } = createRegion(parent, before);
-  type Item = { start: Comment; end: Comment; dispose: Dispose; value: T; state: Store<T> };
-  return withOwner(() => {
-    let items = new Map<string | number, Item>();
+
+function createScope<T>(rootId: number, parentOwnerId: OwnerId, fn: (ownerId: OwnerId) => T): Scope<T> {
+  const ownerId = registry.createOwner(rootId, parentOwnerId);
+  try {
+    const scope = engine.untrack(() => engine.createOwner(() => {
+      const value = fn(ownerId);
+      engine.onCleanup(() => registry.disposeOwner(ownerId));
+      return value;
+    }, { ownerId }));
+    let disposed = false;
+    return {
+      ownerId,
+      value: scope.value,
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        try { scope.dispose(); }
+        finally { registry.disposeOwner(ownerId); }
+      }
+    };
+  } catch (error) {
+    registry.disposeOwner(ownerId);
+    throw error;
+  }
+}
+
+function attachScope(tx: PatchTransaction, nodeId: NodeId, scope: Scope<unknown>): void {
+  tx.attachCleanup(nodeId, scope.dispose);
+}
+
+function renderProps(
+  nodeId: NodeId,
+  props: Record<string, any>,
+  root: RootHandle,
+  tx: PatchTransaction
+): void {
+  const initial: Record<string, any> = {};
+  const dynamic: Array<[string, Store<unknown> | Binding<unknown>]> = [];
+  for (const [name, value] of Object.entries(props)) {
+    if (name === "children" || name === "key") continue;
+    if (isBinding(value) || isStore(value)) {
+      const reactive = value as Store<unknown> | Binding<unknown>;
+      initial[name] = readReactive(reactive);
+      dynamic.push([name, reactive]);
+    } else initial[name] = value;
+  }
+  tx.patchProps(nodeId, {}, initial);
+  for (const [name, reactive] of dynamic) {
+    let previous = initial[name];
+    engine.effect(() => {
+      const next = readReactive(reactive);
+      if (Object.is(previous, next)) return;
+      patchEngine.update(root.rootId, update => {
+        update.patchProps(nodeId, { [name]: previous }, { [name]: next });
+      });
+      previous = next;
+    });
+  }
+}
+
+function renderChild(
+  value: Child | Conditional | Repetition<unknown>,
+  parentId: NodeId,
+  parentOwnerId: OwnerId,
+  root: RootHandle,
+  tx: PatchTransaction
+): NodeId[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(entry => renderChild(entry, parentId, parentOwnerId, root, tx));
+  }
+  if (value == null || typeof value === "boolean") return [];
+
+  if (isBinding(value) || isStore(value)) {
+    const scope = createScope(root.rootId, parentOwnerId, ownerId => {
+      const nodeId = tx.createText(ownerId, "");
+      tx.insert(nodeId, parentId);
+      engine.effect(() => {
+        const next = stringify(readReactive(value));
+        patchEngine.update(root.rootId, update => update.setText(nodeId, next));
+      });
+      return nodeId;
+    });
+    attachScope(tx, scope.value, scope);
+    return [scope.value];
+  }
+
+  if (typeof value === "function") {
+    const scope = createScope(root.rootId, parentOwnerId, ownerId => {
+      const nodeId = tx.createBoundary(ownerId, "zui:start", "zui:end");
+      tx.insert(nodeId, parentId);
+      engine.effect(() => {
+        const child = (value as () => Child)();
+        patchEngine.update(root.rootId, update => {
+          for (const oldId of registry.children(nodeId)) update.remove(oldId);
+          renderChild(child, nodeId, ownerId, root, update);
+        });
+      });
+      return nodeId;
+    });
+    attachScope(tx, scope.value, scope);
+    return [scope.value];
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const scope = createScope(root.rootId, parentOwnerId, ownerId => {
+      const nodeId = tx.createText(ownerId, String(value));
+      tx.insert(nodeId, parentId);
+      return nodeId;
+    });
+    attachScope(tx, scope.value, scope);
+    return [scope.value];
+  }
+
+  if (isConditional(value)) {
+    const scope = createScope(root.rootId, parentOwnerId, ownerId => {
+      const nodeId = tx.createBoundary(ownerId, "zui:show:start", "zui:show:end");
+      tx.insert(nodeId, parentId);
+      let present: boolean | undefined;
+      engine.effect(() => {
+        const visible = Boolean(evaluate(value.when));
+        if (visible === present) return;
+        present = visible;
+        patchEngine.update(root.rootId, update => {
+          for (const oldId of registry.children(nodeId)) update.remove(oldId);
+          const child = resolveChild(visible ? value.children : value.fallback);
+          renderChild(child, nodeId, ownerId, root, update);
+        });
+      });
+      return nodeId;
+    });
+    attachScope(tx, scope.value, scope);
+    return [scope.value];
+  }
+
+  if (isRepetition(value)) return renderList(value, parentId, parentOwnerId, root, tx);
+
+  const vnode = value as VNode;
+  const vnodeType = vnode.type;
+  if (typeof vnodeType === "function") {
+    const scope = createScope(root.rootId, parentOwnerId, ownerId => {
+      const nodeId = tx.createBoundary(ownerId, "zui:component", "/zui:component", vnode.key);
+      tx.setMeta(nodeId, { type: vnodeType, key: vnode.key, props: vnode.props, value: vnode });
+      tx.insert(nodeId, parentId);
+      const child = vnodeType({ ...vnode.props, key: vnode.key });
+      renderChild(child, nodeId, ownerId, root, tx);
+      return nodeId;
+    });
+    attachScope(tx, scope.value, scope);
+    return [scope.value];
+  }
+
+  const scope = createScope(root.rootId, parentOwnerId, ownerId => {
+    const nodeId = tx.createElement(ownerId, vnodeType, vnodeType, vnode.key);
+    tx.setMeta(nodeId, { type: vnodeType, key: vnode.key, props: vnode.props, value: vnode });
+    tx.insert(nodeId, parentId);
+    renderProps(nodeId, vnode.props, root, tx);
+    renderChild(vnode.props.children as Child, nodeId, ownerId, root, tx);
+    return nodeId;
+  });
+  attachScope(tx, scope.value, scope);
+  return [scope.value];
+}
+
+function renderList<T>(
+  spec: Repetition<T>,
+  parentId: NodeId,
+  parentOwnerId: OwnerId,
+  root: RootHandle,
+  tx: PatchTransaction
+): NodeId[] {
+  const scope = createScope(root.rootId, parentOwnerId, ownerId => {
+    const regionId = tx.createBoundary(ownerId, "zui:for:start", "zui:for:end");
+    tx.insert(regionId, parentId);
+    type Entry = { nodeId: NodeId; value: T; state: Store<T> };
+    let entries = new Map<Key, Entry>();
     engine.effect(() => {
       const next = evaluate(spec.each);
-      const nextKeys = new Set<string | number>();
-      for (const item of next) {
-        const key = spec.by(item);
-        if (nextKeys.has(key)) throw new Error("ZUI_DUPLICATE_KEY");
-        nextKeys.add(key);
-      }
-      for (const [key, item] of items) {
-        if (!nextKeys.has(key)) {
-          item.dispose();
-          clearRange(item.start, item.end);
-          item.start.remove(); item.end.remove();
-          items.delete(key);
-        }
-      }
-      const reordered = new Map<string | number, Item>();
-      // Walk backwards so every item can be inserted or moved before its successor.
-      let anchor: Node = end;
-      for (let i = next.length - 1; i >= 0; i--) {
-        const value = next[i]!;
-        const key = spec.by(value);
-        let entry = items.get(key);
-        if (!entry) {
-          const region = createRegion(parent, anchor);
-          const state = createStore<T>(value);
-          entry = {
-            ...region, value, state,
-            dispose: withOwner(() => renderChild(spec.children(value, () => state.get()), parent, region.end))
-          };
-        } else {
-          // Keyed content stays mounted; current() reflects replacement data.
-          if (!Object.is(entry.value, value)) {
-            entry.value = value;
-            entry.state.set(value);
+      const keys = next.map(spec.by);
+      const unique = new Set(keys);
+      if (unique.size !== keys.length) throw new Error("ZUI_DUPLICATE_KEY");
+      patchEngine.update(root.rootId, update => {
+        for (const [key, entry] of entries) if (!unique.has(key)) update.remove(entry.nodeId);
+        const reordered = new Map<Key, Entry>();
+        let anchor: NodeId | null = null;
+        for (let i = next.length - 1; i >= 0; i--) {
+          const item = next[i]!;
+          const key = keys[i]!;
+          let entry = entries.get(key);
+          if (!entry) {
+            const itemScope = createScope(root.rootId, ownerId, itemOwnerId => {
+              const itemNodeId = update.createBoundary(itemOwnerId, "zui:item:start", "zui:item:end", key);
+              const state = createStore<T>(item);
+              update.insert(itemNodeId, regionId);
+              renderChild(spec.children(item, () => state.get()), itemNodeId, itemOwnerId, root, update);
+              return { itemNodeId, state };
+            });
+            entry = { nodeId: itemScope.value.itemNodeId, value: item, state: itemScope.value.state };
+            update.attachCleanup(entry.nodeId, itemScope.dispose);
+          } else {
+            if (!Object.is(entry.value, item)) {
+              entry.value = item;
+              entry.state.set(item);
+            }
           }
-          const fragment = document.createDocumentFragment();
-          let node: Node | null = entry.start;
-          while (node) {
-            const after: Node | null = node.nextSibling;
-            fragment.appendChild(node);
-            if (node === entry.end) break;
-            node = after;
-          }
-          parent.insertBefore(fragment, anchor);
+          const current = entry;
+          update.move(current.nodeId, regionId, anchor);
+          reordered.set(key, current);
+          anchor = current.nodeId;
         }
-        if (!entry) throw new Error("ZUI_LIST_ENTRY");
-        reordered.set(key, entry);
-        anchor = entry.start;
-      }
-      items = reordered;
+        entries = reordered;
+      });
     });
-    return () => {
-      for (const item of items.values()) {
-        item.dispose();
-        clearRange(item.start, item.end);
-        item.start.remove(); item.end.remove();
-      }
-      items.clear();
-      start.remove(); end.remove();
-    };
-  }, () => { clearRange(start, end); start.remove(); end.remove(); });
-}
-/** Mount the root once. Reactive bindings handle all subsequent data changes. */
-export function mount(component: (() => Child) | Child, target: Element): Dispose {
-  const existing = new Set(Array.from(target.childNodes));
-  const dispose = withOwner(() => renderChild(
-    typeof component === "function" ? (component as () => Child)() : component,
-    target,
-    null
-  ), () => {
-    for (const node of Array.from(target.childNodes)) if (!existing.has(node)) node.remove();
+    return regionId;
   });
-  return dispose;
+  attachScope(tx, scope.value, scope);
+  return [scope.value];
 }
+
+/** Mount a reactive subtree and return its lifecycle disposer. */
+export function mount(component: (() => Child) | Child, target: Element): Dispose {
+  if (registry.rootFor(target)) throw new Error("ZUI_ROOT_OCCUPIED");
+  const root = registry.createRoot(target);
+  let disposed = false;
+  let rootScope: { dispose(): void } | undefined;
+  try {
+    const scope = engine.untrack(() => engine.createOwner(() => {
+      const nodes = patchEngine.transaction(root.rootId, tx => {
+        const value = typeof component === "function" ? (component as () => Child)() : component;
+        return renderChild(value, root.nodeId, root.ownerId, root, tx);
+      });
+      engine.onCleanup(() => registry.disposeOwner(root.ownerId));
+      return nodes;
+    }, { ownerId: root.ownerId }));
+    rootScope = scope;
+  } catch (error) {
+    registry.disposeRoot(root.rootId);
+    throw error;
+  }
+
+  return () => {
+    if (disposed) return;
+    disposed = true;
+    const children = registry.children(root.nodeId);
+    if (children.length) {
+      patchEngine.transaction(root.rootId, tx => {
+        for (const childId of children) tx.remove(childId);
+      });
+    }
+    rootScope?.dispose();
+    registry.disposeRoot(root.rootId);
+  };
+}
+

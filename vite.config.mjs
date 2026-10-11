@@ -10,6 +10,7 @@ export default {
       "zui/jsx-dev-runtime": source("jsx-dev-runtime.ts"),
       "zui/legacy": source("dom.ts"),
       "zui/reactive": source("reactive.ts"),
+      "zui/flat": source("flat.ts"),
       zui: source("index.ts")
     }
   },
