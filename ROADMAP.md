@@ -74,10 +74,10 @@ flowchart LR
 
 ### M4 — Release hardening — next
 
-- [ ] Add transaction snapshots for renderer metadata and state rollback on failed updates.
+- [x] Add renderer hook snapshots and best-effort inverse operations for failed DOM commits; document non-atomic user callback/cleanup behavior.
 - [ ] Expand the DOM contract for SVG namespaces, form properties, custom elements, and accessibility-oriented properties.
-- [ ] Strengthen TypeScript JSX intrinsic types and event types.
-- [ ] Add memory-retention diagnostics for removed nodes, owners, listeners, and effects.
+- [x] Replace catch-all JSX `any` props with checked common HTML/SVG attributes and tag-aware common event targets; both production and development runtimes are consumer-compiled. Full DOM/SVG coverage remains future work.
+- [x] Bound retained tombstones and release disposed DOM/component references; heap profiling and owner/effect diagnostics remain.
 - [ ] Run all gates from a clean checkout and record the exact code revision.
 
 ## Post-v0.1 options
@@ -96,7 +96,7 @@ flowchart LR
 | Transactions | Invalid patches fail before commit; removed subtrees dispose once |
 | DOM | Props, events, refs, forms, keyed identity, focus, and caret pass |
 | Lifecycle | Repeated mount/unmount leaves no active indexed nodes or owners |
-| Browser | Counter, keyed, smoke, and Todo flows pass without uncaught errors |
+| Browser | Dashboard flows, modal keyboard/focus, root ownership, sink guards, and accessibility smoke pass without uncaught errors |
 | Package | Built ESM/declarations resolve from an external consumer |
 | Docs | README, roadmap, API, architecture, changelog, and status agree |
 

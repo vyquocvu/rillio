@@ -4,6 +4,23 @@ import { createRoot, jsx, nodeRegistry, getAddressableRoot, useEffect, useState 
 import { mount, createStore, Show, select, registry } from "../src/dom.js";
 
 describe("addressable lifecycle", () => {
+  it("rejects overlapping JSX and reactive roots without orphaning the mounted tree", () => {
+    const value = createStore("before");
+    const container = document.createElement("div");
+    const disposeReactive = mount(jsx("span", { children: value }), container);
+
+    expect(() => createRoot(container)).toThrow("ZUI_ROOT_OCCUPIED");
+    expect(container.textContent).toBe("before");
+    value.set("after");
+    expect(container.textContent).toBe("after");
+
+    disposeReactive();
+    const jsxRoot = createRoot(container);
+    jsxRoot.render(jsx("strong", { children: "new root" }));
+    expect(container.textContent).toBe("new root");
+    jsxRoot.unmount();
+  });
+
   it("leaves no active flat nodes or owners after repeated component disposal", () => {
     for (let cycle = 0; cycle < 40; cycle++) {
       const container = document.createElement("div");

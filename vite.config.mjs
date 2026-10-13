@@ -8,9 +8,10 @@ export default {
     alias: {
       "zui/jsx-runtime": source("jsx-runtime.ts"),
       "zui/jsx-dev-runtime": source("jsx-dev-runtime.ts"),
+      "zui/ui": source("ui.ts"),
       "zui/legacy": source("dom.ts"),
-      "zui/reactive": source("reactive.ts"),
       "zui/flat": source("flat.ts"),
+      "zui/reactive": source("reactive.ts"),
       zui: source("index.ts")
     }
   },
@@ -18,14 +19,7 @@ export default {
     rollupOptions: {
       input: {
         index: page("index.html"),
-        compat: page("compat.html"),
-        todo: page("todo.html"),
-        reactFriendly: page("react-friendly.html"),
-        hooks: page("hooks.html"),
-        keyed: page("keyed.html"),
-        benchmark: page("benchmark.html"),
-        legacyBenchmark: page("legacy-benchmark.html"),
-        e2e: page("e2e.html"),
+        admin: page("admin.html"),
         demos: page("demos.html")
       }
     }

@@ -1,6 +1,18 @@
 {
   "name": "zui",
   "version": "0.0.1",
+  "description": "Experimental addressable-DOM UI runtime and component primitives.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vyquocvu/zui.git"
+  },
+  "keywords": [
+    "ui",
+    "jsx",
+    "dom",
+    "typescript",
+    "reactive"
+  ],
   "private": false,
   "type": "module",
   "scripts": {
@@ -13,9 +25,11 @@
     "bench:compat": "npm run build:package && node benchmarks/compat.cjs",
     "bench:flat": "npm run build:package && node benchmarks/flat.cjs",
     "bench:all": "npm run bench:reactive && npm run bench:compat && npm run bench:flat",
+    "bench:browser": "node benchmarks/browser-playwright.mjs",
+    "profile:browser": "node benchmarks/profile-playwright.mjs",
     "test:oracle": "npm run test:smoke && node tests/oracle-smoke.cjs",
     "test:consumer": "npm run build:package && node tests/consumer-smoke.cjs",
-    "test:browser": "npm run build && node tests/browser-smoke.cjs",
+    "test:browser": "npm run build:release && node tests/browser-playwright-smoke.mjs",
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "build:release": "npm run build && npm run build:package",
@@ -23,9 +37,14 @@
   },
   "devDependencies": {
     "jsdom": "^26.1.0",
+    "playwright": "^1.64.0",
+    "preact": "^11.0.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "typescript": "^5.9.3",
     "vite": "^6.3.5",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "vue": "^3.5.43"
   },
   "files": [
     "dist/package",
@@ -49,6 +68,11 @@
       "types": "./dist/package/jsx-dev-runtime.d.ts",
       "import": "./dist/package/jsx-dev-runtime.js",
       "default": "./dist/package/jsx-dev-runtime.js"
+    },
+    "./ui": {
+      "types": "./dist/package/ui.d.ts",
+      "import": "./dist/package/ui.js",
+      "default": "./dist/package/ui.js"
     },
     "./legacy": {
       "types": "./dist/package/dom.d.ts",

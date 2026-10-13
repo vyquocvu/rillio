@@ -46,6 +46,8 @@ Each indexed record has:
 - `parentId`, `prevSibling`, `nextSibling`, `firstChild`, and `lastChild`;
 - key, type, props/value metadata, listeners, ref, and cleanup state.
 
+Listener maps and style snapshots are allocated only when those features are used, and are released during disposal; plain text nodes do not pay for either structure.
+
 Parent/sibling links are stored in the registry. `children(parentId)` walks those links and checks the index invariants. Components and structural regions use two comment nodes as one addressable boundary record, so their children are still indexed without a second virtual tree.
 
 `RootId` and `OwnerId` are never reused. Disposed records remain as tombstones for diagnostics, while active traversals reject disposed records.
@@ -156,7 +158,7 @@ Ordinary JavaScript values are still snapshots in the mount-once surface. Use `s
 
 `NodeRegistry` provides the owner tree. `ReactiveEngine` accepts an `OwnerHost`; the DOM engine passes the registry as that host, and computation ownership is attached to the same `OwnerId` used by DOM nodes. Standalone reactive-engine tests use an in-memory owner host, which does not participate in a DOM root.
 
-Disposal is idempotent. A removed boundary disposes descendants first, then listeners/refs/effects, then its own owner and index record. Root disposal removes indexed children before disposing the root owner.
+Disposal is idempotent. A removed boundary disposes descendants first, then listeners/refs/effects, then its own owner and index record. Root disposal requires an empty indexed root so callers cannot bypass PatchEngine cleanup. Disposed node records release DOM, props, and component-payload references; a bounded set of lightweight tombstones remains for diagnostics.
 
 ```mermaid
 stateDiagram-v2
@@ -186,7 +188,7 @@ stateDiagram-v2
 
 ## Current limitations
 
-- Metadata/state rollback after a failed update is not yet fully snapshot-based; release hardening tracks this as M4.
+- Failed DOM commits run best-effort inverse operations and renderer hook snapshots. This is not a fully atomic transaction: user callbacks can have irreversible side effects, and cleanup failures occur after the commit point.
 - DOM property normalization is intentionally scoped and does not yet provide full SVG/custom-element parity.
 - The engine uses a singleton registry per module instance and browser `document`; SSR and concurrent server rendering are out of scope.
 - No independent DOM writes are allowed outside `PatchEngine`; future features must extend its operation set rather than add renderer-specific mutation helpers.

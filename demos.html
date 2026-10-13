@@ -3,22 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ZUI Examples</title>
+  <title>ZUI Studio — Showcase</title>
+  <style>
+    :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #172033; background: #f7f8fc; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 920px; margin: 0 auto; padding: 72px 24px; }
+    .eyebrow { color: #7041d6; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 12px 0 10px; font-size: clamp(32px, 6vw, 58px); letter-spacing: -.06em; line-height: 1; }
+    .intro { max-width: 600px; margin: 0; color: #718096; font-size: 16px; line-height: 1.6; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 42px; }
+    a { display: block; padding: 24px; border: 1px solid #e4e8ef; border-radius: 16px; color: inherit; background: #fff; box-shadow: 0 8px 24px rgba(30,42,67,.04); text-decoration: none; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+    a:hover { border-color: #cfc0f5; box-shadow: 0 15px 32px rgba(30,42,67,.09); transform: translateY(-2px); }
+    .mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; color: #fff; background: linear-gradient(135deg,#8b5cf6,#5b21b6); font-weight: 800; }
+    h2 { margin: 25px 0 8px; font-size: 17px; }
+    a p { margin: 0; color: #7b879c; font-size: 12px; line-height: 1.5; }
+    code { display: inline-block; margin-top: 18px; color: #7041d6; font-size: 11px; }
+    .footer { margin-top: 54px; color: #98a2b3; font-size: 12px; }
+    @media (max-width: 620px) { main { padding: 48px 18px; } .grid { grid-template-columns: 1fr; margin-top: 30px; } }
+  </style>
 </head>
 <body>
-  <main style="max-width: 760px; margin: 3rem auto; font: 16px system-ui; padding: 1rem">
-    <h1>ZUI examples</h1>
-    <p>Interactive pages for the default and legacy runtimes.</p>
-    <ul>
-      <li><a href="/compat.html">React-style Todo</a></li>
-      <li><a href="/hooks.html">Hooks playground</a></li>
-      <li><a href="/keyed.html">Keyed list playground</a></li>
-      <li><a href="/benchmark.html">Browser renderer benchmark</a></li>
-      <li><a href="/legacy-benchmark.html">Legacy DOM benchmark</a></li>
-      <li><a href="/">Legacy reactive counter</a></li>
-      <li><a href="/todo.html">Legacy Todo</a></li>
-      <li><a href="/react-friendly.html">Legacy React-friendly example</a></li>
-    </ul>
+  <main>
+    <div class="eyebrow">ZUI / Showcase</div>
+    <h1>Build interfaces<br />that feel considered.</h1>
+    <p class="intro">A tiny addressable-DOM runtime with a dependency-free visual layer. Explore the product-shaped dashboard, then compose the same primitives in your own app.</p>
+    <div class="grid">
+      <a href="/index.html"><span class="mark">z</span><h2>Studio dashboard</h2><p>Responsive workspace shell, analytics cards, chart, activity feed, team table, settings and a live member modal.</p><code>/index.html</code></a>
+      <a href="/admin.html"><span class="mark">z</span><h2>Admin dashboard</h2><p>The same showcase as an explicit multi-page entry, useful when embedding ZUI into an existing app shell.</p><code>/admin.html</code></a>
+      <a href="https://github.com"><span class="mark">&lt;/&gt;</span><h2>UI primitives</h2><p>Button, Card, Input, Badge, Avatar, Progress, Modal, Stack and more from the <code>zui/ui</code> package surface.</p><code>import { Button } from "zui/ui"</code></a>
+      <a href="/README.md"><span class="mark">?</span><h2>Read the contract</h2><p>Understand the Flat Index, PatchEngine boundary, hooks, package exports and the deliberate scope of the runtime.</p><code>README.md</code></a>
+    </div>
+    <div class="footer">ZUI is experimental software. The dashboard is a showcase, not a claim of React compatibility.</div>
   </main>
 </body>
 </html>

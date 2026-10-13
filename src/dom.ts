@@ -275,11 +275,12 @@ function renderList<T>(
       const keys = next.map(spec.by);
       const unique = new Set(keys);
       if (unique.size !== keys.length) throw new Error("ZUI_DUPLICATE_KEY");
+      const oldIds = registry.children(regionId);
+      const oldIndexById = new Map(oldIds.map((id, index) => [id, index] as const));
       patchEngine.update(root.rootId, update => {
         for (const [key, entry] of entries) if (!unique.has(key)) update.remove(entry.nodeId);
         const reordered = new Map<Key, Entry>();
-        let anchor: NodeId | null = null;
-        for (let i = next.length - 1; i >= 0; i--) {
+        for (let i = 0; i < next.length; i++) {
           const item = next[i]!;
           const key = keys[i]!;
           let entry = entries.get(key);
@@ -299,10 +300,18 @@ function renderList<T>(
               entry.state.set(item);
             }
           }
-          const current = entry;
-          update.move(current.nodeId, regionId, anchor);
-          reordered.set(key, current);
-          anchor = current.nodeId;
+          reordered.set(key, entry);
+        }
+
+        const nextIds = keys.map(key => reordered.get(key)!.nodeId);
+        const stationary = longestIncreasingIds(nextIds, oldIndexById);
+        let newSuffixStart = nextIds.length;
+        while (newSuffixStart > 0 && !oldIndexById.has(nextIds[newSuffixStart - 1]!)) newSuffixStart--;
+        let anchor: NodeId | null = null;
+        for (let i = nextIds.length - 1; i >= 0; i--) {
+          const nodeId = nextIds[i]!;
+          if (i < newSuffixStart && !stationary.has(nodeId)) update.move(nodeId, regionId, anchor);
+          anchor = nodeId;
         }
         entries = reordered;
       });
@@ -311,6 +320,41 @@ function renderList<T>(
   });
   attachScope(tx, scope.value, scope);
   return [scope.value];
+}
+
+function longestIncreasingIds(nextIds: readonly NodeId[], oldIndexById: ReadonlyMap<NodeId, number>): Set<NodeId> {
+  const ids: NodeId[] = [];
+  const indexes: number[] = [];
+  for (const id of nextIds) {
+    const index = oldIndexById.get(id);
+    if (index !== undefined) {
+      ids.push(id);
+      indexes.push(index);
+    }
+  }
+  if (indexes.length === 0) return new Set();
+
+  const predecessors = new Array<number>(indexes.length).fill(-1);
+  const tails: number[] = [];
+  for (let i = 0; i < indexes.length; i++) {
+    let low = 0;
+    let high = tails.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (indexes[tails[middle]!]! < indexes[i]!) low = middle + 1;
+      else high = middle;
+    }
+    if (low > 0) predecessors[i] = tails[low - 1]!;
+    tails[low] = i;
+  }
+
+  const result = new Set<NodeId>();
+  let cursor = tails[tails.length - 1]!;
+  while (cursor !== -1) {
+    result.add(ids[cursor]!);
+    cursor = predecessors[cursor]!;
+  }
+  return result;
 }
 
 /** Mount a reactive subtree and return its lifecycle disposer. */
@@ -337,14 +381,30 @@ export function mount(component: (() => Child) | Child, target: Element): Dispos
   return () => {
     if (disposed) return;
     disposed = true;
-    const children = registry.children(root.nodeId);
-    if (children.length) {
-      patchEngine.transaction(root.rootId, tx => {
-        for (const childId of children) tx.remove(childId);
-      });
+    let failure: unknown;
+    try {
+      const children = registry.children(root.nodeId);
+      if (children.length) {
+        patchEngine.transaction(root.rootId, tx => {
+          for (const childId of children) tx.remove(childId);
+        });
+      }
+    } catch (error) {
+      failure = error;
     }
-    rootScope?.dispose();
-    registry.disposeRoot(root.rootId);
+    let empty = false;
+    try { empty = registry.children(root.nodeId).length === 0; }
+    catch (error) { failure ??= error; }
+    if (!empty) {
+      disposed = false;
+      if (failure) throw failure;
+      return;
+    }
+    try { rootScope?.dispose(); }
+    catch (error) { failure ??= error; }
+    try { registry.disposeRoot(root.rootId); }
+    catch (error) { failure ??= error; }
+    if (failure) throw failure;
   };
 }
 

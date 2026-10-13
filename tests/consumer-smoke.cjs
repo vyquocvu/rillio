@@ -14,11 +14,13 @@ try {
   fs.symlinkSync(repoRoot, path.join(modulesRoot, "zui"), "dir");
 
   const tsc = path.join(repoRoot, "node_modules", "typescript", "bin", "tsc");
-  childProcess.execFileSync(process.execPath, [tsc, "-p", path.join(temporaryRoot, "tsconfig.json")], {
-    cwd: temporaryRoot,
-    stdio: "inherit"
-  });
-  console.log("consumer: PASS — generated package ESM, declarations, JSX runtime, and subpaths resolve");
+  for (const config of ["tsconfig.json", "tsconfig.dev.json"]) {
+    childProcess.execFileSync(process.execPath, [tsc, "-p", path.join(temporaryRoot, config)], {
+      cwd: temporaryRoot,
+      stdio: "inherit"
+    });
+  }
+  console.log("consumer: PASS — package ESM, declarations, JSX runtime, dev JSX runtime, and subpaths resolve");
 } finally {
   fs.rmSync(temporaryRoot, { recursive: true, force: true });
 }

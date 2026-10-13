@@ -26,7 +26,17 @@ Supported JSX output includes:
 - keyed `.map()` output;
 - refs, events, class/style, controlled `value`/`checked`/`disabled`, and basic DOM properties.
 
-`createRoot(container)` returns `{ render(value), unmount() }`. `render(value, container)` reuses the addressable root for that container.
+The automatic JSX runtimes provide checked intrinsic tags, common HTML/SVG props, `aria-*`/`data-*`, style records, and element-specific `currentTarget` types for common events. Unknown attributes fail typechecking; applications can add custom elements by augmenting the exported `JSX.IntrinsicElements`. This is a practical baseline, not complete DOM/SVG typings.
+
+`createRoot(container)` returns `{ render(value), unmount() }`. `render(value, container)` reuses the addressable root for that container. A container may have only one live root across the JSX and explicit reactive APIs; creating another root throws `ZUI_ROOT_OCCUPIED` instead of silently replacing the existing tree.
+
+## UI primitives
+
+`zui/ui` is an optional visual layer on top of the runtime. It exports `tokens`, `uiStyles`, `StyleSheet`, and composable primitives: `Button`, `IconButton`, `Badge`, `Avatar`, `Card`, `Field`, `Input`, `Progress`, `Modal`, `Stack`, `Inline`, and `EmptyState`.
+
+Mount `<StyleSheet />` once near the application root. `Input` creates an id when needed and associates labels, hints, and errors with the control. `Progress` requires an accessible `label` and clamps its ARIA value to the advertised range. The primitives use ordinary ZUI VNodes, so their children, event handlers, refs, controlled values, and lifecycle follow the same Flat Index and PatchEngine contract as application JSX.
+
+`Modal` associates each dialog with a unique accessible title, focuses its first control, traps Tab navigation, closes on Escape or backdrop click, and restores focus to the previously focused element when dismissed. With multiple dialogs, keyboard handling is limited to the topmost dialog.
 
 ## Hooks
 
@@ -55,7 +65,9 @@ import {
 } from "zui";
 ```
 
-`NodeRegistry` exposes stable `NodeId`, `RootId`, and `OwnerId` records, linked parent/sibling structure, ownership, and versions. `PatchEngine` exposes transactional operations for renderer authors. Application code normally uses the JSX or explicit reactive planner rather than calling low-level patch methods.
+`NodeRegistry` exposes stable `NodeId`, `RootId`, and `OwnerId` records, linked parent/sibling structure, ownership, and versions. Disposed records are stripped of DOM/component references and retained as lightweight diagnostics up to `maxTombstones` (default 1,000); older ids become unknown. `PatchEngine` exposes transactional operations for renderer authors. Application code normally uses the JSX or explicit reactive planner rather than calling low-level patch methods.
+
+Full-root consistency verification is opt-in after each transaction to avoid a tree-wide walk in the production update path. Advanced/debug callers can enable it with `new PatchEngine(registry, document, { assertAfterCommit: true })`; `assertAddressableRoot(container)` remains available for an explicit check.
 
 The low-level implementation is also available from `zui/flat`.
 
@@ -112,7 +124,9 @@ The graph engine tracks dependencies, batches writes, bounds flush rounds, rejec
 
 ## Mutation and lifecycle contract
 
-Renderers must use `PatchEngine` for every browser DOM write. A transaction validates operations, commits structural/property changes, and then disposes removed subtrees. Direct `createElement`, `insertBefore`, `remove`, event-listener, attribute, style, and ref writes belong only in `src/flat.ts`.
+Renderers must use `PatchEngine` for every browser DOM write. A transaction validates operations before writes, attempts to undo structural/property writes if commit fails, and then disposes removed subtrees. Rollback is best-effort: user ref callbacks and cleanup side effects cannot be made atomic, and cleanup failures may be reported after the DOM commit. Direct `createElement`, `insertBefore`, `remove`, event-listener, attribute, style, and ref writes belong only in `src/flat.ts`.
+
+Any `innerHTML`, `outerHTML`, or `srcdoc` prop is rejected with `ZUI_UNSAFE_HTML_PROP`, including empty values; these sinks can bypass the indexed child tree. String-valued inline event-handler props are rejected with `ZUI_UNSAFE_EVENT_PROP`; use function listeners such as `onClick`. `javascript:`/`vbscript:` URLs and `data:text/html` are rejected with `ZUI_UNSAFE_URL_PROP`. Render untrusted content as text children; ZUI does not sanitize arbitrary application data or CSS.
 
 ## Not currently guaranteed
 

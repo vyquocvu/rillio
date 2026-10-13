@@ -33,7 +33,7 @@ async function waitForServer() {
   const deadline = Date.now() + 15000;
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`${origin}/e2e.html`);
+      const response = await fetch(`${origin}/index.html`);
       if (response.ok) return;
     } catch {
     }
@@ -96,18 +96,8 @@ async function main() {
     const scenarios = [
       {
         target: "/index.html?e2e",
-        label: "Counter browser flow",
-        message: "legacy counter increment"
-      },
-      {
-        target: "/e2e.html",
-        label: "browser smoke",
-        message: "state, controlled input, focus, keyed identity, caret, and runtime errors"
-      },
-      {
-        target: "/todo.html?e2e",
-        label: "Todo browser flow",
-        message: "add, edit, toggle, filter, delete, and empty-state fallback"
+        label: "Studio dashboard flow",
+        message: "metrics, chart, navigation, controlled member form, table updates, and runtime errors"
       }
     ];
     for (const scenario of scenarios) {

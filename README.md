@@ -46,9 +46,10 @@ npm run build:package
 npm run test:consumer
 npm run test:browser
 npm run bench:all
+npm run bench:browser
 ```
 
-Open `/demos.html` for the example catalog. The default JSX runtime includes `/compat.html`, `/hooks.html`, `/keyed.html`, `/benchmark.html`, and `/e2e.html`. The explicit reactive API is demonstrated by `/`, `/todo.html`, `/react-friendly.html`, and `/legacy-benchmark.html`.
+Open `/demos.html` for the example catalog. The primary showcase is available at `/` and `/admin.html`; benchmark commands and package examples are documented in [the examples guide](docs/EXAMPLES.md), with the Playwright React comparison in [the performance guide](docs/PERFORMANCE.md).
 
 ## JSX runtime
 
@@ -68,6 +69,26 @@ createRoot(document.getElementById("app")!).render(<Counter />);
 ```
 
 Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "zui"`. Function components, ordinary conditional expressions, fragments, and keyed `.map()` output are supported.
+
+## UI primitives
+
+The optional `zui/ui` surface provides a small, dependency-free visual layer for product work. It keeps rendering inside ZUI while offering accessible defaults, shared tokens, and composable controls:
+
+```tsx
+import { Button, Card, Input, StyleSheet } from "zui/ui";
+
+function SignIn() {
+  return <>
+    <StyleSheet />
+    <Card title="Welcome back" description="Sign in to your workspace.">
+      <Input label="Work email" type="email" placeholder="you@company.com" />
+      <Button type="submit">Continue</Button>
+    </Card>
+  </>;
+}
+```
+
+Available primitives include `Button`, `IconButton`, `Badge`, `Avatar`, `Card`, `Field`, `Input`, `Progress`, `Modal`, `Stack`, `Inline`, and `EmptyState`. `tokens`, `cx`, and `uiStyles` are exported for teams that want to extend the visual language.
 
 ## Explicit reactive API
 
@@ -92,7 +113,7 @@ mount(() => <button onClick={() => count.set(n => n + 1)}>
 
 ## Scope
 
-ZUI currently targets small client-side browser applications. SSR/hydration, portals, async resources, SVG parity, broad JSX intrinsic typing, devtools, and a compiler are future work rather than compatibility promises.
+ZUI currently targets small client-side browser applications. SSR/hydration, portals, async resources, complete SVG/property normalization, exhaustive DOM typings, devtools, and a compiler are future work rather than compatibility promises.
 
 See [the roadmap](ROADMAP.md), [the API contract](docs/API.md), [the architecture](docs/ARCHITECTURE.md), [testing](docs/TESTING.md), and [verification status](docs/STATUS.md).
 

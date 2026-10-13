@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
-import { createRoot, render, jsx, useState, useEffect, useMemo, useRef } from "../src/compat.js";
+import { describe, expect, it, vi } from "vitest";
+import { createRoot, render, jsx, patchEngine, useState, useEffect, useMemo, useRef } from "../src/compat.js";
 
 describe("React-style compatibility runtime", () => {
   it("rerenders function component state while preserving host DOM identity", () => {
@@ -43,6 +43,66 @@ describe("React-style compatibility runtime", () => {
     expect(container.querySelectorAll("li")).toHaveLength(1);
     expect(container.querySelector("li")).toBe(first);
     root.unmount();
+  });
+
+  it("skips no-op child moves and moves only the displaced node for a keyed rotation", () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    const rows = Array.from({ length: 12 }, (_, id) => ({ id, value: `row-${id}` }));
+    const view = (items: typeof rows) => jsx("ul", {
+      children: items.map(row => jsx("li", {
+        "data-id": String(row.id),
+        children: row.value
+      }, row.id))
+    });
+
+    root.render(view(rows));
+    const originalNodes = new Map(
+      [...container.querySelectorAll("li")].map(node => [node.getAttribute("data-id"), node])
+    );
+    const moveRange = vi.spyOn(patchEngine, "moveRange");
+
+    root.render(view(rows.map(row => ({ ...row }))));
+    expect(moveRange).not.toHaveBeenCalled();
+
+    const rotated = [...rows.slice(1), rows[0]!];
+    root.render(view(rotated));
+    expect(moveRange).toHaveBeenCalledTimes(1);
+    expect([...container.querySelectorAll("li")].map(node => node.getAttribute("data-id")))
+      .toEqual(rows.slice(1).concat(rows[0]!).map(row => String(row.id)));
+    for (const node of container.querySelectorAll("li")) {
+      expect(node).toBe(originalNodes.get(node.getAttribute("data-id")));
+    }
+
+    root.render(view([...rotated, { id: 12, value: "row-12" }]));
+    expect(moveRange).toHaveBeenCalledTimes(1);
+
+    moveRange.mockRestore();
+    root.unmount();
+  });
+
+  it("preserves focus when a keyed range moves", () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    let rows = [{ id: "a" }, { id: "b" }, { id: "c" }];
+    const view = () => jsx("ul", {
+      children: rows.map(row => jsx("li", {
+        children: jsx("input", { "aria-label": row.id, value: row.id })
+      }, row.id))
+    });
+
+    root.render(view());
+    const focused = container.querySelector<HTMLInputElement>('input[aria-label="b"]')!;
+    focused.focus();
+    rows = [rows[2]!, rows[0]!, rows[1]!];
+    root.render(view());
+
+    expect(document.activeElement).toBe(focused);
+    expect([...container.querySelectorAll("li")].map(node => node.querySelector("input")?.getAttribute("aria-label")))
+      .toEqual(["c", "a", "b"]);
+    root.unmount();
+    container.remove();
   });
 
   it("runs dependency-aware effects and cleanup on unmount", () => {
@@ -190,6 +250,60 @@ describe("React-style compatibility runtime", () => {
     }
     expect(() => root.render(jsx(Broken, {}))).toThrow("ZUI_DUPLICATE_KEY");
     expect(container.childNodes).toHaveLength(0);
+    root.unmount();
+  });
+
+  it("reverts committed DOM writes and state when a ref callback fails", () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    let setValue!: (next: number) => void;
+    let failRef = true;
+    let currentRef: Element | null = null;
+    const stableRef = (element: Element | null) => { currentRef = element; };
+    const throwingRef = (_element: Element | null) => {
+      if (failRef) throw new Error("ref update failed");
+    };
+
+    function App() {
+      const [value, update] = useState(0);
+      setValue = update;
+      return jsx("section", {
+        children: [
+          jsx("span", { children: value }),
+          jsx("button", { ref: value === 0 ? stableRef : throwingRef, children: "Action" })
+        ]
+      });
+    }
+
+    root.render(jsx(App, {}));
+    const originalSection = container.querySelector("section");
+    const originalSpan = container.querySelector("span");
+    const originalButton = container.querySelector("button");
+    expect(currentRef).toBe(originalButton);
+
+    expect(() => setValue(1)).toThrow("ref update failed");
+    expect(container.querySelector("section")).toBe(originalSection);
+    expect(container.querySelector("span")).toBe(originalSpan);
+    expect(container.querySelector("button")).toBe(originalButton);
+    expect(originalSpan?.textContent).toBe("0");
+    expect(currentRef).toBe(originalButton);
+
+    failRef = false;
+    setValue(2);
+    expect(originalSpan?.textContent).toBe("2");
+    root.unmount();
+  });
+
+  it("rejects HTML parsing props without replacing the currently rendered tree", () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    root.render(jsx("p", { children: "safe text" }));
+    const original = container.firstChild;
+
+    expect(() => root.render(jsx("div", { innerHTML: "<img src=x onerror=alert(1)>" })))
+      .toThrow("ZUI_UNSAFE_HTML_PROP");
+    expect(container.firstChild).toBe(original);
+    expect(container.textContent).toBe("safe text");
     root.unmount();
   });
 

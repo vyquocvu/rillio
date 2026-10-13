@@ -66,6 +66,21 @@ const pendingEffects = new Set<Hook>();
 const roots = new WeakMap<Element, RootController>();
 let flushingEffects = false;
 
+interface ComponentSnapshot {
+  state: ComponentState;
+  props: Record<string, any>;
+  cursor: number;
+  hookCount: number | undefined;
+  hooks: Array<{ slot: Hook; value: Hook }>;
+}
+
+interface RenderTransactionSnapshot {
+  readonly components: Map<ComponentState, ComponentSnapshot>;
+  readonly pendingEffects: Set<Hook>;
+}
+
+let renderTransactionSnapshot: RenderTransactionSnapshot | undefined;
+
 interface FlatRoot extends RootHandle {
   disposed: boolean;
 }
@@ -92,10 +107,15 @@ export function useState<T>(initial: T | (() => T)): [T, (next: T | ((prev: T) =
   return [slot.value as T, next => {
     if (!owner || owner.disposed) return;
     if (renderingDepth > 0) throw new Error("ZUI_RENDER_PHASE_UPDATE");
-    const value = typeof next === "function" ? (next as (previous: T) => T)(slot.value) : next;
+    const previous = slot.value as T;
+    const value = typeof next === "function" ? (next as (previous: T) => T)(previous) : next;
     if (Object.is(value, slot.value)) return;
     slot.value = value;
-    updateComponent(owner.nodeId);
+    try { updateComponent(owner.nodeId); }
+    catch (error) {
+      slot.value = previous;
+      throw error;
+    }
   }];
 }
 
@@ -146,7 +166,61 @@ function flushEffects(): void {
   }
 }
 
+function snapshotComponent(state: ComponentState): void {
+  const transaction = renderTransactionSnapshot;
+  if (!transaction || transaction.components.has(state)) return;
+  // Newly-created component boundaries are discarded wholesale on rollback;
+  // only snapshot state that belongs to a previously committed tree.
+  if (nodeRegistry.getNode(state.nodeId).parentId === null) return;
+  transaction.components.set(state, {
+    state,
+    props: state.props,
+    cursor: state.cursor,
+    hookCount: state.hookCount,
+    hooks: state.hooks.map(slot => ({ slot, value: { ...slot } }))
+  });
+}
+
+function restoreComponentSnapshot(snapshot: ComponentSnapshot): void {
+  const { state } = snapshot;
+  state.props = snapshot.props;
+  state.cursor = snapshot.cursor;
+  state.hookCount = snapshot.hookCount;
+  state.hooks.length = snapshot.hooks.length;
+  for (const { slot, value } of snapshot.hooks) {
+    for (const key of Object.keys(slot) as Array<keyof Hook>) delete slot[key];
+    Object.assign(slot, value);
+  }
+}
+
+function renderTransaction<T>(rootId: number, work: (tx: PatchTransaction) => T): T {
+  if (renderTransactionSnapshot) return patchEngine.transaction(rootId, work);
+  const snapshot: RenderTransactionSnapshot = {
+    components: new Map(),
+    pendingEffects: new Set(pendingEffects)
+  };
+  renderTransactionSnapshot = snapshot;
+  try {
+    return patchEngine.transaction(rootId, work);
+  } catch (error) {
+    for (const component of [...snapshot.components.values()].reverse()) {
+      if (!component.state.disposed) restoreComponentSnapshot(component);
+    }
+    pendingEffects.clear();
+    for (const effect of snapshot.pendingEffects) pendingEffects.add(effect);
+    throw error;
+  } finally {
+    renderTransactionSnapshot = undefined;
+  }
+}
+
 function normalize(value: Child): Child[] {
+  if (!Array.isArray(value)) {
+    return value !== null && value !== undefined && typeof value !== "boolean" ? [value] : [];
+  }
+  if (value.every(entry => !Array.isArray(entry) && entry !== null && entry !== undefined && typeof entry !== "boolean")) {
+    return value;
+  }
   const out: Child[] = [];
   const walk = (entry: Child): void => {
     if (Array.isArray(entry)) entry.forEach(walk);
@@ -165,12 +239,7 @@ function isComponentState(value: unknown): value is ComponentState {
 }
 
 function isSameVNode(record: FlatNode, value: VNode): boolean {
-  return record.value !== undefined && isVNode(record.value as Child) &&
-    record.type === value.type && record.key === value.key;
-}
-
-function ownerForNode(nodeId: NodeId): OwnerId {
-  return nodeRegistry.getNode(nodeId).ownerId;
+  return record.value !== undefined && record.type === value.type && record.key === value.key;
 }
 
 function mountValue(
@@ -181,10 +250,9 @@ function mountValue(
   tx: PatchTransaction
 ): NodeId {
   if (!isVNode(value)) {
-    const nodeId = typeof value === "string" || typeof value === "number"
-      ? tx.createText(ownerId, String(value))
-      : tx.createText(ownerId, "");
-    tx.setMeta(nodeId, { value });
+    const text = typeof value === "string" ? value : typeof value === "number" ? String(value) : "";
+    const nodeId = tx.createText(ownerId, text);
+    if (typeof value !== "string") tx.setMeta(nodeId, { value });
     tx.insert(nodeId, parentId);
     return nodeId;
   }
@@ -208,19 +276,16 @@ function mountValue(
     // being planned. This is index metadata, not a DOM mutation; rollback can
     // discard the newly-created record if render planning fails.
     nodeRegistry.updateNode(nodeId, { type: value.type, key: value.key, props: value.props, value, payload: state });
-    tx.setMeta(nodeId, { type: value.type, key: value.key, props: value.props, value, payload: state });
     tx.attachCleanup(nodeId, () => disposeComponent(state));
     tx.insert(nodeId, parentId);
     renderComponent(nodeId, value.props, tx);
     return nodeId;
   }
 
-  const nodeId = tx.createElement(ownerId, value.type, value.type, value.key);
-  nodeRegistry.updateNode(nodeId, { type: value.type, key: value.key, props: value.props, value });
-  tx.setMeta(nodeId, { type: value.type, key: value.key, props: value.props, value });
+  const nodeId = tx.createElement(ownerId, value.type, value.type, value.key, value.props, value);
   tx.insert(nodeId, parentId);
   tx.patchProps(nodeId, {}, value.props);
-  reconcileChildren(nodeId, normalize(value.props.children), ownerId, root, tx);
+  reconcileChildren(nodeId, value.props.children as Child, ownerId, root, tx);
   return nodeId;
 }
 
@@ -229,6 +294,7 @@ function renderComponent(nodeId: NodeId, props: Record<string, any>, tx: PatchTr
   const state = record.payload;
   if (!isComponentState(state)) throw new Error("ZUI_COMPONENT_STATE");
   if (state.rendering) throw new Error("ZUI_RENDER_PHASE_UPDATE");
+  snapshotComponent(state);
   const previous = active;
   active = state;
   state.props = props;
@@ -238,15 +304,15 @@ function renderComponent(nodeId: NodeId, props: Record<string, any>, tx: PatchTr
   let result: Child;
   try {
     result = state.type(props);
+    if (state.hookCount === undefined) state.hookCount = state.cursor;
+    else if (state.cursor !== state.hookCount) throw new Error("ZUI_HOOK_ORDER");
+    if (record.props !== props) tx.setMeta(nodeId, { props });
+    reconcileChildren(nodeId, result, state.ownerId, rootForId(state.rootId), tx, record);
   } finally {
     renderingDepth--;
     active = previous;
     state.rendering = false;
   }
-  if (state.hookCount === undefined) state.hookCount = state.cursor;
-  else if (state.cursor !== state.hookCount) throw new Error("ZUI_HOOK_ORDER");
-  tx.setMeta(nodeId, { props, value: jsx(state.type, props, record.key), payload: state });
-  reconcileChildren(nodeId, normalize(result), state.ownerId, rootForId(state.rootId), tx);
 }
 
 function reconcile(
@@ -259,21 +325,8 @@ function reconcile(
 ): NodeId {
   if (oldId === undefined) return mountValue(value, parentId, ownerId, root, tx);
   const old = nodeRegistry.getNode(oldId);
-
-  if (!isVNode(value) && old.kind === "text") {
-    const text = value == null ? "" : String(value);
-    tx.setText(oldId, text);
-    tx.setMeta(oldId, { value });
-    return oldId;
-  }
-
-  if (isVNode(value) && isSameVNode(old, value)) {
-    if (typeof value.type === "function") renderComponent(oldId, value.props, tx);
-    else {
-      tx.patchProps(oldId, old.props, value.props);
-      tx.setMeta(oldId, { props: value.props, value, type: value.type, key: value.key });
-      reconcileChildren(oldId, normalize(value.props.children), ownerForNode(oldId), root, tx);
-    }
+  if (canReuseNode(old, value)) {
+    reconcileMatched(oldId, old, value, root, tx);
     return oldId;
   }
 
@@ -281,56 +334,295 @@ function reconcile(
   return fresh;
 }
 
-function reconcileChildren(
-  parentId: NodeId,
-  values: Child[],
-  ownerId: OwnerId,
+function reconcileMatched(
+  oldId: NodeId,
+  old: FlatNode,
+  value: Child,
   root: FlatRoot,
   tx: PatchTransaction
 ): void {
+  if (!isVNode(value)) {
+    const text = typeof value === "string" ? value : value == null ? "" : String(value);
+    if ((old.domStart as CharacterData).data !== text) {
+      tx.setText(oldId, text, old);
+      if (typeof value !== "string") tx.setMeta(oldId, { value });
+    } else if (!Object.is(old.value, value)) tx.setMeta(oldId, { value });
+    return;
+  }
+
+  if (typeof value.type === "function") renderComponent(oldId, value.props, tx);
+  else {
+    const nextChildren = value.props.children as Child;
+    const childrenAreUnchangedPrimitive = Object.is(old.props.children, nextChildren) &&
+      (nextChildren === null || typeof nextChildren !== "object");
+    tx.patchProps(oldId, old.props, value.props);
+    if (!childrenAreUnchangedPrimitive) reconcileChildren(oldId, nextChildren, old.ownerId, root, tx, old);
+  }
+}
+
+function reconcileChildren(
+  parentId: NodeId,
+  input: Child,
+  ownerId: OwnerId,
+  root: FlatRoot,
+  tx: PatchTransaction,
+  parentRecord?: FlatNode
+): void {
+  const parent = parentRecord ?? nodeRegistry.getNode(parentId);
+  if (!Array.isArray(input)) {
+    if (input === null || input === undefined || typeof input === "boolean") {
+      let oldId = parent.firstChild;
+      while (oldId !== null) {
+        const nextId = nodeRegistry.getNode(oldId).nextSibling;
+        tx.remove(oldId);
+        oldId = nextId;
+      }
+      return;
+    }
+
+    const onlyChildId = parent.firstChild;
+    if (onlyChildId === null) {
+      mountValue(input, parentId, ownerId, root, tx);
+      return;
+    }
+    const onlyChild = nodeRegistry.getNode(onlyChildId);
+    if (onlyChild.nextSibling === null) {
+      if (canReuseNode(onlyChild, input)) reconcileMatched(onlyChildId, onlyChild, input, root, tx);
+      else {
+        mountValue(input, parentId, ownerId, root, tx);
+        tx.remove(onlyChildId);
+      }
+      return;
+    }
+  }
+
+  const values = normalize(input);
+  if (reconcileOrderedChildren(parentId, values, ownerId, root, tx)) return;
+  if (reconcileSingleStepRotation(parentId, values, root, tx)) return;
+
   const oldIds = nodeRegistry.children(parentId);
-  const keyed = new Map<Key, NodeId>();
-  const unkeyed: NodeId[] = [];
-  for (const id of oldIds) {
+  const keyed = new Map<Key, number>();
+  const unkeyed: number[] = [];
+  for (let index = 0; index < oldIds.length; index++) {
+    const id = oldIds[index]!;
     const record = nodeRegistry.getNode(id);
-    if (record.key === undefined) unkeyed.push(id);
-    else keyed.set(record.key, id);
+    if (record.key === undefined) unkeyed.push(index);
+    else keyed.set(record.key, index);
   }
 
   const seen = new Set<Key>();
-  const nextIds: NodeId[] = [];
+  const nextIds = new Array<NodeId>(values.length);
+  const oldIndexByNextIndex = new Array<number>(values.length).fill(0);
+  const usedOldIndexes = new Uint8Array(oldIds.length);
+  let allChildrenReused = oldIds.length === values.length;
   let unkeyedCursor = 0;
-  for (const value of values) {
+  for (let index = 0; index < values.length; index++) {
+    const value = values[index]!;
     const key = isVNode(value) ? value.key : undefined;
     if (key !== undefined) {
       if (seen.has(key)) throw new Error("ZUI_DUPLICATE_KEY");
       seen.add(key);
     }
-    const prior = key === undefined ? unkeyed[unkeyedCursor++] : keyed.get(key);
-    nextIds.push(reconcile(prior, value, parentId, ownerId, root, tx));
+    const oldIndex = key === undefined ? unkeyed[unkeyedCursor++] ?? -1 : keyed.get(key) ?? -1;
+    const prior = oldIndex < 0 ? undefined : oldIds[oldIndex];
+    const nextId = reconcile(prior, value, parentId, ownerId, root, tx);
+    nextIds[index] = nextId;
+    if (prior !== undefined && nextId === prior) {
+      oldIndexByNextIndex[index] = oldIndex + 1;
+      usedOldIndexes[oldIndex] = 1;
+    } else allChildrenReused = false;
   }
 
-  for (const id of oldIds) if (!nextIds.includes(id)) tx.remove(id);
+  for (let index = 0; index < oldIds.length; index++) {
+    if (usedOldIndexes[index] === 0) tx.remove(oldIds[index]!);
+  }
+
+  const stationaryIndexes = longestIncreasingSubsequencePositions(oldIndexByNextIndex);
+
+  // Newly-created children are initially inserted at the end in render order.
+  // A new suffix is therefore already in its final position and needs no move.
+  let newSuffixStart = nextIds.length;
+  while (newSuffixStart > 0 && oldIndexByNextIndex[newSuffixStart - 1] === 0) newSuffixStart--;
 
   let anchor: NodeId | null = null;
+  const movingIds: NodeId[] = [];
+  const beforeIds: Array<NodeId | null> = [];
   for (let i = nextIds.length - 1; i >= 0; i--) {
     const id = nextIds[i]!;
-    tx.move(id, parentId, anchor);
+    const isNewSuffix = i >= newSuffixStart;
+    if (!isNewSuffix && stationaryIndexes[i] === 0) {
+      if (allChildrenReused) {
+        movingIds.push(id);
+        beforeIds.push(anchor);
+      } else tx.move(id, parentId, anchor);
+    }
     anchor = id;
   }
+  if (allChildrenReused) tx.moveMany(parentId, oldIds, nextIds, movingIds, beforeIds);
+}
+
+function canReuseNode(record: FlatNode, value: Child): boolean {
+  return isVNode(value) ? isSameVNode(record, value) : record.kind === "text";
+}
+
+/** Fast path for unchanged order and tail-only insertions/removals. */
+function reconcileOrderedChildren(
+  parentId: NodeId,
+  values: Child[],
+  ownerId: OwnerId,
+  root: FlatRoot,
+  tx: PatchTransaction
+): boolean {
+  let oldId = nodeRegistry.getNode(parentId).firstChild;
+  let hasAppendedNodes = false;
+  for (const value of values) {
+    if (oldId === null) {
+      hasAppendedNodes = true;
+      continue;
+    }
+    const record = nodeRegistry.getNode(oldId);
+    if (!canReuseNode(record, value)) return false;
+    oldId = record.nextSibling;
+  }
+
+  // Existing children are already known to have unique keys. Only appended
+  // keys need a full duplicate check; unchanged and tail-removal paths avoid a Set.
+  if (hasAppendedNodes) {
+    const seenKeys = new Set<Key>();
+    for (const value of values) {
+      if (!isVNode(value) || value.key === undefined) continue;
+      if (seenKeys.has(value.key)) throw new Error("ZUI_DUPLICATE_KEY");
+      seenKeys.add(value.key);
+    }
+  }
+
+  oldId = nodeRegistry.getNode(parentId).firstChild;
+  for (const value of values) {
+    if (oldId === null) {
+      mountValue(value, parentId, ownerId, root, tx);
+      continue;
+    }
+    const currentId = oldId;
+    const current = nodeRegistry.getNode(currentId);
+    oldId = current.nextSibling;
+    reconcileMatched(currentId, current, value, root, tx);
+  }
+  while (oldId !== null) {
+    const nextId = nodeRegistry.getNode(oldId).nextSibling;
+    tx.remove(oldId);
+    oldId = nextId;
+  }
+  return true;
+}
+
+/** Preserve a linear keyed reconciliation path for the common one-item rotation. */
+function reconcileSingleStepRotation(
+  parentId: NodeId,
+  values: Child[],
+  root: FlatRoot,
+  tx: PatchTransaction
+): boolean {
+  const parent = nodeRegistry.getNode(parentId);
+  const firstId = parent.firstChild;
+  const lastId = parent.lastChild;
+  if (firstId === null || lastId === null || values.length < 2 || firstId === lastId) return false;
+  for (const value of values) if (!isVNode(value) || value.key === undefined) return false;
+
+  const first = nodeRegistry.getNode(firstId);
+  const secondId = first.nextSibling;
+  if (secondId === null) return false;
+
+  let cursor: NodeId | null = secondId;
+  let leftRotation = true;
+  for (let index = 0; index < values.length - 1; index++) {
+    if (cursor === null) { leftRotation = false; break; }
+    const current = nodeRegistry.getNode(cursor);
+    if (!canReuseNode(current, values[index]!)) { leftRotation = false; break; }
+    cursor = current.nextSibling;
+  }
+  if (cursor !== null || !canReuseNode(first, values[values.length - 1]!)) leftRotation = false;
+
+  if (leftRotation) {
+    cursor = secondId;
+    for (let index = 0; index < values.length - 1; index++) {
+      const currentId = cursor!;
+      const current = nodeRegistry.getNode(currentId);
+      cursor = current.nextSibling;
+      reconcileMatched(currentId, current, values[index]!, root, tx);
+    }
+    reconcileMatched(firstId, first, values[values.length - 1]!, root, tx);
+    tx.move(firstId, parentId, null);
+    return true;
+  }
+
+  const last = nodeRegistry.getNode(lastId);
+  if (!canReuseNode(last, values[0]!)) return false;
+  cursor = firstId;
+  for (let index = 1; index < values.length; index++) {
+    if (cursor === null) return false;
+    const current = nodeRegistry.getNode(cursor);
+    if (!canReuseNode(current, values[index]!)) return false;
+    cursor = current.nextSibling;
+  }
+  if (cursor !== lastId) return false;
+
+  cursor = firstId;
+  for (let index = 1; index < values.length; index++) {
+    const currentId = cursor!;
+    const current = nodeRegistry.getNode(currentId);
+    cursor = current.nextSibling;
+    reconcileMatched(currentId, current, values[index]!, root, tx);
+  }
+  reconcileMatched(lastId, last, values[0]!, root, tx);
+  tx.move(lastId, parentId, firstId);
+  return true;
+}
+
+/** Return a byte mask for the reused child indexes in the longest increasing run. */
+function longestIncreasingSubsequencePositions(oldIndexByNextIndex: readonly number[]): Uint8Array {
+  const predecessors = new Int32Array(oldIndexByNextIndex.length);
+  predecessors.fill(-1);
+  const tails: number[] = [];
+  for (let i = 0; i < oldIndexByNextIndex.length; i++) {
+    const oldIndex = oldIndexByNextIndex[i]!;
+    if (oldIndex === 0) continue;
+    let low = 0;
+    let high = tails.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (oldIndexByNextIndex[tails[middle]!]! < oldIndex) low = middle + 1;
+      else high = middle;
+    }
+    if (low > 0) predecessors[i] = tails[low - 1]!;
+    tails[low] = i;
+  }
+
+  const stationary = new Uint8Array(oldIndexByNextIndex.length);
+  if (tails.length === 0) return stationary;
+  let cursor = tails[tails.length - 1]!;
+  while (cursor !== -1) {
+    stationary[cursor] = 1;
+    cursor = predecessors[cursor]!;
+  }
+  return stationary;
 }
 
 function disposeComponent(state: ComponentState): void {
   if (state.disposed) return;
   state.disposed = true;
+  let failure: unknown;
   for (const slot of state.hooks) {
     slot.disposed = true;
     pendingEffects.delete(slot);
     const cleanup = slot.cleanup;
     slot.cleanup = undefined;
-    cleanup?.();
+    if (cleanup) {
+      try { cleanup(); } catch (error) { failure ??= error; }
+    }
   }
-  nodeRegistry.disposeOwner(state.ownerId);
+  try { nodeRegistry.disposeOwner(state.ownerId); }
+  catch (error) { failure ??= error; }
+  if (failure) throw failure;
 }
 
 function rootForId(rootId: number): FlatRoot {
@@ -342,7 +634,7 @@ function updateComponent(nodeId: NodeId): void {
   const state = record.payload;
   if (!isComponentState(state) || state.disposed) return;
   const root = rootForId(state.rootId);
-  patchEngine.transaction(root.rootId, tx => renderComponent(nodeId, state.props, tx));
+  renderTransaction(root.rootId, tx => renderComponent(nodeId, state.props, tx));
   flushEffects();
 }
 
@@ -360,22 +652,36 @@ export function createRoot(container: Element): Root {
     handle,
     render(value) {
       if (handle.disposed) throw new Error("ZUI_ROOT_UNMOUNTED");
-      patchEngine.transaction(handle.rootId, tx => {
-        reconcileChildren(handle.nodeId, normalize(value), handle.ownerId, handle, tx);
+      renderTransaction(handle.rootId, tx => {
+        reconcileChildren(handle.nodeId, value, handle.ownerId, handle, tx);
       });
       flushEffects();
     },
     unmount() {
       if (handle.disposed) return;
       handle.disposed = true;
-      const children = nodeRegistry.children(handle.nodeId);
-      if (children.length) {
-        patchEngine.transaction(handle.rootId, tx => {
-          for (const childId of children) tx.remove(childId);
-        });
+      let failure: unknown;
+      try {
+        const children = nodeRegistry.children(handle.nodeId);
+        if (children.length) {
+          patchEngine.transaction(handle.rootId, tx => {
+            for (const childId of children) tx.remove(childId);
+          });
+        }
+      } catch (error) {
+        failure = error;
       }
-      nodeRegistry.disposeRoot(handle.rootId);
-      if (roots.get(container) === root) roots.delete(container);
+      let empty = false;
+      try { empty = nodeRegistry.children(handle.nodeId).length === 0; }
+      catch (error) { failure ??= error; }
+      if (empty) {
+        try { nodeRegistry.disposeRoot(handle.rootId); }
+        catch (error) { failure ??= error; }
+        if (roots.get(container) === root) roots.delete(container);
+      } else {
+        handle.disposed = false;
+      }
+      if (failure) throw failure;
     }
   };
   roots.set(container, root);

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
-import { createStore, select, derive, mount, jsx, Show, For } from "../src/dom.js";
+import { describe, expect, it, vi } from "vitest";
+import { createStore, select, derive, mount, jsx, Show, For, patches } from "../src/dom.js";
 
 describe("frontend MVP", () => {
   it("mounts once and patches reactive text", () => {
@@ -52,6 +52,32 @@ describe("frontend MVP", () => {
     state.set([{ id: "b" }, { id: "a" }]);
     expect([...target.querySelectorAll("li")].map(n => n.textContent)).toEqual(["b", "a"]);
     expect(target.querySelector('[data-id="a"]')).toBe(nodeA);
+    dispose();
+  });
+
+  it("keeps unchanged For order stationary and minimizes keyed rotation moves", () => {
+    const items = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }];
+    const state = createStore(items);
+    const target = document.createElement("div");
+    const dispose = mount(jsx("ul", {
+      children: For({
+        each: select(state, value => value),
+        by: item => item.id,
+        children: item => jsx("li", { "data-id": item.id, children: item.id })
+      })
+    }), target);
+    const original = new Map([...target.querySelectorAll("li")].map(node => [node.dataset.id, node]));
+    const moveRange = vi.spyOn(patches, "moveRange");
+
+    state.set([...items]);
+    expect(moveRange).not.toHaveBeenCalled();
+
+    state.set([...items.slice(1), items[0]!]);
+    expect(moveRange).toHaveBeenCalledTimes(1);
+    expect([...target.querySelectorAll("li")].map(node => node.dataset.id)).toEqual(["b", "c", "d", "a"]);
+    for (const node of target.querySelectorAll("li")) expect(node).toBe(original.get(node.dataset.id));
+
+    moveRange.mockRestore();
     dispose();
   });
   it("reactively updates keyed item data without replacing its DOM identity", () => {

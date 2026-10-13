@@ -1,17 +1,12 @@
 # Examples and benchmarks
 
-ZUI ships small interactive pages for the default JSX runtime and the legacy reactive runtime.
+ZUI ships a polished dashboard showcase for the JSX runtime plus the lower-level benchmark and compatibility fixtures used by the verification suite.
 
 | Page | Focus |
 |---|---|
-| `/compat.html` | React-style Todo with hooks, controlled inputs, effects, and keyed rows |
-| `/hooks.html` | `useState`, `useEffect`, `useMemo`, `useCallback`, and `useRef` |
-| `/keyed.html` | Keyed reorder, input identity, insertion, removal, and styles |
-| `/benchmark.html` | Default runtime synchronous keyed DOM updates |
-| `/legacy-benchmark.html` | Legacy store updates and `For` reconciliation |
-| `/` | Legacy counter with `Show` and `For` |
-| `/todo.html` | Legacy Todo with reactive bindings and controlled inputs |
-| `/react-friendly.html` | Legacy mount-once function children and refs |
+| `/` or `/admin.html` | ZUI Studio dashboard showcase with responsive layout and interactive team management |
+| `zui/ui` | Reusable visual primitives, tokens, and accessible controls |
+| `npm run bench:all` | Node benchmark suites for reactive invalidation, keyed reconciliation, and Flat Index updates |
 
 Open `/demos.html` for a browser-friendly index.
 
