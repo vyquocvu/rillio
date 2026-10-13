@@ -6,6 +6,7 @@ ZUI ships a polished dashboard showcase for the JSX runtime plus the lower-level
 |---|---|
 | `/` or `/admin.html` | ZUI Studio dashboard showcase with responsive layout and interactive team management |
 | `zui/ui` | Reusable visual primitives, tokens, and accessible controls |
+| `zui/zustand` | Zustand vanilla/bound-store selectors inside ZUI components |
 | `npm run bench:all` | Node benchmark suites for reactive invalidation, keyed reconciliation, and Flat Index updates |
 
 Open `/demos.html` for a browser-friendly index.

@@ -90,6 +90,10 @@ function SignIn() {
 
 Available primitives include `Button`, `IconButton`, `Badge`, `Avatar`, `Card`, `Field`, `Input`, `Progress`, `Modal`, `Stack`, `Inline`, and `EmptyState`. `tokens`, `cx`, and `uiStyles` are exported for teams that want to extend the visual language.
 
+## Zustand
+
+Use [`zui/zustand`](docs/API.md#zustand-integration) to select state from a Zustand vanilla or bound store inside ZUI components. It follows the store's `getState`/`subscribe` API and does not add Zustand or React as runtime dependencies.
+
 ## Explicit reactive API
 
 ```tsx

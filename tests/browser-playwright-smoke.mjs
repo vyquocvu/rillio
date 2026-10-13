@@ -94,6 +94,43 @@ try {
   });
 
   await page.evaluate(async () => {
+    const { createRoot, jsx } = await import("/package/index.js");
+    const { useStore } = await import("/package/zustand.js");
+    let state = { count: 0 };
+    const listeners = new Set();
+    const store = {
+      getState: () => state,
+      subscribe(listener) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      }
+    };
+    const increment = () => {
+      const previous = state;
+      state = { count: state.count + 1 };
+      for (const listener of listeners) listener(state, previous);
+    };
+    const container = document.createElement("div");
+    document.body.append(container);
+
+    function Counter() {
+      const count = useStore(store, snapshot => snapshot.count);
+      return jsx("button", { type: "button", onClick: increment, children: count });
+    }
+
+    const root = createRoot(container);
+    root.render(jsx(Counter, {}));
+    const button = container.querySelector("button");
+    if (button?.textContent !== "0") throw new Error("Zustand adapter did not read the initial store snapshot");
+    button.click();
+    if (button.textContent !== "1") throw new Error("Zustand adapter did not render a selected store update");
+    root.unmount();
+    increment();
+    if (listeners.size !== 0) throw new Error("Zustand adapter did not unsubscribe after unmount");
+    container.remove();
+  });
+
+  await page.evaluate(async () => {
     const { createRoot, jsx, Input, Progress } = await import("/package/index.js");
     const { createStore, mount } = await import("/package/dom.js");
     const sharedContainer = document.createElement("div");
@@ -165,7 +202,7 @@ try {
     uiContainer.remove();
   });
 
-  console.log(`browser: PASS — dashboard (${result.checks}); Modal keyboard/focus; root ownership; HTML/URL/event sink guards; Input/Progress semantics`);
+  console.log(`browser: PASS — dashboard (${result.checks}); Modal keyboard/focus; Zustand store lifecycle; root ownership; HTML/URL/event sink guards; Input/Progress semantics`);
 } finally {
   await browser?.close();
   if (server) await new Promise(resolveClose => server.httpServer.close(resolveClose));

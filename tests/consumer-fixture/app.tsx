@@ -1,11 +1,21 @@
 import { createRoot, useState } from "zui";
 import { Button, StyleSheet } from "zui/ui";
+import { useStore as useZustandStore } from "zui/zustand";
 import { createStore, mount } from "zui/legacy";
 import { createEngine } from "zui/reactive";
 
 const legacyStore = createStore("legacy");
 const engine = createEngine("graph");
 const reactiveStore = engine.createStore(1);
+const externalStore = {
+  getState: () => ({ count: 7 }),
+  subscribe: (_listener: (state: { count: number }, previous: { count: number }) => void) => () => undefined
+};
+
+function ZustandCounter() {
+  const count = useZustandStore(externalStore, state => state.count);
+  return <output>{count}</output>;
+}
 
 function ConsumerApp() {
   const [count, setCount] = useState(0);
@@ -34,5 +44,5 @@ const reactiveContainer = document.createElement("div");
 mount(() => legacyStore.get(), reactiveContainer);
 reactiveStore.set(value => value + 1);
 
-export { container, reactiveContainer, legacyStore, reactiveStore, typedInput, typedSvg, invalidAttribute, invalidHandler };
+export { container, reactiveContainer, legacyStore, reactiveStore, ZustandCounter, typedInput, typedSvg, invalidAttribute, invalidHandler };
 export { Button, StyleSheet };

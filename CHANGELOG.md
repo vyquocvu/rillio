@@ -18,5 +18,6 @@ All notable changes to ZUI are documented here.
 - Improve Input/Progress accessibility; add baseline typed HTML/SVG JSX props, tag-aware common event targets, and consumer checks for both JSX runtime type entry points.
 - Optimize stable-order, tail-update, rotation, text-only commit, and fresh-node rollback paths; allocate listener/style state lazily and add Playwright React timing/CPU-profile tools.
 - Add Playwright keyed-list comparisons for React, Preact, and Vue; optimize keyed LIS, primitive reconciliation, and batched same-parent move validation/rollback.
+- Add a dependency-free `zui/zustand` hook for vanilla and bound Zustand stores, with selector equality and lifecycle-managed subscriptions.
 
 No versioned release has been published yet. Release status remains gated by the checks in `ROADMAP.md`.

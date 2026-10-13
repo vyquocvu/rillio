@@ -52,6 +52,27 @@ Hook ordering is checked. State writes during component evaluation throw `ZUI_RE
 
 ZUI does not claim React hook scheduling, batching, synthetic event, Context, Suspense, or ecosystem compatibility.
 
+## Zustand integration
+
+Use the optional `zui/zustand` adapter to read a Zustand vanilla store or a bound store created with `create`. It follows Zustand's Store API structurally, so the ZUI runtime does not import Zustand or React:
+
+```tsx
+import { createStore } from "zustand/vanilla";
+import { useStore } from "zui/zustand";
+
+const counter = createStore<{ count: number; increment: () => void }>()(set => ({
+  count: 0,
+  increment: () => set(state => ({ count: state.count + 1 }))
+}));
+
+function Counter() {
+  const count = useStore(counter, state => state.count);
+  return <button onClick={() => counter.getState().increment()}>{count}</button>;
+}
+```
+
+The adapter accepts Zustand's `getState()` and `subscribe()` API, subscribes after mount, and unsubscribes with the ZUI component lifecycle. A component rerenders only when its selected value changes by `Object.is`; pass a third equality function for tuple/object selections. Zustand's own `useStore` is a React Hook and should not be called inside ZUI components; use this adapter instead. This does not add Zustand as a runtime dependency, and ZUI still does not provide SSR/hydration.
+
 ## Addressable DOM API
 
 The root export includes:

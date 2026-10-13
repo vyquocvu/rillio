@@ -11,7 +11,9 @@
     "jsx",
     "dom",
     "typescript",
-    "reactive"
+    "reactive",
+    "zustand",
+    "external-store"
   ],
   "private": false,
   "type": "module",
@@ -44,7 +46,8 @@
     "typescript": "^5.9.3",
     "vite": "^6.3.5",
     "vitest": "^5.0.3",
-    "vue": "^3.5.43"
+    "vue": "^3.5.43",
+    "zustand": "^5.0.15"
   },
   "files": [
     "dist/package",
@@ -73,6 +76,11 @@
       "types": "./dist/package/ui.d.ts",
       "import": "./dist/package/ui.js",
       "default": "./dist/package/ui.js"
+    },
+    "./zustand": {
+      "types": "./dist/package/zustand.d.ts",
+      "import": "./dist/package/zustand.js",
+      "default": "./dist/package/zustand.js"
     },
     "./legacy": {
       "types": "./dist/package/dom.d.ts",
