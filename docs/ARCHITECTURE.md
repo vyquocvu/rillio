@@ -44,11 +44,14 @@ Each indexed record has:
 - node kind: root, element, text, comment, or boundary;
 - DOM start/end boundary nodes;
 - `parentId`, `prevSibling`, `nextSibling`, `firstChild`, and `lastChild`;
+- `isSvg` boolean flag indicating whether the record lives within an SVG XML namespace;
 - key, type, props/value metadata, listeners, ref, and cleanup state.
 
 Listener maps and style snapshots are allocated only when those features are used, and are released during disposal; plain text nodes do not pay for either structure.
 
 Parent/sibling links are stored in the registry. `children(parentId)` walks those links and checks the index invariants. Components and structural regions use two comment nodes as one addressable boundary record, so their children are still indexed without a second virtual tree.
+
+To eliminate Map hashing overhead during sequential sibling and parent traversals, `NodeRegistry` maintains an unrolled 4-slot node MRU cache (`cacheId0..3`, `cacheNode0..3`) and a 2-slot owner MRU cache (`cacheOwnerId0..1`, `cacheOwner0..1`). Newly created nodes and sequential traversals hit these fast slots directly without traversing internal `Map` hash buckets.
 
 `RootId` and `OwnerId` are never reused. Disposed records remain as tombstones for diagnostics, while active traversals reject disposed records.
 
@@ -78,7 +81,10 @@ flowchart TB
 All browser writes go through `PatchEngine`:
 
 1. A planner creates addressable records and queues operations in a `PatchTransaction`.
-2. Validation checks root membership, node state, parent/anchor validity, cycles, duplicate operations, operation-kind constraints, and unsafe property sinks.
+2. Specialized fast-path commit pipelines optimize the common transaction classes:
+   - **Fresh-subtree mounts (`commitCreatedOnly`)**: When a transaction contains only newly created nodes and no removals, validation and DOM writes are fused into a single pass. Duplicate insertion checks use native JavaScript property checks (`node.parentId !== null`) instead of temporary Map allocations; cycle checks are pruned for leaf nodes (`node.firstChild === null`); and DOM insertions route through `insertCreatedRange` and `linkCreatedChild`, bypassing detached checks (`domStart.parentNode`) and duplicate ancestor cycles.
+   - **Text-only updates (`commitTextOnly`)**: Compares directly against cached JavaScript string `node.value` (avoiding native Blink `CharacterData.data` reads) and applies text mutations linearly with inverse rollback recording.
+   - **General updates**: Full multi-pass validation checks root membership, node state, parent/anchor validity, cycles, duplicate operations, operation-kind constraints, and unsafe property sinks.
 3. Commit inserts or moves ranges, patches text/properties/events/refs, and updates the Flat Index. Only inert initial `data-*`/`aria-*` attributes on detached native elements may be applied earlier through `PatchEngine`.
 4. Remove operations run after structural/property changes. The engine clears bindings, runs cleanup, and disposes removed records.
 5. Planning failures discard newly created records. Commit failures remove newly inserted ranges where possible and preserve the original exception.
@@ -122,7 +128,13 @@ sequenceDiagram
 - New nodes are created through the transaction and moved into final order by key.
 - Removed nodes are disposed after the commit, including descendant effects, listeners, refs, and component cleanups.
 
-Keyed reconciliation reads the current `NodeId` order from the registry. The next child array is a planning result, not a second source-of-truth tree.
+Keyed reconciliation reads the current `NodeId` order from the registry. The next child array is a planning result, not a second source-of-truth tree. Several specialized fast paths bypass expensive diffing steps:
+
+- **Exact keyed reversal (`reconcileReversedChildren`)**: Detects exact reversed permutations in $O(N)$ linear time with zero allocations, bypassing Longest Increasing Subsequence (LIS) calculation and scheduling a direct `moveMany` batch.
+- **Single-step rotation (`reconcileSingleStepRotation`)**: Detects single element cyclic shifts at the head or tail and emits a single `move` operation.
+- **Ordered linear scan (`reconcileOrderedChildren`)**: For identical orders, text updates, and tail insertions/removals, matches nodes in a single linear pass. Matched records are cached during validation to eliminate second-pass registry lookups, and unconsumed tail siblings are removed directly from the cursor.
+- **Cached parent propagation**: Recursive JSX descent (`mountValue`, `reconcileChildren`, `reconcileOrderedChildren`) propagates `parentRecord` down the tree, pre-populating `cachedNode` and `cachedParent` on queued insert operations to avoid repetitive Map lookups during commit.
+- **Closure-free array normalization**: Child arrays are inspected with an indexed loop and flattened via a static `flattenChild` routine, completely avoiding closure allocations and `Array.prototype.forEach` call frames.
 
 Fresh native host subtrees are assembled while detached, then their root is attached. This reduces incremental writes to a live ancestor during large mounts. Initial `data-*` and `aria-*` attributes on native elements are applied through the patch engine without allocating a property operation; other props still follow transaction validation and commit. Custom elements keep the connected insertion/attribute-callback order because their callbacks are user code. Refs on newly created nodes are invoked after the structural transaction, so they observe the mounted subtree even when a render also updates existing nodes.
 

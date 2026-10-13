@@ -21,6 +21,15 @@ All notable changes to ZUI are documented here.
 - Licensed under the MIT License.
 
 ### Performance
+- Zero-allocation `commitCreatedOnly` single-pass mount pipeline with direct `node.parentId !== null` duplicate checking and cycle pruning on leaf nodes.
+- Multi-slot unrolled MRU locality caching in `NodeRegistry` (4-slot node cache, 2-slot owner cache) eliminating Map hash overhead on sequential traversals.
+- Zero-DOM SVG namespace resolution via boolean `isSvg` flag on `FlatNode`, eliminating C++/V8 boundary crossings (`namespaceURI`).
+- Streamlined `insertCreatedRange` and `linkCreatedChild` with direct `appendChild`/`insertBefore` and pruned ancestor checks for newly created nodes.
+- Keyed reversal fast path (`reconcileReversedChildren`) with $O(N)$ permutation detection, bypassing LIS search.
+- Single-pass `matchedRecords` caching in `reconcileOrderedChildren` eliminating duplicate second-pass registry lookups.
+- Cached parent propagation through recursive JSX descent pre-populating node and parent references for transactions.
+- Pure JavaScript text diffing against cached `node.value`, removing native Blink `CharacterData.data` DOM reads.
+- Static closure-free array normalization (`flattenChild`) with raw indexed loops.
 - Keyed reconciliation and explicit `For` using an LIS pass to minimize moves.
 - Pre-resolved keyed move-batch records during validation to avoid repeated lookups.
 - Inert initial attribute application to detached native nodes, attaching completed host subtrees once.
