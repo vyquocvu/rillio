@@ -1,5 +1,5 @@
 node_modules/
 dist/
-.zui-test/
+.zui-*/
 coverage/
 *.tsbuildinfo
