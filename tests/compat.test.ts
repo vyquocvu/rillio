@@ -374,4 +374,78 @@ describe("React-style compatibility runtime", () => {
     root.unmount();
   });
 
+  it("renders SVG component trees with correct namespace and presentation attributes", () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+
+    function Icon(props: { stroke: number }) {
+      return jsx("svg", {
+        viewBox: "0 0 24 24",
+        class: "zui-icon",
+        children: jsx("path", {
+          d: "M5 12h14",
+          strokeWidth: props.stroke,
+          fillRule: "nonzero"
+        })
+      });
+    }
+
+    root.render(jsx(Icon, { stroke: 2 }));
+    const svg = container.querySelector("svg")!;
+    const path = container.querySelector("path")!;
+
+    expect(svg.namespaceURI).toBe("http://www.w3.org/2000/svg");
+    expect(svg.getAttribute("viewBox")).toBe("0 0 24 24");
+    expect(svg.getAttribute("class")).toBe("zui-icon");
+
+    expect(path.namespaceURI).toBe("http://www.w3.org/2000/svg");
+    expect(path.getAttribute("stroke-width")).toBe("2");
+    expect(path.getAttribute("fill-rule")).toBe("nonzero");
+
+    root.render(jsx(Icon, { stroke: 4 }));
+    expect(path.getAttribute("stroke-width")).toBe("4");
+    root.unmount();
+  });
+
+  it("supports controlled form inputs, label associations, and ARIA boolean props", () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    let update!: (val: string) => void;
+
+    function Form() {
+      const [text, setText] = useState("start");
+      update = setText;
+      return jsx("form", {
+        children: [
+          jsx("label", { htmlFor: "txt-input", children: "Label" }),
+          jsx("input", {
+            id: "txt-input",
+            value: text,
+            readOnly: true,
+            required: true,
+            "aria-expanded": text === "start"
+          })
+        ]
+      });
+    }
+
+    root.render(jsx(Form, {}));
+    const label = container.querySelector("label")!;
+    const input = container.querySelector("input")!;
+
+    expect(label.htmlFor).toBe("txt-input");
+    expect(label.getAttribute("for")).toBe("txt-input");
+    expect(input.value).toBe("start");
+    expect(input.readOnly).toBe(true);
+    expect(input.required).toBe(true);
+    expect(input.getAttribute("aria-expanded")).toBe("true");
+
+    // Simulate user editing DOM
+    input.value = "dirty";
+
+    update("next");
+    expect(input.value).toBe("next");
+    expect(input.getAttribute("aria-expanded")).toBe("false");
+    root.unmount();
+  });
 });

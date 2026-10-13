@@ -75,7 +75,7 @@ flowchart LR
 ### M4 — Release hardening — next
 
 - [x] Add renderer hook snapshots and best-effort inverse operations for failed DOM commits; document non-atomic user callback/cleanup behavior.
-- [ ] Expand the DOM contract for SVG namespaces, form properties, custom elements, and accessibility-oriented properties.
+- [x] Expand the DOM contract for SVG namespaces, form properties, custom elements, and accessibility-oriented properties.
 - [x] Replace catch-all JSX `any` props with checked common HTML/SVG attributes and tag-aware common event targets; both production and development runtimes are consumer-compiled. Full DOM/SVG coverage remains future work.
 - [x] Bound retained tombstones and release disposed DOM/component references; heap profiling and owner/effect diagnostics remain.
 - [ ] Run all gates from a clean checkout and record the exact code revision.

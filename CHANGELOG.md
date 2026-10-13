@@ -21,5 +21,6 @@ All notable changes to ZUI are documented here.
 - Add a dependency-free `zui/zustand` hook for vanilla and bound Zustand stores, with selector equality and lifecycle-managed subscriptions.
 - Reduce large-list mount work by applying inert initial data/ARIA attributes to detached native nodes and attaching completed host subtrees once; preserve custom-element callback timing and mounted-ref semantics.
 - Pre-resolve keyed move-batch records during validation to avoid repeated id lookups in the DOM move loop; reject cross-root owner assignments and discard transaction-created records when no patch is scheduled.
+- Expand the DOM contract for SVG namespaces (`createElementNS`), presentation attributes, and XML namespaces (`xlink:href`, `xml:space`); form properties (`selected`, `indeterminate`, `readOnly`, `required`, `multiple`, `autoFocus`, `formNoValidate`, `htmlFor`) and controlled input drift restoration; custom elements with `is` attribute and property assignment; and accessibility-oriented ARIA boolean/token normalization.
 
 No versioned release has been published yet. Release status remains gated by the checks in `ROADMAP.md`.

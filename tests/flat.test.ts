@@ -409,4 +409,216 @@ describe("addressable DOM foundation", () => {
     (container.firstElementChild as HTMLButtonElement | null)?.click();
     expect(clicks).toBe(1);
   });
+
+  it("creates SVG elements with proper namespaces and normalizes attributes", () => {
+    const registry = new NodeRegistry();
+    const patches = new PatchEngine(registry);
+    const container = document.createElement("div");
+    const root = registry.createRoot(container);
+    const owner = registry.createOwner(root.rootId, root.ownerId);
+
+    let svgId!: number;
+    let circleId!: number;
+    let foreignId!: number;
+    let htmlDivId!: number;
+
+    patches.transaction(root.rootId, tx => {
+      svgId = tx.createElement(owner, "svg", "svg", undefined, { viewBox: "0 0 100 100" }, undefined, root.nodeId);
+      tx.insert(svgId, root.nodeId);
+      tx.patchProps(svgId, {}, { viewBox: "0 0 100 100", className: "icon" });
+
+      circleId = tx.createElement(owner, "circle", "circle", undefined, undefined, undefined, svgId);
+      tx.insert(circleId, svgId);
+      tx.patchProps(circleId, {}, {
+        cx: 50,
+        cy: 50,
+        r: 40,
+        strokeWidth: 2,
+        fillRule: "evenodd",
+        xlinkHref: "#test"
+      });
+
+      foreignId = tx.createElement(owner, "foreignObject", "foreignObject", undefined, undefined, undefined, svgId);
+      tx.insert(foreignId, svgId);
+
+      htmlDivId = tx.createElement(owner, "div", "div", undefined, undefined, undefined, foreignId);
+      tx.insert(htmlDivId, foreignId);
+    });
+
+    const svgEl = registry.getNode(svgId).domStart as SVGSVGElement;
+    const circleEl = registry.getNode(circleId).domStart as SVGCircleElement;
+    const foreignEl = registry.getNode(foreignId).domStart as SVGElement;
+    const htmlDivEl = registry.getNode(htmlDivId).domStart as HTMLDivElement;
+
+    expect(svgEl.namespaceURI).toBe("http://www.w3.org/2000/svg");
+    expect(svgEl.getAttribute("viewBox")).toBe("0 0 100 100");
+    expect(svgEl.getAttribute("class")).toBe("icon");
+
+    expect(circleEl.namespaceURI).toBe("http://www.w3.org/2000/svg");
+    expect(circleEl.getAttribute("cx")).toBe("50");
+    expect(circleEl.getAttribute("stroke-width")).toBe("2");
+    expect(circleEl.getAttribute("fill-rule")).toBe("evenodd");
+    expect(circleEl.getAttributeNS("http://www.w3.org/1999/xlink", "href")).toBe("#test");
+
+    expect(foreignEl.namespaceURI).toBe("http://www.w3.org/2000/svg");
+    expect(htmlDivEl.namespaceURI).toBe("http://www.w3.org/1999/xhtml");
+  });
+
+  it("handles form properties, validation attributes, and restores drifted controlled state", () => {
+    const registry = new NodeRegistry();
+    const patches = new PatchEngine(registry);
+    const container = document.createElement("div");
+    const root = registry.createRoot(container);
+    const owner = registry.createOwner(root.rootId, root.ownerId);
+
+    let inputId!: number;
+    let selectId!: number;
+    let optionId!: number;
+    let labelId!: number;
+    let btnId!: number;
+
+    patches.transaction(root.rootId, tx => {
+      inputId = tx.createElement(owner, "input");
+      tx.insert(inputId, root.nodeId);
+      tx.patchProps(inputId, {}, {
+        type: "checkbox",
+        checked: true,
+        value: "active",
+        indeterminate: true,
+        readOnly: true,
+        required: true,
+        autoFocus: true
+      });
+
+      selectId = tx.createElement(owner, "select");
+      tx.insert(selectId, root.nodeId);
+      tx.patchProps(selectId, {}, { multiple: true });
+
+      optionId = tx.createElement(owner, "option", "option", undefined, undefined, undefined, selectId);
+      tx.insert(optionId, selectId);
+      tx.patchProps(optionId, {}, { value: "opt1", selected: true });
+
+      labelId = tx.createElement(owner, "label");
+      tx.insert(labelId, root.nodeId);
+      tx.patchProps(labelId, {}, { htmlFor: "input-1" });
+
+      btnId = tx.createElement(owner, "button");
+      tx.insert(btnId, root.nodeId);
+      tx.patchProps(btnId, {}, { formNoValidate: true });
+    });
+
+    const input = registry.getNode(inputId).domStart as HTMLInputElement;
+    expect(input.checked).toBe(true);
+    expect(input.value).toBe("active");
+    expect(input.indeterminate).toBe(true);
+    expect(input.readOnly).toBe(true);
+    expect(input.required).toBe(true);
+    expect(input.autofocus).toBe(true);
+    expect(input.getAttribute("readonly")).toBe("");
+    expect(input.getAttribute("required")).toBe("");
+
+    const select = registry.getNode(selectId).domStart as HTMLSelectElement;
+    expect(select.multiple).toBe(true);
+    expect(select.getAttribute("multiple")).toBe("");
+
+    const option = registry.getNode(optionId).domStart as HTMLOptionElement;
+    expect(option.selected).toBe(true);
+    expect(option.getAttribute("selected")).toBe("");
+    expect(option.value).toBe("opt1");
+
+    const label = registry.getNode(labelId).domStart as HTMLLabelElement;
+    expect(label.htmlFor).toBe("input-1");
+    expect(label.getAttribute("for")).toBe("input-1");
+
+    const btn = registry.getNode(btnId).domStart as HTMLButtonElement;
+    expect(btn.formNoValidate).toBe(true);
+    expect(btn.getAttribute("formnovalidate")).toBe("");
+
+    // Simulate user editing DOM input
+    input.value = "user-typed-something";
+    input.checked = false;
+
+    // Patch with unchanged props -> should restore expected controlled values
+    patches.transaction(root.rootId, tx => {
+      tx.patchProps(inputId, { checked: true, value: "active" }, { checked: true, value: "active" });
+    });
+    expect(input.value).toBe("active");
+    expect(input.checked).toBe(true);
+  });
+
+  it("handles accessibility properties with correct ARIA boolean and token semantics", () => {
+    const registry = new NodeRegistry();
+    const patches = new PatchEngine(registry);
+    const container = document.createElement("div");
+    const root = registry.createRoot(container);
+    const owner = registry.createOwner(root.rootId, root.ownerId);
+
+    let divId!: number;
+    patches.transaction(root.rootId, tx => {
+      divId = tx.createElement(owner, "div");
+      tx.insert(divId, root.nodeId);
+      tx.patchProps(divId, {}, {
+        "aria-expanded": false,
+        "aria-hidden": true,
+        role: "dialog",
+        tabIndex: 0
+      });
+    });
+
+    const div = registry.getNode(divId).domStart as HTMLDivElement;
+    expect(div.getAttribute("aria-expanded")).toBe("false");
+    expect(div.getAttribute("aria-hidden")).toBe("true");
+    expect(div.getAttribute("role")).toBe("dialog");
+    expect(div.getAttribute("tabindex")).toBe("0");
+    expect(div.tabIndex).toBe(0);
+
+    patches.transaction(root.rootId, tx => {
+      tx.patchProps(divId, {
+        "aria-expanded": false,
+        "aria-hidden": true,
+        role: "dialog",
+        tabIndex: 0
+      }, {
+        "aria-expanded": true,
+        "aria-hidden": null,
+        role: false,
+        tabIndex: -1
+      });
+    });
+
+    expect(div.getAttribute("aria-expanded")).toBe("true");
+    expect(div.hasAttribute("aria-hidden")).toBe(false);
+    expect(div.hasAttribute("role")).toBe(false);
+    expect(div.getAttribute("tabindex")).toBe("-1");
+    expect(div.tabIndex).toBe(-1);
+  });
+
+  it("supports custom elements with property assignment and 'is' attribute", () => {
+    const registry = new NodeRegistry();
+    const patches = new PatchEngine(registry);
+    const container = document.createElement("div");
+    const root = registry.createRoot(container);
+    const owner = registry.createOwner(root.rootId, root.ownerId);
+
+    const complexConfig = { enabled: true, tags: ["zui"] };
+    let customBtnId!: number;
+    let customElId!: number;
+
+    patches.transaction(root.rootId, tx => {
+      customBtnId = tx.createElement(owner, "button", "button", undefined, { is: "fancy-button" });
+      tx.insert(customBtnId, root.nodeId);
+
+      customElId = tx.createElement(owner, "x-widget");
+      tx.insert(customElId, root.nodeId);
+      tx.patchProps(customElId, {}, { config: complexConfig, active: true, title: "Widget" });
+    });
+
+    const customBtn = registry.getNode(customBtnId).domStart as HTMLButtonElement;
+    expect(customBtn.getAttribute("is")).toBe("fancy-button");
+
+    const customEl = registry.getNode(customElId).domStart as HTMLElement;
+    expect((customEl as any).config).toBe(complexConfig);
+    expect(customEl.getAttribute("title")).toBe("Widget");
+    expect(customEl.getAttribute("active")).toBe("");
+  });
 });

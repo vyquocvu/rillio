@@ -247,7 +247,7 @@ function renderChild(
   }
 
   const scope = createScope(root.rootId, parentOwnerId, ownerId => {
-    const nodeId = tx.createElement(ownerId, vnodeType, vnodeType, vnode.key);
+    const nodeId = tx.createElement(ownerId, vnodeType, vnodeType, vnode.key, vnode.props, vnode, parentId);
     tx.setMeta(nodeId, { type: vnodeType, key: vnode.key, props: vnode.props, value: vnode });
     tx.insert(nodeId, parentId);
     renderProps(nodeId, vnode.props, root, tx);

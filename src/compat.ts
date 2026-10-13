@@ -282,8 +282,9 @@ function mountValue(
     return nodeId;
   }
 
-  const nodeId = tx.createElement(ownerId, value.type, value.type, value.key, value.props, value);
-  const assembleDetached = !value.type.includes("-");
+  const isCustomElement = typeof value.type === "string" && (value.type.includes("-") || Boolean(value.props?.is));
+  const nodeId = tx.createElement(ownerId, value.type, value.type, value.key, value.props, value, parentId);
+  const assembleDetached = !isCustomElement;
   // Custom-element attribute callbacks are user code. Preserve their connected
   // mount timing; only native host elements use the detached-subtree path.
   if (!assembleDetached) tx.insert(nodeId, parentId);

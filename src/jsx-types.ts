@@ -29,6 +29,7 @@ interface CommonHTMLProps extends AccessibilityProps {
   translate?: "yes" | "no";
   slot?: string;
   part?: string;
+  is?: string;
   ref?: ((element: Element | null) => void) | { current: Element | null };
   onClick?: (event: MouseEvent) => void;
   onDoubleClick?: (event: MouseEvent) => void;
@@ -69,6 +70,7 @@ export interface HTMLProps extends CommonHTMLProps {
   disabled?: boolean;
   required?: boolean;
   readOnly?: boolean;
+  indeterminate?: boolean;
   placeholder?: string;
   autoComplete?: string;
   autoFocus?: boolean;
@@ -105,6 +107,14 @@ export interface HTMLProps extends CommonHTMLProps {
 
 export interface SVGProps extends CommonHTMLProps {
   xmlns?: string;
+  "xmlns:xlink"?: string;
+  xmlnsXlink?: string;
+  "xlink:href"?: string;
+  xlinkHref?: string;
+  "xlink:title"?: string;
+  xlinkTitle?: string;
+  "xml:space"?: string;
+  xmlSpace?: string;
   viewBox?: string;
   preserveAspectRatio?: string;
   x?: number | string;

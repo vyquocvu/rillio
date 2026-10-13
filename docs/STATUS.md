@@ -13,13 +13,14 @@ Updated: 2026-10-13. The verified workspace is uncommitted; `3cc18e3` is the bas
 - The optional `zui/ui` layer includes composable primitives, a responsive admin showcase, modal focus handling, and Input/Progress accessibility defaults.
 - Production and development JSX entry points have baseline typed HTML/SVG attributes, common typed event targets, and consumer fixtures that assert invalid attributes fail compilation.
 - ESM/declaration exports and strict external consumer tests cover package subpaths and both JSX modes.
+- Expand the DOM contract for SVG namespaces (`createElementNS`), presentation attributes, and XML namespaces (`xlink:href`, `xml:space`); form properties (`selected`, `indeterminate`, `readOnly`, `required`, `multiple`, `autoFocus`, `formNoValidate`, `htmlFor`) and controlled input drift restoration; custom elements with `is` attribute and property assignment; and accessibility-oriented ARIA boolean/token normalization.
 
 ## Verification
 
 Environment: macOS arm64; Node v26.5.0; npm 12.0.2; TypeScript 5.9.3; Vitest 5.0.3; Vite 6.4.4; headless Chromium 156.0.8078.4.
 
 - `npm run typecheck`: **PASS**
-- `npm test`: **PASS — 10 files, 91 tests**
+- `npm test`: **PASS — 11 files, 108 tests**
 - `npm run build:release`: **PASS — Vite showcase/admin/demos (3 HTML entries) and package declarations**
 - `npm run test:smoke`: **PASS — 16/16**
 - `npm run test:oracle`: **PASS — 2,400 updates**
@@ -35,7 +36,6 @@ The latest browser medians and methodology are in [PERFORMANCE.md](PERFORMANCE.m
 
 ## Remaining release gaps
 
-- The DOM runtime still needs broader SVG namespace/property normalization, custom-element semantics, and form/accessibility prop coverage. JSX typings are a checked baseline, not complete DOM declarations.
 - Transaction rollback cannot undo arbitrary ref callbacks or cleanup side effects; clean-checkout release verification and a commit SHA remain outstanding.
 - Heap profiling and live owner/effect diagnostics are not yet implemented; the tombstone cap only bounds retained diagnostics.
 - Cold mount and text-only updates remain slower than React in the current browser workload; unchanged renders are near parity. See [the performance notes](PERFORMANCE.md).
