@@ -251,6 +251,34 @@ describe("addressable DOM foundation", () => {
     expect(registry.allNodes().filter(node => node.kind === "element" && !node.disposed)).toHaveLength(0);
   });
 
+  it("rejects cross-root node ownership before registering the record", () => {
+    const registry = new NodeRegistry();
+    const first = registry.createRoot(document.createElement("div"));
+    const second = registry.createRoot(document.createElement("div"));
+
+    expect(() => registry.createNode({
+      rootId: first.rootId,
+      ownerId: second.ownerId,
+      kind: "element",
+      domStart: document.createElement("span")
+    })).toThrow("ZUI_OWNER_ROOT_MISMATCH");
+    expect(registry.allNodes()).toHaveLength(2);
+  });
+
+  it("discards records created by a transaction that schedules no patches", () => {
+    const registry = new NodeRegistry();
+    const patches = new PatchEngine(registry);
+    const root = registry.createRoot(document.createElement("div"));
+    let orphan!: number;
+
+    patches.transaction(root.rootId, tx => {
+      orphan = tx.createElement(root.ownerId, "span");
+    });
+
+    expect(registry.getNode(orphan).disposed).toBe(true);
+    expect(registry.children(root.nodeId)).toEqual([]);
+  });
+
   it("rejects cycles formed between fresh nodes while skipping safe leaf checks", () => {
     const registry = new NodeRegistry();
     const patches = new PatchEngine(registry);

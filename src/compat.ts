@@ -283,9 +283,18 @@ function mountValue(
   }
 
   const nodeId = tx.createElement(ownerId, value.type, value.type, value.key, value.props, value);
-  tx.insert(nodeId, parentId);
-  tx.patchProps(nodeId, {}, value.props);
+  const assembleDetached = !value.type.includes("-");
+  // Custom-element attribute callbacks are user code. Preserve their connected
+  // mount timing; only native host elements use the detached-subtree path.
+  if (!assembleDetached) tx.insert(nodeId, parentId);
+  tx.patchInitialProps(nodeId, value.props);
   reconcileChildren(nodeId, value.props.children as Child, ownerId, root, tx);
+  if (assembleDetached) {
+    // Assemble a fresh host subtree while it is detached, then attach its root
+    // once. This keeps large initial mounts from incrementally mutating a live
+    // ancestor as every descendant is reconciled.
+    tx.insert(nodeId, parentId);
+  }
   return nodeId;
 }
 

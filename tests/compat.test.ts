@@ -188,6 +188,73 @@ describe("React-style compatibility runtime", () => {
     expect(container.childNodes).toHaveLength(0);
   });
 
+  it("attaches fresh-subtree refs after detached host descendants are assembled", () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    const observations: Array<[string, boolean, string]> = [];
+
+    root.render(jsx("section", {
+      ref: (element: Element | null) => {
+        if (element) observations.push(["section", container.contains(element), element.textContent ?? ""]);
+      },
+      children: jsx("strong", {
+        ref: (element: Element | null) => {
+          if (element) observations.push(["strong", container.contains(element), element.textContent ?? ""]);
+        },
+        children: "ready"
+      })
+    }));
+
+    expect(observations).toEqual([
+      ["section", true, "ready"],
+      ["strong", true, "ready"]
+    ]);
+    root.unmount();
+  });
+
+  it("keeps refs mounted when a transaction mixes existing updates and fresh appends", () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    const observations: Array<[boolean, string]> = [];
+    root.render(jsx("ul", {
+      children: [jsx("li", { children: "existing" }, "existing")]
+    }));
+
+    root.render(jsx("ul", {
+      children: [
+        jsx("li", { title: "updated", children: "existing" }, "existing"),
+        jsx("li", {
+          ref: (element: Element | null) => {
+            if (element) observations.push([container.contains(element), element.textContent ?? ""]);
+          },
+          children: "new"
+        }, "new")
+      ]
+    }));
+
+    expect(observations).toEqual([[true, "new"]]);
+    root.unmount();
+  });
+
+  it("preserves connected callback timing for custom-element initial attributes", () => {
+    const events: string[] = [];
+    class MountProbe extends HTMLElement {
+      static get observedAttributes() { return ["data-state"]; }
+      connectedCallback() { events.push(`connected:${this.getAttribute("data-state")}`); }
+      attributeChangedCallback() { events.push(`attribute:${this.isConnected}`); }
+    }
+    customElements.define("zui-mount-probe", MountProbe);
+
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    root.render(jsx("zui-mount-probe", { "data-state": "ready" }));
+
+    expect(events).toEqual(["connected:null", "attribute:true"]);
+    root.unmount();
+    container.remove();
+  });
+
   it("reuses the root when the public render helper is called again", () => {
     const container = document.createElement("div");
     let update!: (next: number) => void;

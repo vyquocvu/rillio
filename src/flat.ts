@@ -136,6 +136,7 @@ export class NodeRegistry implements OwnerHost {
   createNode(init: NodeInit): NodeId {
     const owner = this.getOwner(init.ownerId);
     if (owner.disposed) throw new Error("ZUI_OWNER_DISPOSED");
+    if (owner.rootId !== init.rootId) throw new Error("ZUI_OWNER_ROOT_MISMATCH");
     const id = this.nextNodeId++;
     const node: FlatNode = {
       id,
@@ -526,7 +527,8 @@ type PatchOp =
       beforeIds: Array<NodeId | null>;
       originalRecords?: FlatNode[];
       finalRecords?: FlatNode[];
-      recordsById?: Map<NodeId, FlatNode>;
+      movingRecords?: FlatNode[];
+      beforeRecords?: Array<FlatNode | null>;
     }
   | { kind: "props"; nodeId: NodeId; previous: Record<string, any>; next: Record<string, any>; changedKeys: string[] }
   | { kind: "text"; nodeId: NodeId; value: string; cachedNode?: FlatNode; previous?: string }
@@ -570,6 +572,15 @@ function isUnsafeUrlProperty(name: string, value: unknown): boolean {
   return /^(javascript|vbscript):/.test(normalized) || normalized.startsWith("data:text/html");
 }
 
+function validateProperty(name: string, value: unknown): void {
+  const classification = classifyProperty(name);
+  if (classification.blockedHTML) throw new Error("ZUI_UNSAFE_HTML_PROP");
+  if (classification.event && value != null && typeof value !== "function") {
+    throw new Error("ZUI_UNSAFE_EVENT_PROP");
+  }
+  if (isUnsafeUrlProperty(name, value)) throw new Error("ZUI_UNSAFE_URL_PROP");
+}
+
 export class PatchTransaction {
   private readonly operations: PatchOp[] = [];
   private readonly created: NodeId[] = [];
@@ -593,8 +604,7 @@ export class PatchTransaction {
     const id = this.engine.registry.createNode({
       rootId: this.rootId, ownerId, kind: "element", domStart: element, type, key, props, value
     });
-    this.created.push(id);
-    this.createdSet.add(id);
+    this.recordCreated(id);
     return id;
   }
 
@@ -603,8 +613,7 @@ export class PatchTransaction {
     const id = this.engine.registry.createNode({
       rootId: this.rootId, ownerId, kind: "text", domStart: text, value
     });
-    this.created.push(id);
-    this.createdSet.add(id);
+    this.recordCreated(id);
     return id;
   }
 
@@ -613,8 +622,7 @@ export class PatchTransaction {
     const id = this.engine.registry.createNode({
       rootId: this.rootId, ownerId, kind: "comment", domStart: comment, value
     });
-    this.created.push(id);
-    this.createdSet.add(id);
+    this.recordCreated(id);
     return id;
   }
 
@@ -624,8 +632,7 @@ export class PatchTransaction {
     const id = this.engine.registry.createNode({
       rootId: this.rootId, ownerId, kind: "boundary", domStart: start, domEnd: end, key
     });
-    this.created.push(id);
-    this.createdSet.add(id);
+    this.recordCreated(id);
     return id;
   }
 
@@ -665,6 +672,17 @@ export class PatchTransaction {
     if (changedKeys) this.pushOperation({ kind: "props", nodeId, previous, next, changedKeys });
   }
 
+  patchInitialProps(nodeId: NodeId, props: Record<string, any>): void {
+    let deferredKeys: string[] | undefined;
+    for (const name in props) {
+      if (!Object.prototype.hasOwnProperty.call(props, name) || name === "children" || name === "key") continue;
+      if (!this.engine.applyInitialDataAttribute(nodeId, name, props[name])) {
+        (deferredKeys ??= []).push(name);
+      }
+    }
+    if (deferredKeys) this.pushOperation({ kind: "props", nodeId, previous: {}, next: props, changedKeys: deferredKeys });
+  }
+
   setText(nodeId: NodeId, value: string, cachedNode?: FlatNode): void {
     this.pushOperation({ kind: "text", nodeId, value, cachedNode });
   }
@@ -684,6 +702,9 @@ export class PatchTransaction {
   commit(): void {
     if (this.committed) throw new Error("ZUI_TRANSACTION_REUSED");
     if (this.operations.length === 0) {
+      // Creating records is already an observable registry mutation. A
+      // transaction that never schedules any patch must not leak those nodes.
+      this.rollback();
       this.committed = true;
       return;
     }
@@ -697,8 +718,19 @@ export class PatchTransaction {
     // Fresh records are discarded as a subtree if commit fails, so per-op
     // undo closures are unnecessary when this transaction only touches them.
     const undo: Array<() => void> | undefined = this.onlyCreatedOperations ? undefined : [];
+    const deferredRefs: Array<() => void> = [];
+    let operationIndex = 0;
+    let refIndex = 0;
     try {
-      for (const operation of changes) {
+      // Ref callbacks on fresh nodes run after their newly-built DOM subtree is
+      // attached. A callback may enqueue more work into this same transaction,
+      // so keep consuming operations before advancing to the next callback.
+      while (operationIndex < changes.length || refIndex < deferredRefs.length) {
+        if (operationIndex >= changes.length) {
+          deferredRefs[refIndex++]!();
+          continue;
+        }
+        const operation = changes[operationIndex++]!;
         if (operation.kind === "move-many") {
           if (undo) undo.push(() => this.engine.restoreChildrenOrder(operation.parentId, operation.originalIds));
           this.engine.moveChildren(
@@ -707,7 +739,8 @@ export class PatchTransaction {
             operation.beforeIds,
             operation.originalRecords!,
             operation.finalRecords!,
-            operation.recordsById!
+            operation.movingRecords!,
+            operation.beforeRecords!
           );
           continue;
         }
@@ -729,7 +762,14 @@ export class PatchTransaction {
           this.engine.moveRange(operation.nodeId, operation.parentId, operation.beforeId);
         } else if (operation.kind === "props") {
           if (needsUndo) undo!.push(() => this.engine.applyProps(operation.nodeId, operation.next, operation.previous, operation.changedKeys));
-          this.engine.applyProps(operation.nodeId, operation.previous, operation.next, operation.changedKeys);
+          const attachRef = this.engine.applyProps(
+            operation.nodeId,
+            operation.previous,
+            operation.next,
+            operation.changedKeys,
+            this.createdSet.has(operation.nodeId)
+          );
+          if (attachRef) deferredRefs.push(attachRef);
         } else if (operation.kind === "text") {
           const previous = (this.engine.registry.getNode(operation.nodeId).domStart as CharacterData).data;
           if (needsUndo) undo!.push(() => this.engine.applyText(operation.nodeId, previous));
@@ -767,7 +807,8 @@ export class PatchTransaction {
 
   rollback(): void {
     if (this.committed) return;
-    for (const nodeId of [...this.created].reverse()) {
+    for (let index = this.created.length - 1; index >= 0; index--) {
+      const nodeId = this.created[index]!;
       if (!this.engine.registry.hasNode(nodeId)) continue;
       const node = this.engine.registry.getNode(nodeId);
       if (!node.disposed) this.engine.discardSubtree(nodeId);
@@ -865,16 +906,15 @@ export class PatchTransaction {
       if (operation.kind === "props") {
         if (node.kind !== "element") throw new Error("ZUI_TRANSACTION_PROPS");
         for (const name of operation.changedKeys) {
-          const value = operation.next[name];
-          const classification = classifyProperty(name);
-          if (classification.blockedHTML) throw new Error("ZUI_UNSAFE_HTML_PROP");
-          if (classification.event && value != null && typeof value !== "function") {
-            throw new Error("ZUI_UNSAFE_EVENT_PROP");
-          }
-          if (isUnsafeUrlProperty(name, value)) throw new Error("ZUI_UNSAFE_URL_PROP");
+          validateProperty(name, operation.next[name]);
         }
       }
     }
+  }
+
+  private recordCreated(nodeId: NodeId): void {
+    this.created.push(nodeId);
+    this.createdSet.add(nodeId);
   }
 
   private validateMoveMany(operation: Extract<PatchOp, { kind: "move-many" }>): void {
@@ -900,34 +940,52 @@ export class PatchTransaction {
     }
 
     const originalRecords = this.engine.registry.childRecords(operation.parentId);
-    if (originalRecords.length !== operation.originalIds.length ||
-      originalRecords.some((node, index) => node.id !== operation.originalIds[index] || node.rootId !== this.rootId)) {
+    if (originalRecords.length !== operation.originalIds.length) {
       throw new Error("ZUI_INDEX_CORRUPT");
     }
-    const recordsById = new Map<NodeId, FlatNode>();
-    for (const node of originalRecords) recordsById.set(node.id, node);
-    const remainingIds = new Set(operation.originalIds);
-    const finalRecords: FlatNode[] = [];
-    for (const id of operation.finalIds) {
-      const record = recordsById.get(id);
-      if (!record || !remainingIds.delete(id)) throw new Error("ZUI_INVALID_CHILD_ORDER");
-      finalRecords.push(record);
+    const indexesById = new Map<NodeId, number>();
+    for (let index = 0; index < originalRecords.length; index++) {
+      const record = originalRecords[index]!;
+      if (record.id !== operation.originalIds[index] || record.rootId !== this.rootId) {
+        throw new Error("ZUI_INDEX_CORRUPT");
+      }
+      indexesById.set(record.id, index);
     }
-    if (remainingIds.size !== 0) throw new Error("ZUI_INVALID_CHILD_ORDER");
 
-    const movedIds = new Set<NodeId>();
+    const seenFinalIndexes = new Uint8Array(originalRecords.length);
+    const finalRecords = new Array<FlatNode>(operation.finalIds.length);
+    for (let index = 0; index < operation.finalIds.length; index++) {
+      const originalIndex = indexesById.get(operation.finalIds[index]!);
+      if (originalIndex === undefined || seenFinalIndexes[originalIndex] !== 0) {
+        throw new Error("ZUI_INVALID_CHILD_ORDER");
+      }
+      seenFinalIndexes[originalIndex] = 1;
+      finalRecords[index] = originalRecords[originalIndex]!;
+    }
+
+    const movedIndexes = new Uint8Array(originalRecords.length);
+    const movingRecords = new Array<FlatNode>(operation.movingIds.length);
+    const beforeRecords = new Array<FlatNode | null>(operation.movingIds.length);
     for (let index = 0; index < operation.movingIds.length; index++) {
       const nodeId = operation.movingIds[index]!;
       const beforeId = operation.beforeIds[index]!;
-      if (movedIds.has(nodeId) || !recordsById.has(nodeId) || beforeId === nodeId) {
+      const originalIndex = indexesById.get(nodeId);
+      if (originalIndex === undefined || movedIndexes[originalIndex] !== 0 || beforeId === nodeId) {
         throw new Error("ZUI_INVALID_MOVE");
       }
-      movedIds.add(nodeId);
-      if (beforeId !== null && !recordsById.has(beforeId)) throw new Error("ZUI_INVALID_ANCHOR");
+      movedIndexes[originalIndex] = 1;
+      movingRecords[index] = originalRecords[originalIndex]!;
+      if (beforeId === null) beforeRecords[index] = null;
+      else {
+        const beforeIndex = indexesById.get(beforeId);
+        if (beforeIndex === undefined) throw new Error("ZUI_INVALID_ANCHOR");
+        beforeRecords[index] = originalRecords[beforeIndex]!;
+      }
     }
     operation.originalRecords = originalRecords;
     operation.finalRecords = finalRecords;
-    operation.recordsById = recordsById;
+    operation.movingRecords = movingRecords;
+    operation.beforeRecords = beforeRecords;
   }
 }
 
@@ -1022,19 +1080,20 @@ export class PatchEngine {
     beforeIds: Array<NodeId | null>,
     originalRecords: FlatNode[],
     finalRecords: FlatNode[],
-    records: ReadonlyMap<NodeId, FlatNode>
+    movingRecords: FlatNode[],
+    beforeRecords: Array<FlatNode | null>
   ): void {
     const parent = this.registry.getNode(parentId);
     const parentDom = this.parentDom(parent);
     const parentAnchor = this.parentAnchor(parent);
-    const focus = this.captureFocusInChildren(parentDom, movingIds, records);
+    const focus = this.captureFocusInRecords(parentDom, movingRecords);
 
     try {
       for (let index = 0; index < movingIds.length; index++) {
-        const node = records.get(movingIds[index]!)!;
+        const node = movingRecords[index]!;
         const beforeId = beforeIds[index]!;
         if (node.disposed || node.parentId !== parentId) throw new Error("ZUI_TRANSACTION_NODE");
-        const before = beforeId === null ? undefined : records.get(beforeId)!;
+        const before = beforeRecords[index] ?? undefined;
         if (beforeId !== null && (!before || before.disposed || before.parentId !== parentId)) {
           throw new Error("ZUI_TRANSACTION_ANCHOR");
         }
@@ -1091,19 +1150,28 @@ export class PatchEngine {
     nodeId: NodeId,
     previous: Record<string, any>,
     next: Record<string, any>,
-    changedKeys?: readonly string[]
-  ): void {
+    changedKeys?: readonly string[],
+    deferRef = false
+  ): (() => void) | undefined {
     const record = this.registry.getNode(nodeId);
     if (record.kind !== "element" || !(record.domStart instanceof Element)) throw new Error("ZUI_TRANSACTION_PROPS");
     const names = changedKeys ?? new Set([...Object.keys(previous), ...Object.keys(next)]);
+    let attachRef: (() => void) | undefined;
     for (const name of names) {
       const oldValue = previous[name];
       const newValue = next[name];
       if (Object.is(oldValue, newValue)) continue;
       if (name === "children" || name === "key") continue;
       if (name === "ref") {
-        this.clearRef(record);
-        this.setRef(record, newValue);
+        if (deferRef) {
+          attachRef = () => {
+            this.clearRef(record);
+            this.setRef(record, newValue);
+          };
+        } else {
+          this.clearRef(record);
+          this.setRef(record, newValue);
+        }
       } else if (isEventProperty(name)) {
         this.setEvent(record, name, newValue);
       } else {
@@ -1112,6 +1180,20 @@ export class PatchEngine {
     }
     record.props = next;
     record.version++;
+    return attachRef;
+  }
+
+  /** Apply only inert initial data/ARIA attributes to a detached native element. */
+  applyInitialDataAttribute(nodeId: NodeId, name: string, value: unknown): boolean {
+    if (!name.startsWith("data-") && !name.startsWith("aria-")) return false;
+    const record = this.registry.getNode(nodeId);
+    if (record.kind !== "element" || !(record.domStart instanceof Element) || record.domStart.localName.includes("-") ||
+      record.parentId !== null || record.domStart.parentNode !== null) {
+      return false;
+    }
+    this.setAttribute(record.domStart, name, value);
+    record.version++;
+    return true;
   }
 
   removeSubtree(nodeId: NodeId): void {
@@ -1187,12 +1269,7 @@ export class PatchEngine {
   }
 
   private setProperty(node: FlatNode, name: string, value: unknown): void {
-    const classification = classifyProperty(name);
-    if (classification.blockedHTML) throw new Error("ZUI_UNSAFE_HTML_PROP");
-    if (classification.event && value != null && typeof value !== "function") {
-      throw new Error("ZUI_UNSAFE_EVENT_PROP");
-    }
-    if (isUnsafeUrlProperty(name, value)) throw new Error("ZUI_UNSAFE_URL_PROP");
+    validateProperty(name, value);
     const element = node.domStart as HTMLElement;
     if (name === "className" || name === "class") {
       element.className = stringify(value);
@@ -1278,6 +1355,15 @@ export class PatchEngine {
     for (const id of childIds) {
       const child = records.get(id);
       if (child?.domStart instanceof Element && child.domStart.contains(active)) return this.captureFocus(child);
+    }
+    return undefined;
+  }
+
+  private captureFocusInRecords(parentDom: Node, records: readonly FlatNode[]): FocusState | undefined {
+    const active = this.document.activeElement;
+    if (!(active instanceof HTMLElement) || !(parentDom instanceof Element) || !parentDom.contains(active)) return undefined;
+    for (const child of records) {
+      if (child.domStart instanceof Element && child.domStart.contains(active)) return this.captureFocus(child);
     }
     return undefined;
   }

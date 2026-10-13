@@ -78,8 +78,8 @@ flowchart TB
 All browser writes go through `PatchEngine`:
 
 1. A planner creates addressable records and queues operations in a `PatchTransaction`.
-2. Validation checks root membership, node state, parent/anchor validity, cycles, duplicate operations, and operation-kind constraints.
-3. Commit inserts or moves ranges, patches text/properties/events/refs, and updates the Flat Index.
+2. Validation checks root membership, node state, parent/anchor validity, cycles, duplicate operations, operation-kind constraints, and unsafe property sinks.
+3. Commit inserts or moves ranges, patches text/properties/events/refs, and updates the Flat Index. Only inert initial `data-*`/`aria-*` attributes on detached native elements may be applied earlier through `PatchEngine`.
 4. Remove operations run after structural/property changes. The engine clears bindings, runs cleanup, and disposes removed records.
 5. Planning failures discard newly created records. Commit failures remove newly inserted ranges where possible and preserve the original exception.
 
@@ -123,6 +123,10 @@ sequenceDiagram
 - Removed nodes are disposed after the commit, including descendant effects, listeners, refs, and component cleanups.
 
 Keyed reconciliation reads the current `NodeId` order from the registry. The next child array is a planning result, not a second source-of-truth tree.
+
+Fresh native host subtrees are assembled while detached, then their root is attached. This reduces incremental writes to a live ancestor during large mounts. Initial `data-*` and `aria-*` attributes on native elements are applied through the patch engine without allocating a property operation; other props still follow transaction validation and commit. Custom elements keep the connected insertion/attribute-callback order because their callbacks are user code. Refs on newly created nodes are invoked after the structural transaction, so they observe the mounted subtree even when a render also updates existing nodes.
+
+For same-parent keyed move batches, validation resolves the original/final order to record arrays once. The DOM move loop consumes those prepared records instead of repeating id-to-record map lookups for each moving node and anchor; the full permutation and anchor checks remain in place.
 
 ```mermaid
 flowchart TB
