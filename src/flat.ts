@@ -356,7 +356,7 @@ export class NodeRegistry implements OwnerHost {
       result.push(current);
       current = child.nextSibling;
     }
-    const last = result.length === 0 ? null : result.at(-1)!;
+    const last = result.length === 0 ? null : result[result.length - 1]!;
     if (last !== parent.lastChild) throw new Error("ZUI_INDEX_CORRUPT");
     return result;
   }
@@ -371,7 +371,8 @@ export class NodeRegistry implements OwnerHost {
       result.push(child);
       current = child.nextSibling;
     }
-    if ((result.at(-1)?.id ?? null) !== parent.lastChild) throw new Error("ZUI_INDEX_CORRUPT");
+    const lastId = result.length === 0 ? null : result[result.length - 1]!.id;
+    if (lastId !== parent.lastChild) throw new Error("ZUI_INDEX_CORRUPT");
     return result;
   }
 
@@ -401,6 +402,26 @@ export class NodeRegistry implements OwnerHost {
       if (before.parentId !== parentId) throw new Error("ZUI_INVALID_ANCHOR");
     }
     if (node.parentId !== null) this.unlinkChild(nodeId);
+    const previous = beforeId === null ? parent.lastChild : this.getNode(beforeId).prevSibling;
+    node.parentId = parentId;
+    node.prevSibling = previous;
+    node.nextSibling = beforeId;
+    if (previous === null) parent.firstChild = nodeId;
+    else this.getNode(previous).nextSibling = nodeId;
+    if (beforeId === null) parent.lastChild = nodeId;
+    else this.getNode(beforeId).prevSibling = nodeId;
+    parent.version++;
+    node.version++;
+  }
+
+  /** Links a freshly created child to parent without redundant ancestor/disposed validation. */
+  linkCreatedChild(
+    nodeId: NodeId,
+    parentId: NodeId,
+    beforeId: NodeId | null,
+    node: FlatNode,
+    parent: FlatNode
+  ): void {
     const previous = beforeId === null ? parent.lastChild : this.getNode(beforeId).prevSibling;
     node.parentId = parentId;
     node.prevSibling = previous;
@@ -951,8 +972,8 @@ export class PatchTransaction {
     if (changedKeys) this.pushOperation({ kind: "props", nodeId, previous, next, changedKeys });
   }
 
-  patchInitialProps(nodeId: NodeId, props: Record<string, any>): void {
-    const record = this.engine.registry.getNode(nodeId);
+  patchInitialProps(nodeId: NodeId, props: Record<string, any>, cachedRecord?: FlatNode): void {
+    const record = cachedRecord ?? this.engine.registry.getNode(nodeId);
     const deferredKeys = this.engine.applyInitialAttributes(record, props);
     if (deferredKeys) this.pushOperation({ kind: "props", nodeId, previous: {}, next: props, changedKeys: deferredKeys });
   }
@@ -1132,7 +1153,6 @@ export class PatchTransaction {
 
   private commitCreatedOnly(): void {
     const operations = this.operations;
-    const projectedParents = new Map<NodeId, NodeId | null>();
     const deferredRefs: Array<() => void> = [];
     let operationIndex = 0;
     let refIndex = 0;
@@ -1148,7 +1168,8 @@ export class PatchTransaction {
         const parentId = operation.parentId;
         if (nodeId === parentId) throw new Error("ZUI_TRANSACTION_CYCLE");
 
-        if (projectedParents.has(nodeId)) {
+        const node = operation.cachedNode ?? this.engine.registry.getNode(nodeId);
+        if (node.parentId !== null) {
           throw new Error("ZUI_TRANSACTION_DUPLICATE_INSERT");
         }
 
@@ -1158,24 +1179,20 @@ export class PatchTransaction {
         if (operation.beforeId !== null) {
           const before = this.engine.registry.getNode(operation.beforeId);
           if (before.rootId !== this.rootId || before.disposed) throw new Error("ZUI_TRANSACTION_ANCHOR");
-          const beforeParent = projectedParents.get(operation.beforeId) ??
-            (this.createdSet.has(operation.beforeId) ? null : before.parentId);
-          if (operation.beforeId === nodeId || beforeParent !== parentId) {
+          if (operation.beforeId === nodeId || before.parentId !== parentId) {
             throw new Error("ZUI_INVALID_ANCHOR");
           }
         }
 
-        if (this.engine.registry.getNode(nodeId).firstChild !== null) {
+        if (node.firstChild !== null) {
           let ancestor: NodeId | null = parentId;
           while (ancestor !== null) {
             if (ancestor === nodeId) throw new Error("ZUI_TRANSACTION_CYCLE");
-            ancestor = projectedParents.get(ancestor) ??
-              (this.createdSet.has(ancestor) ? null : this.engine.registry.getNode(ancestor).parentId);
+            ancestor = this.engine.registry.getNode(ancestor).parentId;
           }
         }
 
-        projectedParents.set(nodeId, parentId);
-        this.engine.insertRange(nodeId, parentId, operation.beforeId, operation.cachedNode, parent);
+        this.engine.insertCreatedRange(nodeId, parentId, operation.beforeId, node, parent);
       } else if (operation.kind === "props") {
         const node = this.engine.registry.getNode(operation.nodeId);
         if (node.kind !== "element") throw new Error("ZUI_TRANSACTION_PROPS");
@@ -1445,6 +1462,30 @@ export class PatchEngine {
     this.registry.linkChild(nodeId, parentId, beforeId, node, parent);
   }
 
+  insertCreatedRange(
+    nodeId: NodeId,
+    parentId: NodeId,
+    beforeId: NodeId | null,
+    node: FlatNode,
+    parent: FlatNode
+  ): void {
+    const parentDom = (parent.kind === "root" || parent.kind === "element") ? (parent.domStart as Node) : this.parentDom(parent);
+    const beforeDom = beforeId === null ? (parent.kind === "boundary" ? parent.domEnd : null) : this.registry.getNode(beforeId).domStart;
+    if (node.kind !== "boundary") {
+      if (beforeDom === null) parentDom.appendChild(node.domStart);
+      else parentDom.insertBefore(node.domStart, beforeDom);
+    } else {
+      if (beforeDom === null) {
+        parentDom.appendChild(node.domStart);
+        parentDom.appendChild(node.domEnd);
+      } else {
+        parentDom.insertBefore(node.domStart, beforeDom);
+        parentDom.insertBefore(node.domEnd, beforeDom);
+      }
+    }
+    this.registry.linkCreatedChild(nodeId, parentId, beforeId, node, parent);
+  }
+
   moveRange(nodeId: NodeId, parentId: NodeId, beforeId: NodeId | null): void {
     const node = this.registry.getNode(nodeId);
     if (node.parentId === parentId && node.nextSibling === beforeId) return;
@@ -1590,15 +1631,15 @@ export class PatchEngine {
   applyInitialAttributes(record: FlatNode, props: Record<string, any>): string[] | undefined {
     let deferredKeys: string[] | undefined;
     const dom = record.domStart;
-    const isDetachedNative = record.kind === "element" && dom instanceof Element &&
+    const isDetachedNative = record.kind === "element" &&
       typeof record.type === "string" && !record.type.includes("-") && !record.props?.is &&
-      record.parentId === null && !dom.parentNode;
+      record.parentId === null;
 
     let applied = false;
     for (const name in props) {
       if (!Object.prototype.hasOwnProperty.call(props, name) || name === "children" || name === "key") continue;
       if (isDetachedNative && (name.startsWith("data-") || name.startsWith("aria-"))) {
-        this.setAttribute(dom, name, props[name]);
+        this.setAttribute(dom as Element, name, props[name]);
         applied = true;
       } else {
         (deferredKeys ??= []).push(name);

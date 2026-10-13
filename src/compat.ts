@@ -214,6 +214,14 @@ function renderTransaction<T>(rootId: number, work: (tx: PatchTransaction) => T)
   }
 }
 
+function flattenChild(entry: Child, out: Child[]): void {
+  if (Array.isArray(entry)) {
+    for (let i = 0; i < entry.length; i++) flattenChild(entry[i], out);
+  } else if (entry !== null && entry !== undefined && typeof entry !== "boolean") {
+    out.push(entry);
+  }
+}
+
 function normalize(value: Child): Child[] {
   if (!Array.isArray(value)) {
     return value !== null && value !== undefined && typeof value !== "boolean" ? [value] : [];
@@ -228,11 +236,7 @@ function normalize(value: Child): Child[] {
   }
   if (!needsFlatten) return value;
   const out: Child[] = [];
-  const walk = (entry: Child): void => {
-    if (Array.isArray(entry)) entry.forEach(walk);
-    else if (entry !== null && entry !== undefined && typeof entry !== "boolean") out.push(entry);
-  };
-  walk(value);
+  for (let i = 0; i < value.length; i++) flattenChild(value[i], out);
   return out;
 }
 
@@ -253,13 +257,14 @@ function mountValue(
   parentId: NodeId,
   ownerId: OwnerId,
   root: FlatRoot,
-  tx: PatchTransaction
+  tx: PatchTransaction,
+  parentRecord?: FlatNode
 ): NodeId {
   if (!isVNode(value)) {
     const text = typeof value === "string" ? value : typeof value === "number" ? String(value) : "";
     const nodeId = tx.createText(ownerId, text);
     if (typeof value !== "string") tx.setMeta(nodeId, { value });
-    tx.insert(nodeId, parentId);
+    tx.insert(nodeId, parentId, null, undefined, parentRecord);
     return nodeId;
   }
 
@@ -283,7 +288,7 @@ function mountValue(
     // discard the newly-created record if render planning fails.
     nodeRegistry.updateNode(nodeId, { type: value.type, key: value.key, props: value.props, value, payload: state });
     tx.attachCleanup(nodeId, () => disposeComponent(state));
-    tx.insert(nodeId, parentId);
+    tx.insert(nodeId, parentId, null, undefined, parentRecord);
     renderComponent(nodeId, value.props, tx);
     return nodeId;
   }
@@ -294,14 +299,14 @@ function mountValue(
   const assembleDetached = !isCustomElement;
   // Custom-element attribute callbacks are user code. Preserve their connected
   // mount timing; only native host elements use the detached-subtree path.
-  if (!assembleDetached) tx.insert(nodeId, parentId, null, record);
-  tx.patchInitialProps(nodeId, value.props);
+  if (!assembleDetached) tx.insert(nodeId, parentId, null, record, parentRecord);
+  tx.patchInitialProps(nodeId, value.props, record);
   reconcileChildren(nodeId, value.props.children as Child, ownerId, root, tx, record);
   if (assembleDetached) {
     // Assemble a fresh host subtree while it is detached, then attach its root
     // once. This keeps large initial mounts from incrementally mutating a live
     // ancestor as every descendant is reconciled.
-    tx.insert(nodeId, parentId, null, record);
+    tx.insert(nodeId, parentId, null, record, parentRecord);
   }
   return nodeId;
 }
@@ -338,16 +343,17 @@ function reconcile(
   parentId: NodeId,
   ownerId: OwnerId,
   root: FlatRoot,
-  tx: PatchTransaction
+  tx: PatchTransaction,
+  parentRecord?: FlatNode
 ): NodeId {
-  if (oldId === undefined) return mountValue(value, parentId, ownerId, root, tx);
+  if (oldId === undefined) return mountValue(value, parentId, ownerId, root, tx, parentRecord);
   const old = nodeRegistry.getNode(oldId);
   if (canReuseNode(old, value)) {
     reconcileMatched(oldId, old, value, root, tx);
     return oldId;
   }
 
-  const fresh = mountValue(value, parentId, ownerId, root, tx);
+  const fresh = mountValue(value, parentId, ownerId, root, tx, parentRecord);
   return fresh;
 }
 
@@ -400,14 +406,14 @@ function reconcileChildren(
 
     const onlyChildId = parent.firstChild;
     if (onlyChildId === null) {
-      mountValue(input, parentId, ownerId, root, tx);
+      mountValue(input, parentId, ownerId, root, tx, parent);
       return;
     }
     const onlyChild = nodeRegistry.getNode(onlyChildId);
     if (onlyChild.nextSibling === null) {
       if (canReuseNode(onlyChild, input)) reconcileMatched(onlyChildId, onlyChild, input, root, tx);
       else {
-        mountValue(input, parentId, ownerId, root, tx);
+        mountValue(input, parentId, ownerId, root, tx, parent);
         tx.remove(onlyChildId);
       }
       return;
@@ -445,7 +451,7 @@ function reconcileChildren(
     }
     const oldIndex = key === undefined ? unkeyed[unkeyedCursor++] ?? -1 : keyed.get(key) ?? -1;
     const prior = oldIndex < 0 ? undefined : oldIds[oldIndex];
-    const nextId = reconcile(prior, value, parentId, ownerId, root, tx);
+    const nextId = reconcile(prior, value, parentId, ownerId, root, tx, parent);
     nextIds[index] = nextId;
     if (prior !== undefined && nextId === prior) {
       oldIndexByNextIndex[index] = oldIndex + 1;
@@ -494,7 +500,8 @@ function reconcileOrderedChildren(
   tx: PatchTransaction,
   parentRecord?: FlatNode
 ): boolean {
-  const initialFirstId = (parentRecord ?? nodeRegistry.getNode(parentId)).firstChild;
+  const parent = parentRecord ?? nodeRegistry.getNode(parentId);
+  const initialFirstId = parent.firstChild;
   if (initialFirstId === null) {
     let seenKeys: Set<Key> | undefined;
     for (let index = 0; index < values.length; index++) {
@@ -504,20 +511,23 @@ function reconcileOrderedChildren(
         if (seenKeys.has(value.key)) throw new Error("ZUI_DUPLICATE_KEY");
         seenKeys.add(value.key);
       }
-      mountValue(value, parentId, ownerId, root, tx);
+      mountValue(value, parentId, ownerId, root, tx, parent);
     }
     return true;
   }
 
   let oldId: NodeId | null = initialFirstId;
   let hasAppendedNodes = false;
-  for (const value of values) {
+  const matchedRecords: FlatNode[] = [];
+  for (let index = 0; index < values.length; index++) {
+    const value = values[index]!;
     if (oldId === null) {
       hasAppendedNodes = true;
       continue;
     }
     const record = nodeRegistry.getNode(oldId);
     if (!canReuseNode(record, value)) return false;
+    matchedRecords.push(record);
     oldId = record.nextSibling;
   }
 
@@ -525,23 +535,20 @@ function reconcileOrderedChildren(
   // keys need a full duplicate check; unchanged and tail-removal paths avoid a Set.
   if (hasAppendedNodes) {
     const seenKeys = new Set<Key>();
-    for (const value of values) {
+    for (let index = 0; index < values.length; index++) {
+      const value = values[index]!;
       if (!isVNode(value) || value.key === undefined) continue;
       if (seenKeys.has(value.key)) throw new Error("ZUI_DUPLICATE_KEY");
       seenKeys.add(value.key);
     }
   }
 
-  oldId = nodeRegistry.getNode(parentId).firstChild;
-  for (const value of values) {
-    if (oldId === null) {
-      mountValue(value, parentId, ownerId, root, tx);
-      continue;
-    }
-    const currentId = oldId;
-    const current = nodeRegistry.getNode(currentId);
-    oldId = current.nextSibling;
-    reconcileMatched(currentId, current, value, root, tx);
+  for (let index = 0; index < matchedRecords.length; index++) {
+    const record = matchedRecords[index]!;
+    reconcileMatched(record.id, record, values[index]!, root, tx);
+  }
+  for (let index = matchedRecords.length; index < values.length; index++) {
+    mountValue(values[index]!, parentId, ownerId, root, tx, parent);
   }
   while (oldId !== null) {
     const nextId = nodeRegistry.getNode(oldId).nextSibling;
@@ -740,7 +747,8 @@ export function createRoot(container: Element): Root {
     render(value) {
       if (handle.disposed) throw new Error("ZUI_ROOT_UNMOUNTED");
       renderTransaction(handle.rootId, tx => {
-        reconcileChildren(handle.nodeId, value, handle.ownerId, handle, tx);
+        const rootNode = nodeRegistry.getNode(handle.nodeId);
+        reconcileChildren(handle.nodeId, value, handle.ownerId, handle, tx, rootNode);
       });
       flushEffects();
     },
