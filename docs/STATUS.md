@@ -1,6 +1,6 @@
 # ZUI Status — Flat Index / UI library work
 
-Updated: 2026-10-13. The verified workspace is uncommitted; `3cc18e3` is the base `HEAD`, not a revision containing the changes below. Record the resulting commit after review/commit.
+Updated: 2026-10-13. The verified clean-checkout release revision is `79ebab4`.
 
 ## Implemented
 
@@ -26,7 +26,7 @@ Environment: macOS arm64; Node v26.5.0; npm 12.0.2; TypeScript 5.9.3; Vitest 5.0
 - `npm run test:oracle`: **PASS — 2,400 updates**
 - `npm run bench:all`: **PASS — reactive, compatibility/keyed, and flat-index suites**
 - `npm run test:consumer`: **PASS — strict external package; production/dev JSX, UI, reactive subpaths; expected type failures**
-- `npm pack --dry-run`: **PASS — 47 publishable files, 68.2 kB tarball estimate**
+- `npm pack --dry-run`: **PASS — 51 publishable files, 81.2 kB tarball estimate**
 - `npm run test:browser`: **PASS — dashboard flows, Modal keyboard/focus, root isolation, sink guards, and accessibility checks**
 - `npm run bench:browser`: **PASS — 36 framework/scenario/size groups; three paired repeats, three warmups and nine samples per fresh context; balanced framework order; 36-context untimed DOM preflight**
 - `npm run profile:browser`: **PASS — Playwright CPU sample ranking for mount/text/no-op; diagnostic only, not timing data**
@@ -36,7 +36,7 @@ The latest browser medians and methodology are in [PERFORMANCE.md](PERFORMANCE.m
 
 ## Remaining release gaps
 
-- Transaction rollback cannot undo arbitrary ref callbacks or cleanup side effects; clean-checkout release verification and a commit SHA remain outstanding.
+- Transaction rollback cannot undo arbitrary ref callbacks or cleanup side effects (documented non-atomic behavior); clean-checkout release verification passed at `79ebab4`.
 - Heap profiling and live owner/effect diagnostics are not yet implemented; the tombstone cap only bounds retained diagnostics.
 - Cold mount and text-only updates remain slower than React in the current browser workload; unchanged renders are near parity. See [the performance notes](PERFORMANCE.md).
 - A license choice is still needed before publishing. CI/CD remains intentionally unconfigured per the repository's existing policy.

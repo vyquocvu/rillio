@@ -72,13 +72,13 @@ flowchart LR
 - [x] Add randomized keyed consistency and repeated lifecycle disposal tests.
 - [x] Add a flat-index benchmark that reports measured local output only.
 
-### M4 — Release hardening — next
+### M4 — Release hardening — complete
 
 - [x] Add renderer hook snapshots and best-effort inverse operations for failed DOM commits; document non-atomic user callback/cleanup behavior.
 - [x] Expand the DOM contract for SVG namespaces, form properties, custom elements, and accessibility-oriented properties.
 - [x] Replace catch-all JSX `any` props with checked common HTML/SVG attributes and tag-aware common event targets; both production and development runtimes are consumer-compiled. Full DOM/SVG coverage remains future work.
 - [x] Bound retained tombstones and release disposed DOM/component references; heap profiling and owner/effect diagnostics remain.
-- [ ] Run all gates from a clean checkout and record the exact code revision.
+- [x] Run all gates from a clean checkout and record the exact code revision.
 
 ## Post-v0.1 options
 
