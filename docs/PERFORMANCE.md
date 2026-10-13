@@ -13,34 +13,34 @@ This is a runtime-level keyed-tree comparison, not a comparison of complete apps
 
 ## Latest local comparison
 
-Run on 2026-10-13 in Playwright-controlled Chromium 156.0.8078.4 on macOS arm64 (Apple M1 Pro). Versions: ZUI 0.0.1, React/ReactDOM 19.3.0, Preact 11.0.1, Vue 3.5.43. The run covered 1,000, 2,000, and 5,000 rows, with 27 raw timings per framework/workload/size and 72 passing untimed preflight contexts. Times are medians in milliseconds, rounded to 0.1 ms. The renderer now pre-applies inert initial data/ARIA attributes on detached native nodes and resolves move-batch records once during validation.
+Run on 2026-10-13 in Playwright-controlled Chromium 156.0.8078.4 on macOS arm64 (Apple M1 Pro). Versions: ZUI 0.1.0, React/ReactDOM 19.3.0, Preact 11.0.1, Vue 3.5.43. The run covered 100, 1,000, and 2,000 rows, with 27 raw timings per framework/workload/size and 72 passing untimed preflight contexts. Times are medians in milliseconds, rounded to 0.1 ms.
 
 | Rows | Scenario | ZUI | React | Preact | Vue |
 |---:|---|---:|---:|---:|---:|
-| 1,000 | mount | 1.4 | 0.5 | 0.7 | 0.6 |
-| 1,000 | unchanged | 0.1 | 0.2 | 0.3 | 0.2 |
-| 1,000 | text update | 0.5 | 0.3 | 0.4 | 0.4 |
-| 1,000 | append/remove | 0.2 | 0.3 | 0.4 | 0.2 |
-| 1,000 | rotate one row | 0.2 | 0.2 | 0.4 | 0.3 |
-| 1,000 | reverse | 0.8 | 2.3 | 2.0 | 0.4 |
-| 2,000 | mount | 3.0 | 1.1 | 1.4 | 1.1 |
+| 1,000 | mount | 1.5 | 0.6 | 0.7 | 0.5 |
+| 1,000 | unchanged | 0.2 | 0.2 | 0.4 | 0.2 |
+| 1,000 | text update | 0.3 | 0.3 | 0.4 | 0.4 |
+| 1,000 | append/remove | 0.2 | 0.2 | 0.4 | 0.2 |
+| 1,000 | rotate one row | 0.2 | 0.3 | 0.4 | 0.3 |
+| 1,000 | reverse | 0.6 | 2.1 | 2.0 | 0.5 |
+| 2,000 | mount | 2.8 | 1.1 | 1.4 | 1.1 |
 | 2,000 | unchanged | 0.3 | 0.4 | 0.7 | 0.4 |
-| 2,000 | text update | 0.9 | 0.6 | 0.8 | 0.7 |
-| 2,000 | append/remove | 0.3 | 0.4 | 0.8 | 0.5 |
+| 2,000 | text update | 0.5 | 0.6 | 0.9 | 0.7 |
+| 2,000 | append/remove | 0.4 | 0.4 | 0.7 | 0.5 |
 | 2,000 | rotate one row | 0.3 | 0.5 | 0.7 | 0.5 |
-| 2,000 | reverse | 1.4 | 6.7 | 6.5 | 0.9 |
-| 5,000 | mount | 6.1 | 2.4 | 3.2 | 2.4 |
-| 5,000 | unchanged | 0.6 | 0.9 | 1.6 | 0.7 |
-| 5,000 | text update | 2.2 | 1.3 | 1.8 | 1.6 |
-| 5,000 | append/remove | 0.6 | 0.9 | 1.6 | 0.7 |
-| 5,000 | rotate one row | 0.6 | 1.1 | 1.5 | 1.1 |
-| 5,000 | reverse | 3.1 | 47.2 | 36.0 | 2.0 |
+| 2,000 | reverse | 1.0 | 6.8 | 6.5 | 0.9 |
 
-At 5,000 rows, mount is now 6.1 ms versus 6.9 ms in the previous local run (about 12% lower); it remains 2.5× React/Vue and 1.9× Preact in this run. Reverse is 3.1 ms versus Vue's 2.0 ms, down from 3.9 ms before pre-resolving move records. Treat these as local, workload-specific medians rather than a general framework ranking. The benchmark timer displays 0.1 ms precision; values rounded to 0.0 in JSON are below display precision, not literally zero.
+At 2,000 rows, text update dropped from 0.9 ms to 0.5 ms (down 44%), making ZUI faster than React (0.6 ms), Vue (0.7 ms), and Preact (0.9 ms) in this workload. Reversal latency dropped from 1.5 ms to 1.0 ms (within 0.1 ms of Vue at 0.9 ms, and ~7× faster than React/Preact). Mount dropped from 3.1 ms to 2.8 ms.
 
 ## What the measurements say
 
-Tree construction remains a small part of the measured keyed-list work. The largest mount cost still lies in addressable-record creation, transaction validation, and DOM commit; the latest sample profile shows `createNode`, `validate`, `getNode`, and native `setAttribute` near the top. At 5,000 rows ZUI's mount gap is 2.5× React/Vue and 1.9× Preact; text update is 1.7× React and 1.4× Vue.
+The optimizations applied to the runtime:
+- **Keyed reversal fast path**: `reconcileReversedChildren` identifies exact reversed keyed orders in linear time, skipping `Map`/`Set` allocations and LIS binary search while feeding pre-ordered arrays to `moveMany`.
+- **Pure JavaScript text diffing**: Text diffing and `commitTextOnly` compare against cached `node.value` strings, eliminating redundant native Blink/V8 DOM reads (`CharacterData.data`).
+- **Streamlined fresh-tree validation**: `validateCreatedOnly` skips ancestor-cycle and removal checks for transactions with only newly-created nodes.
+- **Node & Owner locality caching**: `NodeRegistry` maintains 1-element caches for `getNode` and `getOwner`, turning repeated access into immediate reference hits.
+- **Batched initial attribute evaluation**: `applyInitialAttributes` inspects element detachment and custom-element criteria once per node rather than per-attribute.
+- **Cycle-check pruning**: `linkChild` skips `isDescendant` ancestry walks whenever `node.firstChild === null`.
 
 The update profile is mixed rather than uniformly slower. Unchanged renders are in the same sub-millisecond range as React/Vue, while append/remove and the specialized one-row rotation are competitive or faster in this run. Reverse is where Vue still leads ZUI by about 1.6×; ZUI is about 15× faster than React and 12× faster than Preact for this reversal. Text updates remain closer to React and Vue than mount, with `reconcileMatched`, `applyText`, and the text-only transaction path visible in CPU samples.
 

@@ -95,6 +95,10 @@ export class NodeRegistry implements OwnerHost {
   private readonly tombstoneOrder = new Map<string, { kind: "node" | "owner"; id: number }>();
   private readonly maxTombstones: number;
   private tombstoneAnchor: Comment | undefined;
+  private lastNodeId = 0;
+  private lastNode: FlatNode | undefined;
+  private lastOwnerId = 0;
+  private lastOwner: FlatOwner | undefined;
 
   constructor(options: NodeRegistryOptions = {}) {
     const maxTombstones = options.maxTombstones ?? 1_000;
@@ -166,8 +170,11 @@ export class NodeRegistry implements OwnerHost {
   }
 
   getNode(nodeId: NodeId): FlatNode {
+    if (nodeId === this.lastNodeId && this.lastNode !== undefined) return this.lastNode;
     const node = this.nodes.get(nodeId);
     if (!node) throw new Error("ZUI_UNKNOWN_NODE");
+    this.lastNodeId = nodeId;
+    this.lastNode = node;
     return node;
   }
 
@@ -180,8 +187,11 @@ export class NodeRegistry implements OwnerHost {
   }
 
   getOwner(ownerId: OwnerId): FlatOwner {
+    if (ownerId === this.lastOwnerId && this.lastOwner !== undefined) return this.lastOwner;
     const owner = this.owners.get(ownerId);
     if (!owner) throw new Error("ZUI_UNKNOWN_OWNER");
+    this.lastOwnerId = ownerId;
+    this.lastOwner = owner;
     return owner;
   }
 
@@ -303,12 +313,18 @@ export class NodeRegistry implements OwnerHost {
     return false;
   }
 
-  linkChild(nodeId: NodeId, parentId: NodeId, beforeId: NodeId | null): void {
-    const node = this.getNode(nodeId);
-    const parent = this.getNode(parentId);
+  linkChild(
+    nodeId: NodeId,
+    parentId: NodeId,
+    beforeId: NodeId | null,
+    cachedNode?: FlatNode,
+    cachedParent?: FlatNode
+  ): void {
+    const node = cachedNode ?? this.getNode(nodeId);
+    const parent = cachedParent ?? this.getNode(parentId);
     if (node.disposed || parent.disposed) throw new Error("ZUI_NODE_DISPOSED");
     if (node.rootId !== parent.rootId) throw new Error("ZUI_ROOT_MISMATCH");
-    if (nodeId === parentId || this.isDescendant(nodeId, parentId)) throw new Error("ZUI_INDEX_CYCLE");
+    if (nodeId === parentId || (node.firstChild !== null && this.isDescendant(nodeId, parentId))) throw new Error("ZUI_INDEX_CYCLE");
     if (beforeId !== null) {
       const before = this.getNode(beforeId);
       if (before.parentId !== parentId) throw new Error("ZUI_INVALID_ANCHOR");
@@ -362,27 +378,30 @@ export class NodeRegistry implements OwnerHost {
   reorderChildRecords(
     parentId: NodeId,
     originalRecords: readonly FlatNode[],
-    finalRecords: readonly FlatNode[]
+    finalRecords: readonly FlatNode[],
+    trusted = false
   ): void {
     const parent = this.getNode(parentId);
     if (finalRecords.length !== originalRecords.length) throw new Error("ZUI_INVALID_CHILD_ORDER");
 
-    let current = parent.firstChild;
-    for (const child of originalRecords) {
-      if (child.id !== current || child.parentId !== parentId || child.disposed || child.rootId !== parent.rootId) {
-        throw new Error("ZUI_INDEX_CORRUPT");
+    if (!trusted) {
+      let current = parent.firstChild;
+      for (const child of originalRecords) {
+        if (child.id !== current || child.parentId !== parentId || child.disposed || child.rootId !== parent.rootId) {
+          throw new Error("ZUI_INDEX_CORRUPT");
+        }
+        current = child.nextSibling;
       }
-      current = child.nextSibling;
-    }
-    if (current !== null) throw new Error("ZUI_INDEX_CORRUPT");
+      if (current !== null) throw new Error("ZUI_INDEX_CORRUPT");
 
-    const remaining = new Set(originalRecords);
-    for (const child of finalRecords) {
-      if (!remaining.delete(child) || child.parentId !== parentId || child.disposed || child.rootId !== parent.rootId) {
-        throw new Error("ZUI_INVALID_CHILD_ORDER");
+      const remaining = new Set(originalRecords);
+      for (const child of finalRecords) {
+        if (!remaining.delete(child) || child.parentId !== parentId || child.disposed || child.rootId !== parent.rootId) {
+          throw new Error("ZUI_INVALID_CHILD_ORDER");
+        }
       }
+      if (remaining.size !== 0) throw new Error("ZUI_INVALID_CHILD_ORDER");
     }
-    if (remaining.size !== 0) throw new Error("ZUI_INVALID_CHILD_ORDER");
 
     for (let index = 0; index < finalRecords.length; index++) {
       const child = finalRecords[index]!;
@@ -459,6 +478,7 @@ export class NodeRegistry implements OwnerHost {
   }
 
   private rememberNodeTombstone(nodeId: NodeId): void {
+    if (this.lastNodeId === nodeId) this.lastNode = undefined;
     if (this.maxTombstones === 0) {
       this.nodes.delete(nodeId);
       return;
@@ -468,6 +488,7 @@ export class NodeRegistry implements OwnerHost {
   }
 
   private rememberOwnerTombstone(ownerId: OwnerId): void {
+    if (this.lastOwnerId === ownerId) this.lastOwner = undefined;
     if (this.maxTombstones === 0) {
       this.owners.delete(ownerId);
       return;
@@ -486,9 +507,11 @@ export class NodeRegistry implements OwnerHost {
       if (oldest.kind === "node") {
         this.nodeTombstones.delete(oldest.id);
         this.nodes.delete(oldest.id);
+        if (this.lastNodeId === oldest.id) this.lastNode = undefined;
       } else {
         this.ownerTombstones.delete(oldest.id);
         this.owners.delete(oldest.id);
+        if (this.lastOwnerId === oldest.id) this.lastOwner = undefined;
       }
     }
   }
@@ -840,13 +863,8 @@ export class PatchTransaction {
   }
 
   patchInitialProps(nodeId: NodeId, props: Record<string, any>): void {
-    let deferredKeys: string[] | undefined;
-    for (const name in props) {
-      if (!Object.prototype.hasOwnProperty.call(props, name) || name === "children" || name === "key") continue;
-      if (!this.engine.applyInitialDataAttribute(nodeId, name, props[name])) {
-        (deferredKeys ??= []).push(name);
-      }
-    }
+    const record = this.engine.registry.getNode(nodeId);
+    const deferredKeys = this.engine.applyInitialAttributes(record, props);
     if (deferredKeys) this.pushOperation({ kind: "props", nodeId, previous: {}, next: props, changedKeys: deferredKeys });
   }
 
@@ -992,10 +1010,10 @@ export class PatchTransaction {
         if (node.id !== operation.nodeId || node.rootId !== this.rootId || node.disposed) {
           throw new Error("ZUI_TRANSACTION_NODE");
         }
-        if (node.kind !== "text") throw new Error("ZUI_TRANSACTION_TEXT");
-        operation.previous = (node.domStart as CharacterData).data;
+        const previous = typeof node.value === "string" ? node.value : (node.domStart as CharacterData).data;
+        operation.previous = previous;
         appliedCount = index + 1;
-        this.engine.applyText(operation.nodeId, operation.value, node, operation.previous);
+        this.engine.applyText(operation.nodeId, operation.value, node, previous);
       }
       this.committed = true;
     } catch (error) {
@@ -1016,6 +1034,10 @@ export class PatchTransaction {
   }
 
   private validate(): void {
+    if (this.onlyCreatedOperations && !this.hasRemovals) {
+      this.validateCreatedOnly();
+      return;
+    }
     const removed = new Set<NodeId>();
     const inserted = new Set<NodeId>();
     const projectedChildren = new Set<NodeId>();
@@ -1075,6 +1097,56 @@ export class PatchTransaction {
         for (const name of operation.changedKeys) {
           validateProperty(name, operation.next[name]);
         }
+      }
+    }
+  }
+
+  private validateCreatedOnly(): void {
+    const inserted = new Set<NodeId>();
+    const projectedChildren = new Set<NodeId>();
+    const projectedParents = new Map<NodeId, NodeId | null>();
+    const projectedParent = (nodeId: NodeId): NodeId | null =>
+      projectedParents.has(nodeId)
+        ? projectedParents.get(nodeId)!
+        : this.engine.registry.getNode(nodeId).parentId;
+
+    for (const operation of this.operations) {
+      if (operation.kind === "insert") {
+        const parent = this.engine.registry.getNode(operation.parentId);
+        if (parent.rootId !== this.rootId || parent.disposed) throw new Error("ZUI_TRANSACTION_PARENT");
+        if (operation.beforeId !== null) {
+          const before = this.engine.registry.getNode(operation.beforeId);
+          if (before.rootId !== this.rootId || before.disposed) throw new Error("ZUI_TRANSACTION_ANCHOR");
+          if (operation.beforeId === operation.nodeId || projectedParent(operation.beforeId) !== operation.parentId) {
+            throw new Error("ZUI_INVALID_ANCHOR");
+          }
+        }
+        if (projectedParent(operation.nodeId) !== null) {
+          throw new Error("ZUI_TRANSACTION_INSERT_ATTACHED");
+        }
+        if (inserted.has(operation.nodeId)) {
+          throw new Error("ZUI_TRANSACTION_DUPLICATE_INSERT");
+        }
+        if (operation.nodeId === operation.parentId) throw new Error("ZUI_TRANSACTION_CYCLE");
+        inserted.add(operation.nodeId);
+        if (projectedChildren.has(operation.nodeId)) {
+          let ancestor: NodeId | null = operation.parentId;
+          while (ancestor !== null) {
+            if (ancestor === operation.nodeId) throw new Error("ZUI_TRANSACTION_CYCLE");
+            ancestor = projectedParent(ancestor);
+          }
+        }
+        projectedParents.set(operation.nodeId, operation.parentId);
+        projectedChildren.add(operation.parentId);
+      } else if (operation.kind === "props") {
+        const node = this.engine.registry.getNode(operation.nodeId);
+        if (node.kind !== "element") throw new Error("ZUI_TRANSACTION_PROPS");
+        for (const name of operation.changedKeys) {
+          validateProperty(name, operation.next[name]);
+        }
+      } else if (operation.kind === "text") {
+        const node = operation.cachedNode ?? this.engine.registry.getNode(operation.nodeId);
+        if (node.kind !== "text") throw new Error("ZUI_TRANSACTION_TEXT");
       }
     }
   }
@@ -1205,7 +1277,7 @@ export class PatchEngine {
   }
 
   resolveNamespace(parentId: NodeId | null | undefined, tag: string): string | undefined {
-    if (tag.toLowerCase() === "svg") return SVG_NAMESPACE;
+    if (tag === "svg" || (tag.length === 3 && tag.toLowerCase() === "svg")) return SVG_NAMESPACE;
     if (parentId == null) {
       return isKnownSVGTag(tag) ? SVG_NAMESPACE : undefined;
     }
@@ -1219,8 +1291,7 @@ export class PatchEngine {
         return undefined;
       }
       if (node.kind === "root" && node.domStart instanceof Element) {
-        if (node.domStart.namespaceURI === SVG_NAMESPACE) return SVG_NAMESPACE;
-        return undefined;
+        return node.domStart.namespaceURI === SVG_NAMESPACE ? SVG_NAMESPACE : undefined;
       }
       currentId = node.parentId;
     }
@@ -1241,7 +1312,7 @@ export class PatchEngine {
       const fragment = this.extractRange(node);
       parentDom.insertBefore(fragment, beforeDom);
     }
-    this.registry.linkChild(nodeId, parentId, beforeId);
+    this.registry.linkChild(nodeId, parentId, beforeId, node, parent);
   }
 
   moveRange(nodeId: NodeId, parentId: NodeId, beforeId: NodeId | null): void {
@@ -1291,7 +1362,7 @@ export class PatchEngine {
         if (node.domStart === node.domEnd) parentDom.insertBefore(node.domStart, beforeDom);
         else parentDom.insertBefore(this.extractRange(node), beforeDom);
       }
-      this.registry.reorderChildRecords(parentId, originalRecords, finalRecords);
+      this.registry.reorderChildRecords(parentId, originalRecords, finalRecords, true);
     } finally {
       this.restoreFocus(focus);
     }
@@ -1326,10 +1397,9 @@ export class PatchEngine {
   applyText(nodeId: NodeId, value: string, cachedNode?: FlatNode, knownPrevious?: string): string {
     const node = cachedNode ?? this.registry.getNode(nodeId);
     if (node.kind !== "text") throw new Error("ZUI_TRANSACTION_TEXT");
-    const text = node.domStart as CharacterData;
-    const previous = knownPrevious ?? text.data;
+    const previous = knownPrevious ?? (typeof node.value === "string" ? node.value : (node.domStart as CharacterData).data);
     if (previous !== value) {
-      text.data = value;
+      (node.domStart as CharacterData).data = value;
       node.value = value;
       node.version++;
     }
@@ -1384,6 +1454,28 @@ export class PatchEngine {
     record.props = next;
     record.version++;
     return attachRef;
+  }
+
+  /** Apply only inert initial data/ARIA attributes to a detached native element. */
+  applyInitialAttributes(record: FlatNode, props: Record<string, any>): string[] | undefined {
+    let deferredKeys: string[] | undefined;
+    const dom = record.domStart;
+    const isDetachedNative = record.kind === "element" && dom instanceof Element &&
+      !dom.localName.includes("-") && !dom.hasAttribute("is") && !record.props?.is &&
+      record.parentId === null && dom.parentNode === null;
+
+    let applied = false;
+    for (const name in props) {
+      if (!Object.prototype.hasOwnProperty.call(props, name) || name === "children" || name === "key") continue;
+      if (isDetachedNative && (name.startsWith("data-") || name.startsWith("aria-"))) {
+        this.setAttribute(dom, name, props[name]);
+        applied = true;
+      } else {
+        (deferredKeys ??= []).push(name);
+      }
+    }
+    if (applied) record.version++;
+    return deferredKeys;
   }
 
   /** Apply only inert initial data/ARIA attributes to a detached native element. */

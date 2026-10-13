@@ -353,7 +353,8 @@ function reconcileMatched(
 ): void {
   if (!isVNode(value)) {
     const text = typeof value === "string" ? value : value == null ? "" : String(value);
-    if ((old.domStart as CharacterData).data !== text) {
+    const previous = typeof old.value === "string" ? old.value : (old.domStart as CharacterData).data;
+    if (previous !== text) {
       tx.setText(oldId, text, old);
       if (typeof value !== "string") tx.setMeta(oldId, { value });
     } else if (!Object.is(old.value, value)) tx.setMeta(oldId, { value });
@@ -409,13 +410,15 @@ function reconcileChildren(
   const values = normalize(input);
   if (reconcileOrderedChildren(parentId, values, ownerId, root, tx)) return;
   if (reconcileSingleStepRotation(parentId, values, root, tx)) return;
+  if (reconcileReversedChildren(parentId, values, root, tx)) return;
 
-  const oldIds = nodeRegistry.children(parentId);
+  const oldRecords = nodeRegistry.childRecords(parentId);
+  const oldIds = new Array<NodeId>(oldRecords.length);
   const keyed = new Map<Key, number>();
   const unkeyed: number[] = [];
-  for (let index = 0; index < oldIds.length; index++) {
-    const id = oldIds[index]!;
-    const record = nodeRegistry.getNode(id);
+  for (let index = 0; index < oldRecords.length; index++) {
+    const record = oldRecords[index]!;
+    oldIds[index] = record.id;
     if (record.key === undefined) unkeyed.push(index);
     else keyed.set(record.key, index);
   }
@@ -483,7 +486,20 @@ function reconcileOrderedChildren(
   root: FlatRoot,
   tx: PatchTransaction
 ): boolean {
-  let oldId = nodeRegistry.getNode(parentId).firstChild;
+  const initialFirstId = nodeRegistry.getNode(parentId).firstChild;
+  if (initialFirstId === null) {
+    const seenKeys = new Set<Key>();
+    for (const value of values) {
+      if (isVNode(value) && value.key !== undefined) {
+        if (seenKeys.has(value.key)) throw new Error("ZUI_DUPLICATE_KEY");
+        seenKeys.add(value.key);
+      }
+      mountValue(value, parentId, ownerId, root, tx);
+    }
+    return true;
+  }
+
+  let oldId: NodeId | null = initialFirstId;
   let hasAppendedNodes = false;
   for (const value of values) {
     if (oldId === null) {
@@ -585,6 +601,57 @@ function reconcileSingleStepRotation(
   }
   reconcileMatched(lastId, last, values[0]!, root, tx);
   tx.move(lastId, parentId, firstId);
+  return true;
+}
+
+/** Fast path for exact reversed order of keyed children. */
+function reconcileReversedChildren(
+  parentId: NodeId,
+  values: Child[],
+  root: FlatRoot,
+  tx: PatchTransaction
+): boolean {
+  const parent = nodeRegistry.getNode(parentId);
+  const firstId = parent.firstChild;
+  const lastId = parent.lastChild;
+  if (firstId === null || lastId === null || values.length < 2 || firstId === lastId) return false;
+  for (const value of values) if (!isVNode(value) || value.key === undefined) return false;
+
+  const oldRecords = nodeRegistry.childRecords(parentId);
+  const count = oldRecords.length;
+  if (count !== values.length) return false;
+
+  for (let i = 0; i < count; i++) {
+    const record = oldRecords[count - 1 - i]!;
+    if (!canReuseNode(record, values[i]!)) return false;
+  }
+
+  const oldIds = new Array<NodeId>(count);
+  const nextIds = new Array<NodeId>(count);
+  for (let i = 0; i < count; i++) {
+    oldIds[i] = oldRecords[i]!.id;
+    nextIds[i] = oldRecords[count - 1 - i]!.id;
+  }
+
+  for (let i = 0; i < count; i++) {
+    const id = nextIds[i]!;
+    const record = oldRecords[count - 1 - i]!;
+    reconcileMatched(id, record, values[i]!, root, tx);
+  }
+
+  const movingIds = new Array<NodeId>(count - 1);
+  const beforeIds = new Array<NodeId | null>(count - 1);
+  let anchor: NodeId | null = nextIds[count - 1]!;
+  let moveIdx = 0;
+  for (let i = count - 2; i >= 0; i--) {
+    const id = nextIds[i]!;
+    movingIds[moveIdx] = id;
+    beforeIds[moveIdx] = anchor;
+    anchor = id;
+    moveIdx++;
+  }
+
+  tx.moveMany(parentId, oldIds, nextIds, movingIds, beforeIds);
   return true;
 }
 
