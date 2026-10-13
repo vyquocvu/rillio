@@ -18,9 +18,12 @@ All notable changes to ZUI are documented here.
 - Baseline typed HTML/SVG JSX props, tag-aware common event targets, and consumer checks for both JSX runtime type entry points.
 - Best-effort commit rollback with inverse DOM operations and renderer hook snapshot restoration.
 - Added security guards rejecting unsafe HTML sinks (`innerHTML`, `outerHTML`, `srcdoc`), executable URL schemes (`javascript:`, `vbscript:`, `data:text/html`), and string-valued inline event handlers before commit.
+- Added `nodeRegistry.diagnostics()` reporting real-time counts for active/tombstoned nodes, owners, roots, and capacity bounds.
 - Licensed under the MIT License.
 
 ### Performance
+- Zero-allocation transaction tracking in `PatchTransaction` via monotonic ID comparisons instead of `Set` allocations.
+- Leaf primitive text fast-path in `mountValue`, directly attaching text children without `reconcileChildren` function frames.
 - Zero-allocation `commitCreatedOnly` single-pass mount pipeline with direct `node.parentId !== null` duplicate checking and cycle pruning on leaf nodes.
 - Multi-slot unrolled MRU locality caching in `NodeRegistry` (4-slot node cache, 2-slot owner cache) eliminating Map hash overhead on sequential traversals.
 - Zero-DOM SVG namespace resolution via boolean `isSvg` flag on `FlatNode`, eliminating C++/V8 boundary crossings (`namespaceURI`).
@@ -36,7 +39,7 @@ All notable changes to ZUI are documented here.
 - Lazy listener and style allocation; stripped disposed records retaining a bounded tombstone pool.
 
 ### Verification
-- 108 unit/regression/oracle tests across 11 test suites.
+- 109 unit/regression/oracle tests across 11 test suites.
 - Strict external consumer package verification (production and dev JSX, subpaths, expected compile failures).
 - Playwright Chromium browser test suite verifying dashboard flows, modal keyboard/focus traps, and sink guards.
 - Clean-checkout verification passing all release gates.

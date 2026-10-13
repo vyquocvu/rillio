@@ -41,6 +41,8 @@ At 2,000 rows, ZUI matches or leads React, Preact, and Vue across 5 of the 6 ope
 ## What the measurements say
 
 The optimizations applied to the runtime:
+- **Zero-allocation transaction tracking**: Replaced `Set<NodeId>` tracking in `PatchTransaction` with monotonic `startNodeId` integer range comparison (`nodeId >= startNodeId`), eliminating thousands of `Set.add()` and `Set.has()` operations during large mounts.
+- **Leaf primitive text fast path in JSX mount**: Directly creates and inserts text nodes on unattached parent elements when `props.children` is a string or number, bypassing `reconcileChildren` call overhead, array normalization checks, and sibling traversal.
 - **Zero-allocation `commitCreatedOnly`**: Replaced temporary `projectedParents` Map tracking with direct `node.parentId !== null` detection and cached node/parent propagation throughout recursive descent, eliminating Map hash overhead and allocations during fresh subtree commits.
 - **Fast-path `insertCreatedRange` & `linkCreatedChild`**: Direct `appendChild`/`insertBefore` for freshly created nodes without C++/Blink boundary crossings (`parentNode`, `instanceof Element`, `CharacterData`), combined with streamlined linking that prunes descendant cycle walks.
 - **Single-pass child record reuse in `reconcileOrderedChildren`**: Replaced two-pass iteration with single-pass `matchedRecords` caching and indexed array iteration, avoiding thousands of duplicate registry lookups and `.at(-1)` prototype dispatches.

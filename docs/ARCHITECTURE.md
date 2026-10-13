@@ -53,7 +53,7 @@ Parent/sibling links are stored in the registry. `children(parentId)` walks thos
 
 To eliminate Map hashing overhead during sequential sibling and parent traversals, `NodeRegistry` maintains an unrolled 4-slot node MRU cache (`cacheId0..3`, `cacheNode0..3`) and a 2-slot owner MRU cache (`cacheOwnerId0..1`, `cacheOwner0..1`). Newly created nodes and sequential traversals hit these fast slots directly without traversing internal `Map` hash buckets.
 
-`RootId` and `OwnerId` are never reused. Disposed records remain as tombstones for diagnostics, while active traversals reject disposed records.
+`RootId` and `OwnerId` are never reused. Disposed records remain as tombstones for diagnostics, while active traversals reject disposed records. `nodeRegistry.diagnostics()` exposes real-time counts of active and tombstoned nodes, owners, roots, and capacity bounds to enable continuous memory and leak verification without external profilers.
 
 The registry keeps two related graphs: solid links describe DOM/index structure, while dashed links describe owner nesting. A node can move in the structure graph without changing its stable `NodeId` or its owner.
 
@@ -82,7 +82,7 @@ All browser writes go through `PatchEngine`:
 
 1. A planner creates addressable records and queues operations in a `PatchTransaction`.
 2. Specialized fast-path commit pipelines optimize the common transaction classes:
-   - **Fresh-subtree mounts (`commitCreatedOnly`)**: When a transaction contains only newly created nodes and no removals, validation and DOM writes are fused into a single pass. Duplicate insertion checks use native JavaScript property checks (`node.parentId !== null`) instead of temporary Map allocations; cycle checks are pruned for leaf nodes (`node.firstChild === null`); and DOM insertions route through `insertCreatedRange` and `linkCreatedChild`, bypassing detached checks (`domStart.parentNode`) and duplicate ancestor cycles.
+   - **Fresh-subtree mounts (`commitCreatedOnly`)**: When a transaction contains only newly created nodes and no removals, validation and DOM writes are fused into a single pass. Monotonic ID range tracking (`nodeId >= startNodeId`) identifies newly created nodes with zero `Set` allocations; duplicate insertion checks use native property checks (`node.parentId !== null`); cycle checks are pruned for leaf nodes (`node.firstChild === null`); and DOM insertions route through `insertCreatedRange` and `linkCreatedChild`, bypassing detached checks (`domStart.parentNode`) and duplicate ancestor cycles.
    - **Text-only updates (`commitTextOnly`)**: Compares directly against cached JavaScript string `node.value` (avoiding native Blink `CharacterData.data` reads) and applies text mutations linearly with inverse rollback recording.
    - **General updates**: Full multi-pass validation checks root membership, node state, parent/anchor validity, cycles, duplicate operations, operation-kind constraints, and unsafe property sinks.
 3. Commit inserts or moves ranges, patches text/properties/events/refs, and updates the Flat Index. Only inert initial `data-*`/`aria-*` attributes on detached native elements may be applied earlier through `PatchEngine`.
@@ -130,6 +130,7 @@ sequenceDiagram
 
 Keyed reconciliation reads the current `NodeId` order from the registry. The next child array is a planning result, not a second source-of-truth tree. Several specialized fast paths bypass expensive diffing steps:
 
+- **Leaf primitive text fast path**: In `mountValue`, when an unattached native element's `children` prop is a primitive string or number, the text node is created and attached directly to the parent record without entering `reconcileChildren`, skipping redundant array checks, sibling inspection, and recursive function frames.
 - **Exact keyed reversal (`reconcileReversedChildren`)**: Detects exact reversed permutations in $O(N)$ linear time with zero allocations, bypassing Longest Increasing Subsequence (LIS) calculation and scheduling a direct `moveMany` batch.
 - **Single-step rotation (`reconcileSingleStepRotation`)**: Detects single element cyclic shifts at the head or tail and emits a single `move` operation.
 - **Ordered linear scan (`reconcileOrderedChildren`)**: For identical orders, text updates, and tail insertions/removals, matches nodes in a single linear pass. Matched records are cached during validation to eliminate second-pass registry lookups, and unconsumed tail siblings are removed directly from the cursor.

@@ -621,4 +621,83 @@ describe("addressable DOM foundation", () => {
     expect(customEl.getAttribute("title")).toBe("Widget");
     expect(customEl.getAttribute("active")).toBe("");
   });
+
+  it("reports accurate diagnostics for active and tombstoned nodes, owners, and roots", () => {
+    const registry = new NodeRegistry({ maxTombstones: 5 });
+    const patches = new PatchEngine(registry);
+
+    // Initial state
+    const d0 = registry.diagnostics();
+    expect(d0.activeNodes).toBe(0);
+    expect(d0.tombstoneNodes).toBe(0);
+    expect(d0.totalNodes).toBe(0);
+    expect(d0.activeOwners).toBe(0);
+    expect(d0.tombstoneOwners).toBe(0);
+    expect(d0.totalOwners).toBe(0);
+    expect(d0.totalRoots).toBe(0);
+    expect(d0.maxTombstones).toBe(5);
+
+    // Create root and owner
+    const container = document.createElement("div");
+    const root = registry.createRoot(container);
+    const owner = registry.createOwner(root.rootId, root.ownerId);
+
+    const d1 = registry.diagnostics();
+    expect(d1.totalRoots).toBe(1);
+    expect(d1.activeNodes).toBe(1); // root node
+    expect(d1.activeOwners).toBe(2); // root owner + child owner
+    expect(d1.tombstoneNodes).toBe(0);
+    expect(d1.tombstoneOwners).toBe(0);
+
+    // Create 10 nodes
+    const nodeIds: number[] = [];
+    patches.transaction(root.rootId, tx => {
+      for (let i = 0; i < 10; i++) {
+        const id = tx.createElement(owner, "div");
+        tx.insert(id, root.nodeId);
+        nodeIds.push(id);
+      }
+    });
+
+    const d2 = registry.diagnostics();
+    expect(d2.activeNodes).toBe(11); // 1 root + 10 elements
+    expect(d2.totalNodes).toBe(11);
+    expect(d2.tombstoneNodes).toBe(0);
+
+    // Dispose 3 nodes
+    patches.transaction(root.rootId, tx => {
+      tx.remove(nodeIds[0]!);
+      tx.remove(nodeIds[1]!);
+      tx.remove(nodeIds[2]!);
+    });
+
+    const d3 = registry.diagnostics();
+    expect(d3.activeNodes).toBe(8);
+    expect(d3.tombstoneNodes).toBe(3);
+    expect(d3.totalNodes).toBe(11);
+
+    // Dispose remaining 7 nodes (total 10 disposed, capped at maxTombstones=5)
+    patches.transaction(root.rootId, tx => {
+      for (let i = 3; i < 10; i++) {
+        tx.remove(nodeIds[i]!);
+      }
+    });
+
+    const d4 = registry.diagnostics();
+    expect(d4.activeNodes).toBe(1); // only root remains
+    expect(d4.tombstoneNodes).toBe(5); // capped at maxTombstones
+    expect(d4.totalNodes).toBe(6); // 1 active + 5 tombstones
+
+    // Dispose owner
+    registry.disposeOwner(owner);
+    const d5 = registry.diagnostics();
+    expect(d5.activeOwners).toBe(1); // only root owner remains
+    expect(d5.tombstoneOwners).toBe(1);
+    expect(d5.totalOwners).toBe(2);
+
+    // Dispose root
+    registry.disposeRoot(root.rootId);
+    const d6 = registry.diagnostics();
+    expect(d6.totalRoots).toBe(0);
+  });
 });

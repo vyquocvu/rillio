@@ -13,10 +13,11 @@ import {
   type NodeId,
   type RootHandle,
   type OwnerId,
-  type PatchTransaction
+  type PatchTransaction,
+  type RegistryDiagnostics
 } from "./flat.js";
 
-export type { Key, NodeId, OwnerId } from "./flat.js";
+export type { Key, NodeId, OwnerId, RegistryDiagnostics } from "./flat.js";
 export type Child = VNode | string | number | boolean | null | undefined | Child[];
 export type Component<P = any> = (props: P) => Child;
 export interface VNode {
@@ -301,7 +302,15 @@ function mountValue(
   // mount timing; only native host elements use the detached-subtree path.
   if (!assembleDetached) tx.insert(nodeId, parentId, null, record, parentRecord);
   tx.patchInitialProps(nodeId, value.props, record);
-  reconcileChildren(nodeId, value.props.children as Child, ownerId, root, tx, record);
+  const rawChildren = value.props?.children;
+  if (typeof rawChildren === "string" || typeof rawChildren === "number") {
+    const text = typeof rawChildren === "string" ? rawChildren : String(rawChildren);
+    const textId = tx.createText(ownerId, text);
+    if (typeof rawChildren !== "string") tx.setMeta(textId, { value: rawChildren });
+    tx.insert(textId, nodeId, null, undefined, record);
+  } else if (rawChildren != null && typeof rawChildren !== "boolean") {
+    reconcileChildren(nodeId, rawChildren as Child, ownerId, root, tx, record);
+  }
   if (assembleDetached) {
     // Assemble a fresh host subtree while it is detached, then attach its root
     // once. This keeps large initial mounts from incrementally mutating a live

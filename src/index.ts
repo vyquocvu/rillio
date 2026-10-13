@@ -5,4 +5,4 @@ export type { CSSProperties, HTMLProps, SVGProps, JSXIntrinsicElements } from ".
 
 // Flat internals for advanced users who want fine-grained control
 export { NodeRegistry, PatchEngine } from "./flat.js";
-export type { FlatNode, FlatOwner, RootHandle, OwnerHost, NodeKind, NodeRegistryOptions, PatchEngineOptions } from "./flat.js";
+export type { FlatNode, FlatOwner, RootHandle, OwnerHost, NodeKind, NodeRegistryOptions, PatchEngineOptions, RegistryDiagnostics } from "./flat.js";

@@ -83,6 +83,17 @@ export interface NodeRegistryOptions {
   maxTombstones?: number;
 }
 
+export interface RegistryDiagnostics {
+  readonly activeNodes: number;
+  readonly tombstoneNodes: number;
+  readonly totalNodes: number;
+  readonly activeOwners: number;
+  readonly tombstoneOwners: number;
+  readonly totalOwners: number;
+  readonly totalRoots: number;
+  readonly maxTombstones: number;
+}
+
 /** A flat, addressable index for roots, nodes and ownership scopes. */
 export class NodeRegistry implements OwnerHost {
   private nextNodeId = 1;
@@ -116,6 +127,23 @@ export class NodeRegistry implements OwnerHost {
       throw new RangeError("ZUI_INVALID_TOMBSTONE_LIMIT");
     }
     this.maxTombstones = maxTombstones;
+  }
+
+  get nextId(): NodeId {
+    return this.nextNodeId;
+  }
+
+  diagnostics(): RegistryDiagnostics {
+    return {
+      activeNodes: this.nodes.size - this.nodeTombstones.size,
+      tombstoneNodes: this.nodeTombstones.size,
+      totalNodes: this.nodes.size,
+      activeOwners: this.owners.size - this.ownerTombstones.size,
+      tombstoneOwners: this.ownerTombstones.size,
+      totalOwners: this.owners.size,
+      totalRoots: this.roots.size,
+      maxTombstones: this.maxTombstones
+    };
   }
 
   createRoot(container: Element): RootHandle {
@@ -855,7 +883,7 @@ function validateProperty(name: string, value: unknown): void {
 export class PatchTransaction {
   private readonly operations: PatchOp[] = [];
   private readonly created: NodeId[] = [];
-  private readonly createdSet = new Set<NodeId>();
+  private readonly startNodeId: NodeId;
   private committed = false;
   private onlyTextOperations = true;
   private onlyCreatedOperations = true;
@@ -863,7 +891,13 @@ export class PatchTransaction {
   private lastCreatedId = 0;
   private lastCreatedNode: FlatNode | undefined;
 
-  constructor(private readonly engine: PatchEngine, readonly rootId: RootId) {}
+  constructor(private readonly engine: PatchEngine, readonly rootId: RootId) {
+    this.startNodeId = engine.registry.nextId;
+  }
+
+  private isCreated(nodeId: NodeId): boolean {
+    return nodeId >= this.startNodeId;
+  }
 
   createElement(
     ownerId: OwnerId,
@@ -1048,7 +1082,7 @@ export class PatchTransaction {
           );
           continue;
         }
-        const needsUndo = undo !== undefined && !this.createdSet.has(operation.nodeId);
+        const needsUndo = undo !== undefined && !this.isCreated(operation.nodeId);
         if (operation.kind === "insert") {
           if (needsUndo) undo!.push(() => this.engine.detachRange(operation.nodeId));
           this.engine.insertRange(
@@ -1077,7 +1111,7 @@ export class PatchTransaction {
             operation.previous,
             operation.next,
             operation.changedKeys,
-            this.createdSet.has(operation.nodeId)
+            this.isCreated(operation.nodeId)
           );
           if (attachRef) deferredRefs.push(attachRef);
         } else if (operation.kind === "text") {
@@ -1221,7 +1255,7 @@ export class PatchTransaction {
   private pushOperation(operation: PatchOp): void {
     if (operation.kind !== "text") this.onlyTextOperations = false;
     if (operation.kind === "remove") this.hasRemovals = true;
-    if (operation.kind !== "move-many" && !this.createdSet.has(operation.nodeId)) this.onlyCreatedOperations = false;
+    if (operation.kind !== "move-many" && !this.isCreated(operation.nodeId)) this.onlyCreatedOperations = false;
     this.operations.push(operation);
   }
 
@@ -1268,7 +1302,7 @@ export class PatchTransaction {
         inserted.add(operation.nodeId);
         const isSameParentMove = operation.kind === "move" &&
           projectedParent(operation.nodeId) === operation.parentId;
-        const newLeafInsert = this.createdSet.has(operation.nodeId) && !projectedChildren.has(operation.nodeId);
+        const newLeafInsert = this.isCreated(operation.nodeId) && !projectedChildren.has(operation.nodeId);
         if (!isSameParentMove && !newLeafInsert) {
           let ancestor: NodeId | null = operation.parentId;
           while (ancestor !== null) {
@@ -1291,7 +1325,6 @@ export class PatchTransaction {
 
   private recordCreated(nodeId: NodeId, node?: FlatNode): void {
     this.created.push(nodeId);
-    this.createdSet.add(nodeId);
     this.lastCreatedId = nodeId;
     this.lastCreatedNode = node ?? this.engine.registry.getNode(nodeId);
   }

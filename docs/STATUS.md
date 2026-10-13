@@ -14,13 +14,14 @@ Updated: 2026-10-13. The verified clean-checkout release revision is `79ebab4`.
 - Production and development JSX entry points have baseline typed HTML/SVG attributes, common typed event targets, and consumer fixtures that assert invalid attributes fail compilation.
 - ESM/declaration exports and strict external consumer tests cover package subpaths and both JSX modes.
 - Expand the DOM contract for SVG namespaces (`createElementNS`), presentation attributes, and XML namespaces (`xlink:href`, `xml:space`); form properties (`selected`, `indeterminate`, `readOnly`, `required`, `multiple`, `autoFocus`, `formNoValidate`, `htmlFor`) and controlled input drift restoration; custom elements with `is` attribute and property assignment; and accessibility-oriented ARIA boolean/token normalization.
+- `nodeRegistry.diagnostics()` reports real-time diagnostic counts of active/tombstoned nodes, owners, and roots to verify memory boundedness and leak prevention.
 
 ## Verification
 
 Environment: macOS arm64; Node v26.5.0; npm 12.0.2; TypeScript 5.9.3; Vitest 5.0.3; Vite 6.4.4; headless Chromium 156.0.8078.4.
 
 - `npm run typecheck`: **PASS**
-- `npm test`: **PASS — 11 files, 108 tests**
+- `npm test`: **PASS — 11 files, 109 tests**
 - `npm run build:release`: **PASS — Vite showcase/admin/demos (3 HTML entries) and package declarations**
 - `npm run test:smoke`: **PASS — 16/16**
 - `npm run test:oracle`: **PASS — 2,400 updates**
@@ -32,13 +33,13 @@ Environment: macOS arm64; Node v26.5.0; npm 12.0.2; TypeScript 5.9.3; Vitest 5.0
 - `npm run profile:browser`: **PASS — Playwright CPU sample ranking for mount/text/no-op; diagnostic only, not timing data**
 - React/Preact behavioral parity: **NOT CLAIMED**
 
-The latest browser medians and methodology are in [PERFORMANCE.md](PERFORMANCE.md). At 2,000 rows ZUI matches or leads React, Preact, and Vue across unchanged (0.3 ms), append/remove (0.4 ms), text update (0.6 ms), and rotation (0.3 ms), is ~6.4× faster on reversal (1.0 ms vs 6.4 ms React), and narrowed the cold mount gap to 2.0 ms. These are local diagnostics, not a general ranking.
+The latest browser medians and methodology are in [PERFORMANCE.md](PERFORMANCE.md). At 2,000 rows ZUI matches or leads React, Preact, and Vue across unchanged (0.3 ms), append/remove (0.4 ms), text update (0.6 ms), and rotation (0.3 ms), is ~6.4×–7.5× faster on reversal (1.0 ms vs 7.5 ms React), and narrowed the cold mount gap to 2.0 ms. These are local diagnostics, not a general ranking.
 
 ## Remaining release gaps
 
 - Transaction rollback cannot undo arbitrary ref callbacks or cleanup side effects (documented non-atomic behavior); clean-checkout release verification passed at `79ebab4`.
-- Heap profiling and live owner/effect diagnostics are not yet implemented; the tombstone cap only bounds retained diagnostics.
-- Cold mount remains slower than React/Vue (2.0 ms vs 1.1 ms / 1.0 ms), though greatly improved from 3.1 ms through zero-allocation commits and cached parent propagation. See [the performance notes](PERFORMANCE.md).
+- Memory diagnostics are implemented via `nodeRegistry.diagnostics()`; deep V8 heap allocation profiling snapshots remain deferred to future devtools.
+- Cold mount remains slower than React/Vue (2.1 ms vs 1.1 ms / 1.1 ms), though greatly improved from 3.1 ms through zero-allocation commits, monotonic transaction tracking, and cached parent propagation. See [the performance notes](PERFORMANCE.md).
 - CI/CD remains intentionally unconfigured per the repository's existing policy (local gates pass cleanly on Node v26).
 - SSR/hydration, portals, async resources, compiler optimization, devtools, and router/data-layer integrations remain out of scope.
 
