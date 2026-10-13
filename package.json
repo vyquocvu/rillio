@@ -1,11 +1,13 @@
 {
   "name": "zui",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Experimental addressable-DOM UI runtime and component primitives.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vyquocvu/zui.git"
   },
+  "author": "Vy Quoc Vu <vyquocvu@gmail.com>",
+  "license": "MIT",
   "keywords": [
     "ui",
     "jsx",
@@ -54,6 +56,7 @@
     "README.md",
     "ROADMAP.md",
     "CHANGELOG.md",
+    "LICENSE",
     "docs"
   ],
   "exports": {
