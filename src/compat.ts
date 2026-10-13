@@ -218,9 +218,15 @@ function normalize(value: Child): Child[] {
   if (!Array.isArray(value)) {
     return value !== null && value !== undefined && typeof value !== "boolean" ? [value] : [];
   }
-  if (value.every(entry => !Array.isArray(entry) && entry !== null && entry !== undefined && typeof entry !== "boolean")) {
-    return value;
+  let needsFlatten = false;
+  for (let index = 0; index < value.length; index++) {
+    const entry = value[index];
+    if (Array.isArray(entry) || entry === null || entry === undefined || typeof entry === "boolean") {
+      needsFlatten = true;
+      break;
+    }
   }
+  if (!needsFlatten) return value;
   const out: Child[] = [];
   const walk = (entry: Child): void => {
     if (Array.isArray(entry)) entry.forEach(walk);
@@ -284,17 +290,18 @@ function mountValue(
 
   const isCustomElement = typeof value.type === "string" && (value.type.includes("-") || Boolean(value.props?.is));
   const nodeId = tx.createElement(ownerId, value.type, value.type, value.key, value.props, value, parentId);
+  const record = nodeRegistry.getNode(nodeId);
   const assembleDetached = !isCustomElement;
   // Custom-element attribute callbacks are user code. Preserve their connected
   // mount timing; only native host elements use the detached-subtree path.
-  if (!assembleDetached) tx.insert(nodeId, parentId);
+  if (!assembleDetached) tx.insert(nodeId, parentId, null, record);
   tx.patchInitialProps(nodeId, value.props);
-  reconcileChildren(nodeId, value.props.children as Child, ownerId, root, tx);
+  reconcileChildren(nodeId, value.props.children as Child, ownerId, root, tx, record);
   if (assembleDetached) {
     // Assemble a fresh host subtree while it is detached, then attach its root
     // once. This keeps large initial mounts from incrementally mutating a live
     // ancestor as every descendant is reconciled.
-    tx.insert(nodeId, parentId);
+    tx.insert(nodeId, parentId, null, record);
   }
   return nodeId;
 }
@@ -408,7 +415,7 @@ function reconcileChildren(
   }
 
   const values = normalize(input);
-  if (reconcileOrderedChildren(parentId, values, ownerId, root, tx)) return;
+  if (reconcileOrderedChildren(parentId, values, ownerId, root, tx, parent)) return;
   if (reconcileSingleStepRotation(parentId, values, root, tx)) return;
   if (reconcileReversedChildren(parentId, values, root, tx)) return;
 
@@ -484,13 +491,16 @@ function reconcileOrderedChildren(
   values: Child[],
   ownerId: OwnerId,
   root: FlatRoot,
-  tx: PatchTransaction
+  tx: PatchTransaction,
+  parentRecord?: FlatNode
 ): boolean {
-  const initialFirstId = nodeRegistry.getNode(parentId).firstChild;
+  const initialFirstId = (parentRecord ?? nodeRegistry.getNode(parentId)).firstChild;
   if (initialFirstId === null) {
-    const seenKeys = new Set<Key>();
-    for (const value of values) {
+    let seenKeys: Set<Key> | undefined;
+    for (let index = 0; index < values.length; index++) {
+      const value = values[index]!;
       if (isVNode(value) && value.key !== undefined) {
+        (seenKeys ??= new Set<Key>());
         if (seenKeys.has(value.key)) throw new Error("ZUI_DUPLICATE_KEY");
         seenKeys.add(value.key);
       }

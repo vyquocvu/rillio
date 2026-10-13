@@ -37,6 +37,7 @@ export interface FlatNode {
   styleSnapshot?: Record<string, unknown>;
   cleanup?: Dispose;
   disposed: boolean;
+  isSvg?: boolean;
 }
 
 export interface FlatOwner {
@@ -74,6 +75,7 @@ type NodeInit = {
   props?: Record<string, any>;
   value?: unknown;
   payload?: unknown;
+  isSvg?: boolean;
 };
 
 export interface NodeRegistryOptions {
@@ -95,10 +97,18 @@ export class NodeRegistry implements OwnerHost {
   private readonly tombstoneOrder = new Map<string, { kind: "node" | "owner"; id: number }>();
   private readonly maxTombstones: number;
   private tombstoneAnchor: Comment | undefined;
-  private lastNodeId = 0;
-  private lastNode: FlatNode | undefined;
-  private lastOwnerId = 0;
-  private lastOwner: FlatOwner | undefined;
+  private cacheId0 = 0;
+  private cacheNode0: FlatNode | undefined;
+  private cacheId1 = 0;
+  private cacheNode1: FlatNode | undefined;
+  private cacheId2 = 0;
+  private cacheNode2: FlatNode | undefined;
+  private cacheId3 = 0;
+  private cacheNode3: FlatNode | undefined;
+  private cacheOwnerId0 = 0;
+  private cacheOwner0: FlatOwner | undefined;
+  private cacheOwnerId1 = 0;
+  private cacheOwner1: FlatOwner | undefined;
 
   constructor(options: NodeRegistryOptions = {}) {
     const maxTombstones = options.maxTombstones ?? 1_000;
@@ -113,12 +123,14 @@ export class NodeRegistry implements OwnerHost {
 
     const rootId = this.nextRootId++;
     const ownerId = this.createOwner(rootId, null);
+    const isSvg = container.namespaceURI === SVG_NAMESPACE;
     const nodeId = this.createNode({
       rootId,
       ownerId,
       kind: "root",
       domStart: container,
-      domEnd: container
+      domEnd: container,
+      isSvg
     });
     const handle = { rootId, nodeId, ownerId, container } satisfies RootHandle;
     this.roots.set(rootId, handle);
@@ -161,20 +173,65 @@ export class NodeRegistry implements OwnerHost {
       value: init.value,
       payload: init.payload,
       cleanup: undefined,
-      disposed: false
+      disposed: false,
+      isSvg: init.isSvg
     };
     this.nodes.set(id, node);
     owner.nodeIds.add(id);
     owner.version++;
+    this.cacheId3 = this.cacheId2;
+    this.cacheNode3 = this.cacheNode2;
+    this.cacheId2 = this.cacheId1;
+    this.cacheNode2 = this.cacheNode1;
+    this.cacheId1 = this.cacheId0;
+    this.cacheNode1 = this.cacheNode0;
+    this.cacheId0 = id;
+    this.cacheNode0 = node;
     return id;
   }
 
   getNode(nodeId: NodeId): FlatNode {
-    if (nodeId === this.lastNodeId && this.lastNode !== undefined) return this.lastNode;
+    if (nodeId === this.cacheId0 && this.cacheNode0 !== undefined) return this.cacheNode0;
+    if (nodeId === this.cacheId1 && this.cacheNode1 !== undefined) {
+      const node = this.cacheNode1;
+      this.cacheId1 = this.cacheId0;
+      this.cacheNode1 = this.cacheNode0;
+      this.cacheId0 = nodeId;
+      this.cacheNode0 = node;
+      return node;
+    }
+    if (nodeId === this.cacheId2 && this.cacheNode2 !== undefined) {
+      const node = this.cacheNode2;
+      this.cacheId2 = this.cacheId1;
+      this.cacheNode2 = this.cacheNode1;
+      this.cacheId1 = this.cacheId0;
+      this.cacheNode1 = this.cacheNode0;
+      this.cacheId0 = nodeId;
+      this.cacheNode0 = node;
+      return node;
+    }
+    if (nodeId === this.cacheId3 && this.cacheNode3 !== undefined) {
+      const node = this.cacheNode3;
+      this.cacheId3 = this.cacheId2;
+      this.cacheNode3 = this.cacheNode2;
+      this.cacheId2 = this.cacheId1;
+      this.cacheNode2 = this.cacheNode1;
+      this.cacheId1 = this.cacheId0;
+      this.cacheNode1 = this.cacheNode0;
+      this.cacheId0 = nodeId;
+      this.cacheNode0 = node;
+      return node;
+    }
     const node = this.nodes.get(nodeId);
     if (!node) throw new Error("ZUI_UNKNOWN_NODE");
-    this.lastNodeId = nodeId;
-    this.lastNode = node;
+    this.cacheId3 = this.cacheId2;
+    this.cacheNode3 = this.cacheNode2;
+    this.cacheId2 = this.cacheId1;
+    this.cacheNode2 = this.cacheNode1;
+    this.cacheId1 = this.cacheId0;
+    this.cacheNode1 = this.cacheNode0;
+    this.cacheId0 = nodeId;
+    this.cacheNode0 = node;
     return node;
   }
 
@@ -187,11 +244,21 @@ export class NodeRegistry implements OwnerHost {
   }
 
   getOwner(ownerId: OwnerId): FlatOwner {
-    if (ownerId === this.lastOwnerId && this.lastOwner !== undefined) return this.lastOwner;
+    if (ownerId === this.cacheOwnerId0 && this.cacheOwner0 !== undefined) return this.cacheOwner0;
+    if (ownerId === this.cacheOwnerId1 && this.cacheOwner1 !== undefined) {
+      const owner = this.cacheOwner1;
+      this.cacheOwnerId1 = this.cacheOwnerId0;
+      this.cacheOwner1 = this.cacheOwner0;
+      this.cacheOwnerId0 = ownerId;
+      this.cacheOwner0 = owner;
+      return owner;
+    }
     const owner = this.owners.get(ownerId);
     if (!owner) throw new Error("ZUI_UNKNOWN_OWNER");
-    this.lastOwnerId = ownerId;
-    this.lastOwner = owner;
+    this.cacheOwnerId1 = this.cacheOwnerId0;
+    this.cacheOwner1 = this.cacheOwner0;
+    this.cacheOwnerId0 = ownerId;
+    this.cacheOwner0 = owner;
     return owner;
   }
 
@@ -215,6 +282,10 @@ export class NodeRegistry implements OwnerHost {
       disposed: false
     };
     this.owners.set(id, owner);
+    this.cacheOwnerId1 = this.cacheOwnerId0;
+    this.cacheOwner1 = this.cacheOwner0;
+    this.cacheOwnerId0 = id;
+    this.cacheOwner0 = owner;
     if (parentId !== null) {
       this.getOwner(parentId).children.add(id);
       this.getOwner(parentId).version++;
@@ -478,7 +549,10 @@ export class NodeRegistry implements OwnerHost {
   }
 
   private rememberNodeTombstone(nodeId: NodeId): void {
-    if (this.lastNodeId === nodeId) this.lastNode = undefined;
+    if (this.cacheId0 === nodeId) { this.cacheId0 = 0; this.cacheNode0 = undefined; }
+    if (this.cacheId1 === nodeId) { this.cacheId1 = 0; this.cacheNode1 = undefined; }
+    if (this.cacheId2 === nodeId) { this.cacheId2 = 0; this.cacheNode2 = undefined; }
+    if (this.cacheId3 === nodeId) { this.cacheId3 = 0; this.cacheNode3 = undefined; }
     if (this.maxTombstones === 0) {
       this.nodes.delete(nodeId);
       return;
@@ -488,7 +562,8 @@ export class NodeRegistry implements OwnerHost {
   }
 
   private rememberOwnerTombstone(ownerId: OwnerId): void {
-    if (this.lastOwnerId === ownerId) this.lastOwner = undefined;
+    if (this.cacheOwnerId0 === ownerId) { this.cacheOwnerId0 = 0; this.cacheOwner0 = undefined; }
+    if (this.cacheOwnerId1 === ownerId) { this.cacheOwnerId1 = 0; this.cacheOwner1 = undefined; }
     if (this.maxTombstones === 0) {
       this.owners.delete(ownerId);
       return;
@@ -507,11 +582,15 @@ export class NodeRegistry implements OwnerHost {
       if (oldest.kind === "node") {
         this.nodeTombstones.delete(oldest.id);
         this.nodes.delete(oldest.id);
-        if (this.lastNodeId === oldest.id) this.lastNode = undefined;
+        if (this.cacheId0 === oldest.id) { this.cacheId0 = 0; this.cacheNode0 = undefined; }
+        if (this.cacheId1 === oldest.id) { this.cacheId1 = 0; this.cacheNode1 = undefined; }
+        if (this.cacheId2 === oldest.id) { this.cacheId2 = 0; this.cacheNode2 = undefined; }
+        if (this.cacheId3 === oldest.id) { this.cacheId3 = 0; this.cacheNode3 = undefined; }
       } else {
         this.ownerTombstones.delete(oldest.id);
         this.owners.delete(oldest.id);
-        if (this.lastOwnerId === oldest.id) this.lastOwner = undefined;
+        if (this.cacheOwnerId0 === oldest.id) { this.cacheOwnerId0 = 0; this.cacheOwner0 = undefined; }
+        if (this.cacheOwnerId1 === oldest.id) { this.cacheOwnerId1 = 0; this.cacheOwner1 = undefined; }
       }
     }
   }
@@ -539,7 +618,7 @@ export class NodeRegistry implements OwnerHost {
 }
 
 type PatchOp =
-  | { kind: "insert"; nodeId: NodeId; parentId: NodeId; beforeId: NodeId | null }
+  | { kind: "insert"; nodeId: NodeId; parentId: NodeId; beforeId: NodeId | null; cachedNode?: FlatNode; cachedParent?: FlatNode }
   | { kind: "move"; nodeId: NodeId; parentId: NodeId; beforeId: NodeId | null }
   | {
       kind: "move-many";
@@ -760,6 +839,8 @@ export class PatchTransaction {
   private onlyTextOperations = true;
   private onlyCreatedOperations = true;
   private hasRemovals = false;
+  private lastCreatedId = 0;
+  private lastCreatedNode: FlatNode | undefined;
 
   constructor(private readonly engine: PatchEngine, readonly rootId: RootId) {}
 
@@ -783,7 +864,7 @@ export class PatchTransaction {
       element = this.engine.document.createElement(tag);
     }
     const id = this.engine.registry.createNode({
-      rootId: this.rootId, ownerId, kind: "element", domStart: element, type, key, props, value
+      rootId: this.rootId, ownerId, kind: "element", domStart: element, type, key, props, value, isSvg: ns === SVG_NAMESPACE
     });
     this.recordCreated(id);
     return id;
@@ -817,8 +898,16 @@ export class PatchTransaction {
     return id;
   }
 
-  insert(nodeId: NodeId, parentId: NodeId, beforeId: NodeId | null = null): void {
-    this.pushOperation({ kind: "insert", nodeId, parentId, beforeId });
+  insert(
+    nodeId: NodeId,
+    parentId: NodeId,
+    beforeId: NodeId | null = null,
+    cachedNode?: FlatNode,
+    cachedParent?: FlatNode
+  ): void {
+    const node = cachedNode ?? (nodeId === this.lastCreatedId ? this.lastCreatedNode : undefined);
+    const parent = cachedParent ?? (parentId === this.lastCreatedId ? this.lastCreatedNode : undefined);
+    this.pushOperation({ kind: "insert", nodeId, parentId, beforeId, cachedNode: node, cachedParent: parent });
   }
 
   move(nodeId: NodeId, parentId: NodeId, beforeId: NodeId | null = null): void {
@@ -897,6 +986,15 @@ export class PatchTransaction {
       this.commitTextOnly();
       return;
     }
+    if (this.onlyCreatedOperations && !this.hasRemovals) {
+      try {
+        this.commitCreatedOnly();
+        return;
+      } catch (error) {
+        this.rollback();
+        throw error;
+      }
+    }
     this.validate();
     const removals = this.hasRemovals ? this.operations.filter(op => op.kind === "remove") : undefined;
     const changes = removals ? this.operations.filter(op => op.kind !== "remove") : this.operations;
@@ -932,7 +1030,13 @@ export class PatchTransaction {
         const needsUndo = undo !== undefined && !this.createdSet.has(operation.nodeId);
         if (operation.kind === "insert") {
           if (needsUndo) undo!.push(() => this.engine.detachRange(operation.nodeId));
-          this.engine.insertRange(operation.nodeId, operation.parentId, operation.beforeId);
+          this.engine.insertRange(
+            operation.nodeId,
+            operation.parentId,
+            operation.beforeId,
+            operation.cachedNode,
+            operation.cachedParent
+          );
         } else if (operation.kind === "move") {
           if (operation.beforeId === operation.nodeId) continue;
           const node = this.engine.registry.getNode(operation.nodeId);
@@ -1026,6 +1130,77 @@ export class PatchTransaction {
     }
   }
 
+  private commitCreatedOnly(): void {
+    const operations = this.operations;
+    const projectedParents = new Map<NodeId, NodeId | null>();
+    const deferredRefs: Array<() => void> = [];
+    let operationIndex = 0;
+    let refIndex = 0;
+
+    while (operationIndex < operations.length || refIndex < deferredRefs.length) {
+      if (operationIndex >= operations.length) {
+        deferredRefs[refIndex++]!();
+        continue;
+      }
+      const operation = operations[operationIndex++]!;
+      if (operation.kind === "insert") {
+        const nodeId = operation.nodeId;
+        const parentId = operation.parentId;
+        if (nodeId === parentId) throw new Error("ZUI_TRANSACTION_CYCLE");
+
+        if (projectedParents.has(nodeId)) {
+          throw new Error("ZUI_TRANSACTION_DUPLICATE_INSERT");
+        }
+
+        const parent = operation.cachedParent ?? this.engine.registry.getNode(parentId);
+        if (parent.rootId !== this.rootId || parent.disposed) throw new Error("ZUI_TRANSACTION_PARENT");
+
+        if (operation.beforeId !== null) {
+          const before = this.engine.registry.getNode(operation.beforeId);
+          if (before.rootId !== this.rootId || before.disposed) throw new Error("ZUI_TRANSACTION_ANCHOR");
+          const beforeParent = projectedParents.get(operation.beforeId) ??
+            (this.createdSet.has(operation.beforeId) ? null : before.parentId);
+          if (operation.beforeId === nodeId || beforeParent !== parentId) {
+            throw new Error("ZUI_INVALID_ANCHOR");
+          }
+        }
+
+        if (this.engine.registry.getNode(nodeId).firstChild !== null) {
+          let ancestor: NodeId | null = parentId;
+          while (ancestor !== null) {
+            if (ancestor === nodeId) throw new Error("ZUI_TRANSACTION_CYCLE");
+            ancestor = projectedParents.get(ancestor) ??
+              (this.createdSet.has(ancestor) ? null : this.engine.registry.getNode(ancestor).parentId);
+          }
+        }
+
+        projectedParents.set(nodeId, parentId);
+        this.engine.insertRange(nodeId, parentId, operation.beforeId, operation.cachedNode, parent);
+      } else if (operation.kind === "props") {
+        const node = this.engine.registry.getNode(operation.nodeId);
+        if (node.kind !== "element") throw new Error("ZUI_TRANSACTION_PROPS");
+        for (const name of operation.changedKeys) {
+          validateProperty(name, operation.next[name]);
+        }
+        const attachRef = this.engine.applyProps(
+          operation.nodeId,
+          operation.previous,
+          operation.next,
+          operation.changedKeys,
+          true
+        );
+        if (attachRef) deferredRefs.push(attachRef);
+      } else if (operation.kind === "text") {
+        const node = operation.cachedNode ?? this.engine.registry.getNode(operation.nodeId);
+        if (node.kind !== "text") throw new Error("ZUI_TRANSACTION_TEXT");
+        this.engine.applyText(operation.nodeId, operation.value, node);
+      } else if (operation.kind === "meta") {
+        this.engine.registry.updateNode(operation.nodeId, operation.patch);
+      }
+    }
+    this.committed = true;
+  }
+
   private pushOperation(operation: PatchOp): void {
     if (operation.kind !== "text") this.onlyTextOperations = false;
     if (operation.kind === "remove") this.hasRemovals = true;
@@ -1034,10 +1209,6 @@ export class PatchTransaction {
   }
 
   private validate(): void {
-    if (this.onlyCreatedOperations && !this.hasRemovals) {
-      this.validateCreatedOnly();
-      return;
-    }
     const removed = new Set<NodeId>();
     const inserted = new Set<NodeId>();
     const projectedChildren = new Set<NodeId>();
@@ -1101,59 +1272,11 @@ export class PatchTransaction {
     }
   }
 
-  private validateCreatedOnly(): void {
-    const inserted = new Set<NodeId>();
-    const projectedChildren = new Set<NodeId>();
-    const projectedParents = new Map<NodeId, NodeId | null>();
-    const projectedParent = (nodeId: NodeId): NodeId | null =>
-      projectedParents.has(nodeId)
-        ? projectedParents.get(nodeId)!
-        : this.engine.registry.getNode(nodeId).parentId;
-
-    for (const operation of this.operations) {
-      if (operation.kind === "insert") {
-        const parent = this.engine.registry.getNode(operation.parentId);
-        if (parent.rootId !== this.rootId || parent.disposed) throw new Error("ZUI_TRANSACTION_PARENT");
-        if (operation.beforeId !== null) {
-          const before = this.engine.registry.getNode(operation.beforeId);
-          if (before.rootId !== this.rootId || before.disposed) throw new Error("ZUI_TRANSACTION_ANCHOR");
-          if (operation.beforeId === operation.nodeId || projectedParent(operation.beforeId) !== operation.parentId) {
-            throw new Error("ZUI_INVALID_ANCHOR");
-          }
-        }
-        if (projectedParent(operation.nodeId) !== null) {
-          throw new Error("ZUI_TRANSACTION_INSERT_ATTACHED");
-        }
-        if (inserted.has(operation.nodeId)) {
-          throw new Error("ZUI_TRANSACTION_DUPLICATE_INSERT");
-        }
-        if (operation.nodeId === operation.parentId) throw new Error("ZUI_TRANSACTION_CYCLE");
-        inserted.add(operation.nodeId);
-        if (projectedChildren.has(operation.nodeId)) {
-          let ancestor: NodeId | null = operation.parentId;
-          while (ancestor !== null) {
-            if (ancestor === operation.nodeId) throw new Error("ZUI_TRANSACTION_CYCLE");
-            ancestor = projectedParent(ancestor);
-          }
-        }
-        projectedParents.set(operation.nodeId, operation.parentId);
-        projectedChildren.add(operation.parentId);
-      } else if (operation.kind === "props") {
-        const node = this.engine.registry.getNode(operation.nodeId);
-        if (node.kind !== "element") throw new Error("ZUI_TRANSACTION_PROPS");
-        for (const name of operation.changedKeys) {
-          validateProperty(name, operation.next[name]);
-        }
-      } else if (operation.kind === "text") {
-        const node = operation.cachedNode ?? this.engine.registry.getNode(operation.nodeId);
-        if (node.kind !== "text") throw new Error("ZUI_TRANSACTION_TEXT");
-      }
-    }
-  }
-
-  private recordCreated(nodeId: NodeId): void {
+  private recordCreated(nodeId: NodeId, node?: FlatNode): void {
     this.created.push(nodeId);
     this.createdSet.add(nodeId);
+    this.lastCreatedId = nodeId;
+    this.lastCreatedNode = node ?? this.engine.registry.getNode(nodeId);
   }
 
   private validateMoveMany(operation: Extract<PatchOp, { kind: "move-many" }>): void {
@@ -1284,33 +1407,40 @@ export class PatchEngine {
     let currentId: NodeId | null = parentId;
     while (currentId !== null) {
       const node = this.registry.getNode(currentId);
-      if (node.kind === "element" && node.domStart instanceof Element) {
-        if (node.domStart.namespaceURI === SVG_NAMESPACE) {
-          return node.domStart.localName.toLowerCase() === "foreignobject" ? undefined : SVG_NAMESPACE;
+      if (node.kind === "element" || node.kind === "root") {
+        if (!node.isSvg) return undefined;
+        if (node.kind === "element" && typeof node.type === "string" && node.type.toLowerCase() === "foreignobject") {
+          return undefined;
         }
-        return undefined;
-      }
-      if (node.kind === "root" && node.domStart instanceof Element) {
-        return node.domStart.namespaceURI === SVG_NAMESPACE ? SVG_NAMESPACE : undefined;
+        return SVG_NAMESPACE;
       }
       currentId = node.parentId;
     }
     return isKnownSVGTag(tag) ? SVG_NAMESPACE : undefined;
   }
 
-  insertRange(nodeId: NodeId, parentId: NodeId, beforeId: NodeId | null): void {
-    const node = this.registry.getNode(nodeId);
-    const parent = this.registry.getNode(parentId);
-    const parentDom = this.parentDom(parent);
-    const beforeDom = beforeId === null ? this.parentAnchor(parent) : this.registry.getNode(beforeId).domStart;
+  insertRange(
+    nodeId: NodeId,
+    parentId: NodeId,
+    beforeId: NodeId | null,
+    cachedNode?: FlatNode,
+    cachedParent?: FlatNode
+  ): void {
+    const node = cachedNode ?? this.registry.getNode(nodeId);
+    const parent = cachedParent ?? this.registry.getNode(parentId);
+    const parentDom = (parent.kind === "root" || parent.kind === "element") ? (parent.domStart as Node) : this.parentDom(parent);
+    const beforeDom = beforeId === null ? (parent.kind === "boundary" ? parent.domEnd : null) : this.registry.getNode(beforeId).domStart;
     if (!node.domStart.parentNode && (node.domEnd === node.domStart || !node.domEnd.parentNode)) {
-      // Fresh nodes are already detached. Avoid allocating a DocumentFragment
-      // for every element/text node during initial mount.
-      parentDom.insertBefore(node.domStart, beforeDom);
-      if (node.domEnd !== node.domStart) parentDom.insertBefore(node.domEnd, beforeDom);
+      if (beforeDom === null) parentDom.appendChild(node.domStart);
+      else parentDom.insertBefore(node.domStart, beforeDom);
+      if (node.domEnd !== node.domStart) {
+        if (beforeDom === null) parentDom.appendChild(node.domEnd);
+        else parentDom.insertBefore(node.domEnd, beforeDom);
+      }
     } else {
       const fragment = this.extractRange(node);
-      parentDom.insertBefore(fragment, beforeDom);
+      if (beforeDom === null) parentDom.appendChild(fragment);
+      else parentDom.insertBefore(fragment, beforeDom);
     }
     this.registry.linkChild(nodeId, parentId, beforeId, node, parent);
   }
@@ -1461,8 +1591,8 @@ export class PatchEngine {
     let deferredKeys: string[] | undefined;
     const dom = record.domStart;
     const isDetachedNative = record.kind === "element" && dom instanceof Element &&
-      !dom.localName.includes("-") && !dom.hasAttribute("is") && !record.props?.is &&
-      record.parentId === null && dom.parentNode === null;
+      typeof record.type === "string" && !record.type.includes("-") && !record.props?.is &&
+      record.parentId === null && !dom.parentNode;
 
     let applied = false;
     for (const name in props) {
