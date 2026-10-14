@@ -6,93 +6,80 @@
  * not keep a second child tree. All DOM writes go through PatchEngine.
  */
 
-export type NodeId = number;
-export type RootId = number;
-export type OwnerId = number;
-export type Key = string | number;
-export type Dispose = () => void;
+export type {
+  NodeId,
+  RootId,
+  OwnerId,
+  Key,
+  Dispose,
+  NodeKind,
+  FlatNode,
+  FlatOwner,
+  RootHandle,
+  OwnerHost,
+  NodeInit,
+  NodeRegistryOptions,
+  RegistryDiagnostics,
+  PatchOp,
+  PatchEngineOptions,
+  FocusState
+} from "./flat/types.js";
 
-export type NodeKind = "root" | "element" | "text" | "comment" | "boundary";
+import type {
+  NodeId,
+  RootId,
+  OwnerId,
+  Key,
+  Dispose,
+  NodeInit,
+  FlatNode,
+  FlatOwner,
+  RootHandle,
+  OwnerHost,
+  NodeRegistryOptions,
+  RegistryDiagnostics,
+  PatchOp,
+  PatchEngineOptions,
+  FocusState
+} from "./flat/types.js";
 
-export interface FlatNode {
-  readonly id: NodeId;
-  readonly rootId: RootId;
-  readonly kind: NodeKind;
-  domStart: Node;
-  domEnd: Node;
-  ownerId: OwnerId;
-  parentId: NodeId | null;
-  prevSibling: NodeId | null;
-  nextSibling: NodeId | null;
-  firstChild: NodeId | null;
-  lastChild: NodeId | null;
-  version: number;
-  key?: Key;
-  type?: string | ((props: any) => any);
-  props: Record<string, any>;
-  value?: unknown;
-  payload?: unknown;
-  listeners?: Map<string, EventListener>;
-  ref?: unknown;
-  styleSnapshot?: Record<string, unknown>;
-  cleanup?: Dispose;
-  disposed: boolean;
-  isSvg?: boolean;
-}
+import {
+  SVG_NAMESPACE,
+  XLINK_NAMESPACE,
+  XML_NAMESPACE,
+  XMLNS_NAMESPACE,
+  isKnownSVGTag,
+  setAttribute,
+  setProperty,
+  eventName
+} from "./flat/properties.js";
 
-export interface FlatOwner {
-  readonly id: OwnerId;
-  readonly rootId: RootId;
-  readonly parentId: OwnerId | null;
-  readonly children: Set<OwnerId>;
-  readonly nodeIds: Set<NodeId>;
-  version: number;
-  disposed: boolean;
-}
-
-export interface RootHandle {
-  readonly rootId: RootId;
-  readonly nodeId: NodeId;
-  readonly ownerId: OwnerId;
-  readonly container: Element;
-}
-
-export interface OwnerHost {
-  createOwner(rootId: RootId, parentId?: OwnerId | null): OwnerId;
-  ownerParent(ownerId: OwnerId): OwnerId | null;
-  ownerChildren(ownerId: OwnerId): readonly OwnerId[];
-  disposeOwner(ownerId: OwnerId): void;
-}
-
-type NodeInit = {
-  rootId: RootId;
-  ownerId: OwnerId;
-  kind: NodeKind;
-  domStart: Node;
-  domEnd?: Node;
-  key?: Key;
-  type?: string | ((props: any) => any);
-  props?: Record<string, any>;
-  value?: unknown;
-  payload?: unknown;
-  isSvg?: boolean;
+export {
+  SVG_NAMESPACE,
+  XLINK_NAMESPACE,
+  XML_NAMESPACE,
+  XMLNS_NAMESPACE
 };
 
-export interface NodeRegistryOptions {
-  /** Maximum total number of lightweight disposed node/owner records retained for diagnostics. */
-  maxTombstones?: number;
-}
+import {
+  parentDom,
+  parentAnchor,
+  extractRange,
+  appendRange
+} from "./flat/dom.js";
 
-export interface RegistryDiagnostics {
-  readonly activeNodes: number;
-  readonly tombstoneNodes: number;
-  readonly totalNodes: number;
-  readonly activeOwners: number;
-  readonly tombstoneOwners: number;
-  readonly totalOwners: number;
-  readonly totalRoots: number;
-  readonly maxTombstones: number;
-}
+import {
+  captureFocus,
+  captureFocusInRecords,
+  captureFocusInChildren,
+  restoreFocus
+} from "./flat/focus.js";
+
+import {
+  isEventProperty,
+  validateProperty
+} from "./flat/security.js";
+
 
 /** A flat, addressable index for roots, nodes and ownership scopes. */
 export class NodeRegistry implements OwnerHost {
@@ -666,219 +653,6 @@ export class NodeRegistry implements OwnerHost {
   }
 }
 
-type PatchOp =
-  | { kind: "insert"; nodeId: NodeId; parentId: NodeId; beforeId: NodeId | null; cachedNode?: FlatNode; cachedParent?: FlatNode }
-  | { kind: "move"; nodeId: NodeId; parentId: NodeId; beforeId: NodeId | null }
-  | {
-      kind: "move-many";
-      parentId: NodeId;
-      originalIds: NodeId[];
-      finalIds: NodeId[];
-      movingIds: NodeId[];
-      beforeIds: Array<NodeId | null>;
-      originalRecords?: FlatNode[];
-      finalRecords?: FlatNode[];
-      movingRecords?: FlatNode[];
-      beforeRecords?: Array<FlatNode | null>;
-    }
-  | { kind: "props"; nodeId: NodeId; previous: Record<string, any>; next: Record<string, any>; changedKeys: string[] }
-  | { kind: "text"; nodeId: NodeId; value: string; cachedNode?: FlatNode; previous?: string }
-  | { kind: "meta"; nodeId: NodeId; patch: Partial<Pick<FlatNode, "key" | "type" | "props" | "value" | "payload">> }
-  | { kind: "remove"; nodeId: NodeId };
-
-const blockedHTMLProperties = new Set(["innerhtml", "outerhtml", "srcdoc"]);
-const urlProperties = new Set(["href", "xlink:href", "xlinkhref", "src", "action", "formaction", "poster", "data"]);
-
-export const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
-export const XLINK_NAMESPACE = "http://www.w3.org/1999/xlink";
-export const XML_NAMESPACE = "http://www.w3.org/XML/1998/namespace";
-export const XMLNS_NAMESPACE = "http://www.w3.org/2000/xmlns/";
-
-const svgTags = new Set([
-  "circle", "ellipse", "line", "path", "polygon", "polyline", "rect",
-  "g", "defs", "symbol", "use", "animate", "animateMotion", "animateTransform",
-  "clipPath", "desc", "feBlend", "feColorMatrix", "feComponentTransfer",
-  "feComposite", "feConvolveMatrix", "feDiffuseLighting", "feDisplacementMap",
-  "feDistantLight", "feDropShadow", "feFlood", "feFuncA", "feFuncB", "feFuncG",
-  "feFuncR", "feGaussianBlur", "feImage", "feMerge", "feMergeNode",
-  "feMorphology", "feOffset", "fePointLight", "feSpecularLighting",
-  "feSpotLight", "feTile", "feTurbulence", "filter", "foreignObject",
-  "linearGradient", "marker", "mask", "metadata", "mpath", "pattern",
-  "radialGradient", "stop", "switch", "textPath", "tspan", "view"
-]);
-
-function isKnownSVGTag(tag: string): boolean {
-  return svgTags.has(tag) || svgTags.has(tag.toLowerCase());
-}
-
-const xlinkAttributes: Record<string, string> = {
-  "xlink:href": "xlink:href",
-  "xlinkHref": "xlink:href",
-  "xlink:title": "xlink:title",
-  "xlinkTitle": "xlink:title",
-  "xlink:show": "xlink:show",
-  "xlinkShow": "xlink:show",
-  "xlink:actuate": "xlink:actuate",
-  "xlinkActuate": "xlink:actuate",
-  "xlink:role": "xlink:role",
-  "xlinkRole": "xlink:role",
-  "xlink:arcrole": "xlink:arcrole",
-  "xlinkArcrole": "xlink:arcrole",
-  "xlink:type": "xlink:type",
-  "xlinkType": "xlink:type"
-};
-
-const xmlAttributes: Record<string, string> = {
-  "xml:space": "xml:space",
-  "xmlSpace": "xml:space",
-  "xml:lang": "xml:lang",
-  "xmlLang": "xml:lang"
-};
-
-const svgHyphenatedAttributes: Record<string, string> = {
-  strokeWidth: "stroke-width",
-  strokeLinecap: "stroke-linecap",
-  strokeLinejoin: "stroke-linejoin",
-  strokeDasharray: "stroke-dasharray",
-  strokeDashoffset: "stroke-dashoffset",
-  strokeMiterlimit: "stroke-miterlimit",
-  strokeOpacity: "stroke-opacity",
-  fillRule: "fill-rule",
-  fillOpacity: "fill-opacity",
-  clipPath: "clip-path",
-  clipRule: "clip-rule",
-  stopColor: "stop-color",
-  stopOpacity: "stop-opacity",
-  vectorEffect: "vector-effect",
-  fontFamily: "font-family",
-  fontSize: "font-size",
-  textAnchor: "text-anchor",
-  dominantBaseline: "dominant-baseline",
-  shapeRendering: "shape-rendering",
-  colorInterpolation: "color-interpolation",
-  colorInterpolationFilters: "color-interpolation-filters",
-  lightingColor: "lighting-color",
-  floodColor: "flood-color",
-  floodOpacity: "flood-opacity"
-};
-
-const svgCamelCaseAttributes: Record<string, string> = {
-  viewbox: "viewBox",
-  viewBox: "viewBox",
-  preserveaspectratio: "preserveAspectRatio",
-  preserveAspectRatio: "preserveAspectRatio",
-  gradientunits: "gradientUnits",
-  gradientUnits: "gradientUnits",
-  gradienttransform: "gradientTransform",
-  gradientTransform: "gradientTransform",
-  clippathunits: "clipPathUnits",
-  clipPathUnits: "clipPathUnits",
-  maskunits: "maskUnits",
-  maskUnits: "maskUnits",
-  maskcontentunits: "maskContentUnits",
-  maskContentUnits: "maskContentUnits",
-  patternunits: "patternUnits",
-  patternUnits: "patternUnits",
-  patterncontentunits: "patternContentUnits",
-  patternContentUnits: "patternContentUnits",
-  patterntransform: "patternTransform",
-  patternTransform: "patternTransform",
-  spreadmethod: "spreadMethod",
-  spreadMethod: "spreadMethod",
-  markerunits: "markerUnits",
-  markerUnits: "markerUnits",
-  markerwidth: "markerWidth",
-  markerWidth: "markerWidth",
-  markerheight: "markerHeight",
-  markerHeight: "markerHeight",
-  refx: "refX",
-  refX: "refX",
-  refy: "refY",
-  refY: "refY",
-  tablevalues: "tableValues",
-  tableValues: "tableValues",
-  stddeviation: "stdDeviation",
-  stdDeviation: "stdDeviation",
-  basefrequency: "baseFrequency",
-  baseFrequency: "baseFrequency",
-  numoctaves: "numOctaves",
-  numOctaves: "numOctaves",
-  stitchtiles: "stitchTiles",
-  stitchTiles: "stitchTiles",
-  surfacescale: "surfaceScale",
-  surfaceScale: "surfaceScale",
-  specularconstant: "specularConstant",
-  specularConstant: "specularConstant",
-  specularexponent: "specularExponent",
-  specularExponent: "specularExponent",
-  kernelmatrix: "kernelMatrix",
-  kernelMatrix: "kernelMatrix",
-  kernelunitlength: "kernelUnitLength",
-  kernelUnitLength: "kernelUnitLength",
-  targetx: "targetX",
-  targetX: "targetX",
-  targety: "targetY",
-  targetY: "targetY",
-  edgemode: "edgeMode",
-  edgeMode: "edgeMode",
-  limitingconeangle: "limitingConeAngle",
-  limitingConeAngle: "limitingConeAngle",
-  pointsatx: "pointsAtX",
-  pointsAtX: "pointsAtX",
-  pointsaty: "pointsAtY",
-  pointsAtY: "pointsAtY",
-  pointsatz: "pointsAtZ",
-  pointsAtZ: "pointsAtZ",
-  diffuseconstant: "diffuseConstant",
-  diffuseConstant: "diffuseConstant",
-  xchannelselector: "xChannelSelector",
-  xChannelSelector: "xChannelSelector",
-  ychannelselector: "yChannelSelector",
-  yChannelSelector: "yChannelSelector"
-};
-interface PropertyClassification {
-  readonly blockedHTML: boolean;
-  readonly event: boolean;
-  readonly url: boolean;
-}
-const propertyClassifications = new Map<string, PropertyClassification>();
-const PROPERTY_CLASSIFICATION_LIMIT = 128;
-
-function classifyProperty(name: string): PropertyClassification {
-  const cached = propertyClassifications.get(name);
-  if (cached) return cached;
-  const normalized = name.toLowerCase();
-  const classification = {
-    blockedHTML: blockedHTMLProperties.has(normalized),
-    event: /^on[a-z]/i.test(name),
-    url: urlProperties.has(normalized)
-  };
-  if (propertyClassifications.size >= PROPERTY_CLASSIFICATION_LIMIT) {
-    const oldest = propertyClassifications.keys().next().value as string | undefined;
-    if (oldest !== undefined) propertyClassifications.delete(oldest);
-  }
-  propertyClassifications.set(name, classification);
-  return classification;
-}
-
-function isEventProperty(name: string): boolean {
-  return classifyProperty(name).event;
-}
-
-function isUnsafeUrlProperty(name: string, value: unknown): boolean {
-  if (!classifyProperty(name).url || typeof value !== "string") return false;
-  const normalized = value.replace(/[\u0000-\u0020\u007f-\u009f]/g, "").toLowerCase();
-  return /^(javascript|vbscript):/.test(normalized) || normalized.startsWith("data:text/html");
-}
-
-function validateProperty(name: string, value: unknown): void {
-  const classification = classifyProperty(name);
-  if (classification.blockedHTML) throw new Error("ZUI_UNSAFE_HTML_PROP");
-  if (classification.event && value != null && typeof value !== "function") {
-    throw new Error("ZUI_UNSAFE_EVENT_PROP");
-  }
-  if (isUnsafeUrlProperty(name, value)) throw new Error("ZUI_UNSAFE_URL_PROP");
-}
 
 export class PatchTransaction {
   private readonly operations: PatchOp[] = [];
@@ -1401,10 +1175,6 @@ export class PatchTransaction {
   }
 }
 
-export interface PatchEngineOptions {
-  /** Run a full-root index walk after each commit. Keep disabled in production hot paths. */
-  assertAfterCommit?: boolean;
-}
 
 /**
  * The only module allowed to mutate the browser DOM for the flat runtime.
@@ -1769,266 +1539,27 @@ export class PatchEngine {
   }
 
   private setProperty(node: FlatNode, name: string, value: unknown): void {
-    validateProperty(name, value);
-    const element = node.domStart as Element;
-    if (element.namespaceURI === SVG_NAMESPACE) {
-      this.setSvgProperty(node, element as SVGElement, name, value);
-      node.version++;
-      return;
-    }
-    const isCustom = element.localName.includes("-") || element.hasAttribute("is") || Boolean(node.props?.is);
-    if (isCustom) {
-      this.setCustomElementProperty(node, element, name, value);
-      node.version++;
-      return;
-    }
-    this.setHtmlProperty(node, element as HTMLElement, name, value);
-    node.version++;
-  }
-
-  private setSvgProperty(node: FlatNode, element: SVGElement, name: string, value: unknown): void {
-    if (name === "className" || name === "class") {
-      this.setAttribute(element, "class", value);
-      return;
-    }
-    if (name === "style") {
-      this.applyStyle(node, element, value);
-      return;
-    }
-    if (name in xlinkAttributes) {
-      const qualified = xlinkAttributes[name]!;
-      const local = qualified.slice(6);
-      if (value == null || value === false) {
-        element.removeAttributeNS(XLINK_NAMESPACE, local);
-        element.removeAttribute(qualified);
-      } else {
-        element.setAttributeNS(XLINK_NAMESPACE, qualified, String(value));
-      }
-      return;
-    }
-    if (name in xmlAttributes) {
-      const qualified = xmlAttributes[name]!;
-      const local = qualified.slice(4);
-      if (value == null || value === false) {
-        element.removeAttributeNS(XML_NAMESPACE, local);
-        element.removeAttribute(qualified);
-      } else {
-        element.setAttributeNS(XML_NAMESPACE, qualified, String(value));
-      }
-      return;
-    }
-    if (name === "xmlns:xlink" || name === "xmlnsXlink") {
-      if (value == null || value === false) {
-        element.removeAttributeNS(XMLNS_NAMESPACE, "xlink");
-        element.removeAttribute("xmlns:xlink");
-      } else {
-        element.setAttributeNS(XMLNS_NAMESPACE, "xmlns:xlink", String(value));
-      }
-      return;
-    }
-    const attrName = svgHyphenatedAttributes[name] ?? svgCamelCaseAttributes[name] ?? name;
-    this.setAttribute(element, attrName, value);
-  }
-
-  private setCustomElementProperty(node: FlatNode, element: Element, name: string, value: unknown): void {
-    if (name === "className" || name === "class") {
-      element.className = stringify(value);
-      return;
-    }
-    if (name === "style") {
-      this.applyStyle(node, element as unknown as ElementCSSInlineStyle, value);
-      return;
-    }
-    if (name === "role") {
-      if (value == null || value === false) {
-        element.removeAttribute("role");
-        if ("role" in element) try { (element as any).role = null; } catch {}
-      } else {
-        element.setAttribute("role", String(value));
-        if ("role" in element) try { (element as any).role = String(value); } catch {}
-      }
-      return;
-    }
-    if (typeof value === "object" || typeof value === "function" || typeof value === "symbol") {
-      (element as any)[name] = value;
-    } else if (typeof value === "boolean") {
-      (element as any)[name] = value;
-      if (value) element.setAttribute(name, "");
-      else element.removeAttribute(name);
-    } else {
-      if (name in element) {
-        try { (element as any)[name] = value; } catch {}
-      }
-      this.setAttribute(element, name, value);
-    }
-  }
-
-  private setHtmlProperty(node: FlatNode, element: HTMLElement, name: string, value: unknown): void {
-    if (name === "className" || name === "class") {
-      element.className = stringify(value);
-    } else if (name === "style") {
-      this.applyStyle(node, element, value);
-    } else if (name === "value") {
-      const normalized = value == null ? "" : String(value);
-      if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
-        if ((element as any).value !== normalized) (element as any).value = normalized;
-      } else if (element instanceof HTMLOptionElement) {
-        if (element.value !== normalized) element.value = normalized;
-        this.setAttribute(element, "value", value);
-      } else {
-        this.setAttribute(element, "value", value);
-      }
-    } else if (name === "checked") {
-      const bool = Boolean(value);
-      if (element instanceof HTMLInputElement && element.checked !== bool) element.checked = bool;
-      if (bool) element.setAttribute("checked", "");
-      else element.removeAttribute("checked");
-    } else if (name === "disabled") {
-      const bool = Boolean(value);
-      if ("disabled" in element && (element as any).disabled !== bool) (element as any).disabled = bool;
-      if (bool) element.setAttribute("disabled", "");
-      else element.removeAttribute("disabled");
-    } else if (name === "selected") {
-      const bool = Boolean(value);
-      if (element instanceof HTMLOptionElement && element.selected !== bool) element.selected = bool;
-      if (bool) element.setAttribute("selected", "");
-      else element.removeAttribute("selected");
-    } else if (name === "indeterminate") {
-      const bool = Boolean(value);
-      if (element instanceof HTMLInputElement && element.indeterminate !== bool) element.indeterminate = bool;
-    } else if (name === "readOnly" || name === "readonly") {
-      const bool = Boolean(value);
-      if ("readOnly" in element && (element as any).readOnly !== bool) (element as any).readOnly = bool;
-      if (bool) element.setAttribute("readonly", "");
-      else element.removeAttribute("readonly");
-    } else if (name === "required") {
-      const bool = Boolean(value);
-      if ("required" in element && (element as any).required !== bool) (element as any).required = bool;
-      if (bool) element.setAttribute("required", "");
-      else element.removeAttribute("required");
-    } else if (name === "multiple") {
-      const bool = Boolean(value);
-      if ("multiple" in element && (element as any).multiple !== bool) (element as any).multiple = bool;
-      if (bool) element.setAttribute("multiple", "");
-      else element.removeAttribute("multiple");
-    } else if (name === "autoFocus" || name === "autofocus") {
-      const bool = Boolean(value);
-      if ("autofocus" in element && (element as any).autofocus !== bool) (element as any).autofocus = bool;
-      if (bool) element.setAttribute("autofocus", "");
-      else element.removeAttribute("autofocus");
-    } else if (name === "formNoValidate" || name === "formnovalidate") {
-      const bool = Boolean(value);
-      if ("formNoValidate" in element && (element as any).formNoValidate !== bool) (element as any).formNoValidate = bool;
-      if (bool) element.setAttribute("formnovalidate", "");
-      else element.removeAttribute("formnovalidate");
-    } else if (name === "htmlFor" || name === "for") {
-      if (value == null) element.removeAttribute("for");
-      else element.setAttribute("for", String(value));
-      if ("htmlFor" in element) (element as any).htmlFor = String(value ?? "");
-    } else if (name === "tabIndex" || name === "tabindex") {
-      if (value == null) {
-        element.removeAttribute("tabindex");
-      } else {
-        const num = Number(value);
-        if (!Number.isNaN(num)) {
-          if ("tabIndex" in element) (element as any).tabIndex = num;
-          element.setAttribute("tabindex", String(num));
-        }
-      }
-    } else if (name === "role") {
-      if (value == null || value === false) {
-        element.removeAttribute("role");
-        if ("role" in element) try { (element as any).role = null; } catch {}
-      } else {
-        element.setAttribute("role", String(value));
-        if ("role" in element) try { (element as any).role = String(value); } catch {}
-      }
-    } else if (name in element && !name.startsWith("aria-") && !name.startsWith("data-")) {
-      try { (element as any)[name] = value ?? ""; }
-      catch { this.setAttribute(element, name, value); }
-    } else {
-      this.setAttribute(element, name, value);
-    }
-  }
-
-  private applyStyle(node: FlatNode, element: ElementCSSInlineStyle, value: unknown): void {
-    const next = value && typeof value === "object" ? value as Record<string, unknown> : {};
-    const previous = node.styleSnapshot;
-    const style = element.style;
-    for (const prop of Object.keys(previous ?? {})) {
-      if (prop in next) continue;
-      if (prop.startsWith("--")) style.removeProperty(prop);
-      else (style as any)[prop] = "";
-    }
-    for (const [prop, entry] of Object.entries(next)) {
-      if (Object.is(previous?.[prop], entry)) continue;
-      if (prop.startsWith("--")) style.setProperty(prop, stringify(entry));
-      else (style as any)[prop] = entry ?? "";
-    }
-    node.styleSnapshot = Object.keys(next).length > 0 ? { ...next } : undefined;
+    setProperty(node, name, value);
   }
 
   private setAttribute(element: Element, name: string, value: unknown): void {
-    if (name.startsWith("aria-")) {
-      if (typeof value === "boolean") {
-        element.setAttribute(name, value ? "true" : "false");
-        return;
-      }
-      if (value == null) {
-        element.removeAttribute(name);
-        return;
-      }
-      element.setAttribute(name, String(value));
-      return;
-    }
-    if (name === "role") {
-      if (value == null || value === false) element.removeAttribute("role");
-      else element.setAttribute("role", String(value));
-      return;
-    }
-    if (value == null || value === false) element.removeAttribute(name);
-    else if (value === true) element.setAttribute(name, "");
-    else element.setAttribute(name, String(value));
+    setAttribute(element, name, value);
   }
 
   private parentDom(parent: FlatNode): Node {
-    if (parent.kind === "root" || parent.kind === "element") return parent.domStart;
-    const domParent = parent.domStart.parentNode;
-    if (!domParent) throw new Error("ZUI_DETACHED_PARENT");
-    return domParent;
+    return parentDom(parent);
   }
 
   private parentAnchor(parent: FlatNode): Node | null {
-    return parent.kind === "boundary" ? parent.domEnd : null;
+    return parentAnchor(parent);
   }
 
   private extractRange(node: FlatNode): DocumentFragment {
-    const fragment = this.document.createDocumentFragment();
-    if (!node.domStart.parentNode) {
-      fragment.appendChild(node.domStart);
-      if (node.domEnd !== node.domStart) fragment.appendChild(node.domEnd);
-      return fragment;
-    }
-    let current: Node | null = node.domStart;
-    while (current) {
-      const next: Node | null = current.nextSibling;
-      fragment.appendChild(current);
-      if (current === node.domEnd) break;
-      current = next;
-    }
-    if (current !== node.domEnd) throw new Error("ZUI_DOM_RANGE_CORRUPT");
-    return fragment;
+    return extractRange(this.document, node);
   }
 
   private appendRange(fragment: DocumentFragment, node: FlatNode): void {
-    let current: Node | null = node.domStart;
-    while (current) {
-      const next: Node | null = current.nextSibling;
-      fragment.appendChild(current);
-      if (current === node.domEnd) return;
-      current = next;
-    }
-    throw new Error("ZUI_DOM_RANGE_CORRUPT");
+    appendRange(fragment, node);
   }
 
   private captureFocusInChildren(
@@ -2036,58 +1567,19 @@ export class PatchEngine {
     childIds: readonly NodeId[],
     records: ReadonlyMap<NodeId, FlatNode>
   ): FocusState | undefined {
-    const active = this.document.activeElement;
-    if (!(active instanceof HTMLElement) || !(parentDom instanceof Element) || !parentDom.contains(active)) return undefined;
-    for (const id of childIds) {
-      const child = records.get(id);
-      if (child?.domStart instanceof Element && child.domStart.contains(active)) return this.captureFocus(child);
-    }
-    return undefined;
+    return captureFocusInChildren(this.document, parentDom, childIds, records);
   }
 
   private captureFocusInRecords(parentDom: Node, records: readonly FlatNode[]): FocusState | undefined {
-    const active = this.document.activeElement;
-    if (!(active instanceof HTMLElement) || !(parentDom instanceof Element) || !parentDom.contains(active)) return undefined;
-    for (const child of records) {
-      if (child.domStart instanceof Element && child.domStart.contains(active)) return this.captureFocus(child);
-    }
-    return undefined;
+    return captureFocusInRecords(this.document, parentDom, records);
   }
 
   private captureFocus(node: FlatNode): FocusState | undefined {
-    const active = this.document.activeElement;
-    if (!(active instanceof HTMLElement) || !(node.domStart instanceof Element) || !node.domStart.contains(active)) return undefined;
-    const input = active as HTMLInputElement | HTMLTextAreaElement;
-    return {
-      element: active,
-      start: "selectionStart" in input ? input.selectionStart : null,
-      end: "selectionEnd" in input ? input.selectionEnd : null,
-      direction: "selectionDirection" in input ? input.selectionDirection : null
-    };
+    return captureFocus(this.document, node);
   }
 
   private restoreFocus(state: FocusState | undefined): void {
-    if (!state || !state.element.isConnected) return;
-    state.element.focus({ preventScroll: true });
-    if (state.start !== null && state.end !== null && "setSelectionRange" in state.element) {
-      (state.element as HTMLInputElement | HTMLTextAreaElement).setSelectionRange(state.start, state.end, state.direction ?? undefined);
-    }
+    restoreFocus(state);
   }
 }
 
-interface FocusState {
-  element: HTMLElement;
-  start: number | null;
-  end: number | null;
-  direction: "forward" | "backward" | "none" | null;
-}
-
-function stringify(value: unknown): string {
-  return value == null || typeof value === "boolean" ? "" : String(value);
-}
-
-function eventName(name: string): string {
-  if (name === "onChange") return "change";
-  if (name === "onDoubleClick") return "dblclick";
-  return name.slice(2).toLowerCase();
-}
