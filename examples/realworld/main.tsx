@@ -11,7 +11,7 @@ import { Sidebar } from "./components/Sidebar.js";
 import { TeamView } from "./components/TeamView.js";
 import { ToastContainer } from "./components/ToastContainer.js";
 import { useAppStore } from "./store.js";
-import type { ActivityLog, Issue, Project, TeamMember } from "./types.js";
+import type { Issue, Project, TeamMember, ViewMode } from "./types.js";
 
 const globalStyles = `
   :root {
@@ -73,14 +73,12 @@ function App() {
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = async (silent: boolean = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       const [p, m, i, a] = await Promise.all([
         api.getProjects(),
@@ -90,12 +88,37 @@ function App() {
       ]);
       setProjects(p);
       setMembers(m);
-      setIssues(i);
-      setActivities(a);
+      useAppStore.getState().setIssueData(i, a);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load workspace data");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const handleUpdateIssue = async (issueId: string, patch: Partial<Issue>) => {
+    useAppStore.getState().setIssues(prev =>
+      prev.map(issue => (issue.id === issueId ? { ...issue, ...patch } : issue))
+    );
+    try {
+      await api.updateIssue(issueId, patch);
+      const a = await api.getActivities();
+      useAppStore.getState().setActivities(a);
+    } catch (err) {
+      await loadData(true);
+      throw err;
+    }
+  };
+
+  const handleDeleteIssue = async (issueId: string) => {
+    useAppStore.getState().setIssues(prev => prev.filter(issue => issue.id !== issueId));
+    try {
+      await api.deleteIssue(issueId);
+      const a = await api.getActivities();
+      useAppStore.getState().setActivities(a);
+    } catch (err) {
+      await loadData(true);
+      throw err;
     }
   };
 
@@ -119,7 +142,9 @@ function App() {
     };
   }, [isDevToolsOpen]);
 
-  const editingIssue = editingIssueId ? issues.find(i => i.id === editingIssueId) ?? null : null;
+  const editingIssue = editingIssueId
+    ? useAppStore.getState().issues.find(issue => issue.id === editingIssueId) ?? null
+    : null;
 
   return (
     <div style={{ display: "flex", height: "100vh", width: "100vw", overflow: "hidden" }}>
@@ -178,7 +203,7 @@ function App() {
                 <p style={{ margin: "0 0 16px", fontSize: "13px" }}>{error}</p>
                 <button
                   type="button"
-                  onClick={loadData}
+                  onClick={() => loadData()}
                   style={{
                     padding: "8px 16px",
                     backgroundColor: "#dc2626",
@@ -194,44 +219,13 @@ function App() {
               </div>
             </div>
           ) : (
-            <ErrorBoundary
-              fallback={(err, reset) => (
-                <div style={{ padding: "32px", textAlign: "center", color: "#f87171" }}>
-                  <h3>View Rendering Error</h3>
-                  <p style={{ fontSize: "13px", color: "#cbd5e1" }}>{err.message}</p>
-                  <button
-                    type="button"
-                    onClick={reset}
-                    style={{
-                      padding: "8px 16px",
-                      backgroundColor: "#334155",
-                      border: "none",
-                      borderRadius: "6px",
-                      color: "#fff",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Reset View
-                  </button>
-                </div>
-              )}
-            >
-              {currentView === "board" && (
-                <KanbanBoard issues={issues} members={members} onRefresh={loadData} />
-              )}
-              {currentView === "table" && (
-                <IssueTable issues={issues} members={members} onRefresh={loadData} />
-              )}
-              {currentView === "analytics" && (
-                <AnalyticsView issues={issues} members={members} activities={activities} />
-              )}
-              {currentView === "team" && (
-                <TeamView members={members} issues={issues} />
-              )}
-              {currentView === "settings" && (
-                <SettingsView onResetDatabase={loadData} />
-              )}
-            </ErrorBoundary>
+            <WorkspaceView
+              currentView={currentView}
+              members={members}
+              onRefresh={() => loadData(true)}
+              onUpdateIssue={handleUpdateIssue}
+              onDeleteIssue={handleDeleteIssue}
+            />
           )}
         </div>
       </main>
@@ -241,9 +235,70 @@ function App() {
         projects={projects}
         members={members}
         initialIssue={editingIssue}
-        onSaved={loadData}
+        onSaved={() => loadData(true)}
       />
     </div>
+  );
+}
+
+interface WorkspaceViewProps {
+  currentView: ViewMode;
+  members: TeamMember[];
+  onRefresh: () => void;
+  onUpdateIssue: (issueId: string, patch: Partial<Issue>) => Promise<void>;
+  onDeleteIssue: (issueId: string) => Promise<void>;
+}
+
+function WorkspaceView({
+  currentView,
+  members,
+  onRefresh,
+  onUpdateIssue,
+  onDeleteIssue,
+}: WorkspaceViewProps) {
+  const issues = useAppStore(state => state.issues);
+  const activities = useAppStore(state => currentView === "analytics" ? state.activities : undefined);
+
+  return (
+    <ErrorBoundary
+      fallback={(err, reset) => (
+        <div style={{ padding: "32px", textAlign: "center", color: "#f87171" }}>
+          <h3>View Rendering Error</h3>
+          <p style={{ fontSize: "13px", color: "#cbd5e1" }}>{err.message}</p>
+          <button
+            type="button"
+            onClick={reset}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: "#334155",
+              border: "none",
+              borderRadius: "6px",
+              color: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            Reset View
+          </button>
+        </div>
+      )}
+    >
+      {currentView === "board" && (
+        <KanbanBoard
+          issues={issues}
+          members={members}
+          onUpdateIssue={onUpdateIssue}
+          onDeleteIssue={onDeleteIssue}
+        />
+      )}
+      {currentView === "table" && (
+        <IssueTable issues={issues} members={members} onRefresh={onRefresh} />
+      )}
+      {currentView === "analytics" && (
+        <AnalyticsView issues={issues} members={members} activities={activities ?? []} />
+      )}
+      {currentView === "team" && <TeamView members={members} issues={issues} />}
+      {currentView === "settings" && <SettingsView onResetDatabase={onRefresh} />}
+    </ErrorBoundary>
   );
 }
 

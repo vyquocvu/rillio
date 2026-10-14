@@ -7,11 +7,11 @@ npx playwright install chromium
 npm run bench:browser
 ```
 
-Playwright launches headless Chromium and compares synchronous keyed-list workloads across ZUI, React, Preact, and Vue. The benchmark validates final DOM state in untimed preflight contexts, then uses three paired repeats, three warmups, and nine samples per context. Tree construction is included; shared input-data updates and root creation are excluded. Run `ZUI_BENCH_JSON=1 npm run bench:browser` for raw timings, per-context medians, tree/commit split, exact framework versions, and randomized run-position counts. Sizes and sampling settings are configurable as documented in the [benchmark guide](../benchmarks/README.md).
+Playwright launches headless Chromium and compares keyed-list workloads plus component mount/update lifecycles across ZUI, React, Preact, and Vue. The benchmark validates final DOM state in untimed preflight contexts, then uses paired repeats and fresh browser contexts. Run `ZUI_BENCH_JSON=1 npm run bench:browser` for raw timings, medians, framework versions, and randomized run-position counts. Sizes and sampling settings are configurable as documented in the [benchmark guide](../benchmarks/README.md). The 100-case lifecycle matrix and the 2026-10-14 comparison are documented in [Component and data lifecycle evaluation](COMPONENT-LIFECYCLE.md).
 
 This is a runtime-level keyed-tree comparison, not a comparison of complete apps or equivalent programming models. React is forced synchronous with `flushSync`; React documents this as an uncommon escape hatch that can hurt performance. Preact and Vue use their `h`/`render` runtime APIs directly; compiler-driven Solid/Svelte workloads are intentionally kept out until they have separate compiled adapters. These local measurements do not establish a cross-machine or production ranking.
 
-## Latest local comparison
+## Historical list-only comparison (2026-10-13)
 
 Run on 2026-10-13 in Playwright-controlled Chromium 156.0.8078.4 on macOS arm64 (Apple M1 Pro). Versions: ZUI 0.1.0, React/ReactDOM 19.3.0, Preact 11.0.1, Vue 3.5.43. The run covered 100, 1,000, and 2,000 rows, with 27 raw timings per framework/workload/size and 72 passing untimed preflight contexts. Times are medians in milliseconds, rounded to 0.1 ms.
 

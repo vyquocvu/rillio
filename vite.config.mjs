@@ -24,7 +24,10 @@ export default {
         index: page("index.html"),
         admin: page("admin.html"),
         demos: page("demos.html"),
-        realworld: page("realworld.html")
+        realworld: page("realworld.html"),
+        renderLab: page("render-lab.html"),
+        storeLab: page("store-lab.html"),
+        dataLab: page("data-lab.html")
       }
     }
   }

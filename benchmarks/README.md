@@ -21,7 +21,18 @@ npx playwright install chromium
 npm run bench:browser
 ```
 
-This builds a temporary production bundle and compares synchronous keyed-list updates in Playwright-controlled headless Chromium. Scenarios cover mount, unchanged renders, text changes, append/remove, a one-item rotation, and reversal. ZUI, React, Preact, and Vue all receive the same keyed rows and are checked against the same DOM after every preflight update. Each measured run gets a fresh browser context; framework order is randomized and rotated across paired repeats. The default performs three paired repeats, with three warmups and nine measured updates per context (27 raw timings per framework/scenario/size). Tree construction is included; the shared input-data update is not. Exact installed framework versions and run-order counts are included in the report. These are dev-only benchmark dependencies and are not included in the published runtime.
+This builds a temporary production bundle and compares synchronous keyed-list updates in Playwright-controlled headless Chromium. Scenarios cover mount, unchanged renders, text changes, append/remove, a one-item rotation, and reversal. ZUI, React, Preact, and Vue all receive the same keyed rows and are checked against the same DOM after every preflight update. Each measured run gets a fresh browser context; framework order is randomized and rotated across paired repeats. The default list suite performs three paired repeats, with three warmups and nine measured updates per context (27 raw timings per framework/scenario/size). Tree construction is included; the shared input-data update is not. Exact installed framework versions and run-order counts are included in the report. These are dev-only benchmark dependencies and are not included in the published runtime.
+
+The same runner also measures component lifecycles: mounting 10/100/1,000 child components, changing state in one leaf, updating parent state with stable child props, and updating a prop across all children. The component preflight checks DOM output and render counts. React uses `flushSync`, Preact's scheduled update is flushed through a microtask, and Vue updates are measured through `nextTick`. Leaf timing batches 1,000 updates per sample; parent and prop updates batch ten. These numbers include each framework's update/commit scheduling and should be read alongside the render counts.
+
+Select a suite and component sizes without editing the runner:
+
+```sh
+ZUI_BENCH_SUITE=components ZUI_COMPONENT_SIZES=10,100,1000 npm run bench:browser
+ZUI_BENCH_SUITE=list ZUI_BENCH_SIZES=100,1000,2000 npm run bench:browser
+```
+
+`ZUI_BENCH_SUITE` accepts `all` (default), `list`, or `components`. The existing `ZUI_BENCH_SIZES` setting applies to list rows; `ZUI_COMPONENT_SIZES` applies to component counts.
 
 This is a runtime-level keyed-tree comparison, not a claim that these frameworks have equivalent programming models. React uses [`createElement`](https://react.dev/reference/react/createElement) plus `createRoot` and [`flushSync`](https://react.dev/reference/react-dom/flushSync) so the measured DOM commit is synchronous; React documents `flushSync` as an uncommon escape hatch that can hurt performance. Preact and Vue use their [`h`/`render` runtime APIs](https://preactjs.com/guide/v10/api-reference/) and [render-function APIs](https://vuejs.org/api/render-function) directly, while ZUI uses its JSX-compatible runtime. Compiler-driven or fine-grained frameworks (for example Solid or Svelte) need their own compiled adapters and workload before a fair comparison; they are intentionally not folded into this table.
 

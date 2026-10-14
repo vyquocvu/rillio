@@ -1,10 +1,12 @@
 import { create } from "zui/zustand";
-import type { FilterState, ToastMessage, ViewMode } from "./types.js";
+import type { ActivityLog, FilterState, Issue, ToastMessage, ViewMode } from "./types.js";
 
 export interface AppState {
   view: ViewMode;
   selectedProjectId: string;
   filter: FilterState;
+  issues: Issue[];
+  activities: ActivityLog[];
   toasts: ToastMessage[];
   isCreateModalOpen: boolean;
   editingIssueId: string | null;
@@ -16,6 +18,9 @@ export interface AppState {
   setSelectedProjectId: (id: string) => void;
   setFilter: (patch: Partial<FilterState>) => void;
   resetFilter: () => void;
+  setIssues: (next: Issue[] | ((current: Issue[]) => Issue[])) => void;
+  setActivities: (activities: ActivityLog[]) => void;
+  setIssueData: (issues: Issue[], activities: ActivityLog[]) => void;
   addToast: (toast: Omit<ToastMessage, "id">) => void;
   removeToast: (id: string) => void;
   openCreateModal: () => void;
@@ -38,6 +43,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   view: "board",
   selectedProjectId: "proj-1",
   filter: defaultFilter,
+  issues: [],
+  activities: [],
   toasts: [],
   isCreateModalOpen: false,
   editingIssueId: null,
@@ -61,6 +68,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     set(state => ({
       filter: { ...defaultFilter, projectId: state.selectedProjectId },
     })),
+
+  setIssues: next =>
+    set(state => ({
+      issues: typeof next === "function" ? next(state.issues) : next,
+    })),
+
+  setActivities: activities => set({ activities }),
+
+  setIssueData: (issues, activities) => set({ issues, activities }),
 
   addToast: toast => {
     const id = "toast-" + Math.random().toString(36).substring(2, 9);

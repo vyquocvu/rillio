@@ -6,12 +6,16 @@ ZUI ships a dashboard showcase for the JSX runtime, an external Zustand store ad
 |---|---|
 | `/` or `/admin.html` | ZUI Studio dashboard showcase with responsive layout and interactive team management |
 | `/realworld.html` | TaskFlow real-world project management application (Kanban, issues table, analytics, team, settings, Portals, ErrorBoundary, Zustand, DevTools) |
+| `/render-lab.html` | Console-traced comparison of local component state, parent state, and external-store selector updates |
+| `/store-lab.html` | Atomic and shallow Zustand selectors with visible render logs |
+| `/data-lab.html` | Mount-once reactive bindings, keyed list updates, DOM identity, and async resources |
+| [`docs/COMPONENT-LIFECYCLE.md`](COMPONENT-LIFECYCLE.md) | 100 logged lifecycle tests and current ZUI/React/Preact/Vue browser comparison |
 | `zui/ui` | Reusable visual primitives, tokens, and accessible controls |
 | `zui/zustand` | First-class, zero-dependency Zustand stores (`create`, `shallow`, `useShallow`, `useStore`) |
 | `zui/dom` | Explicit mount-once reactive DOM API (`createStore`, `select`, `mount`, `Show`, `For`) |
 | `zui/devtools` | Live in-browser Flat Index inspector overlay and diagnostics |
 | `npm run bench:all` | Node benchmark suites for reactive invalidation, keyed reconciliation, and Flat Index updates |
-| `npm run bench:browser` | Headless Playwright Chromium benchmark comparing ZUI, React, Preact, and Vue |
+| `npm run bench:browser` | Headless Playwright Chromium benchmark comparing keyed lists and component updates in ZUI, React, Preact, and Vue |
 
 Open `/demos.html` for a browser-friendly interactive index.
 
@@ -125,7 +129,17 @@ The TaskFlow application under `examples/realworld/` showcases a complete, produ
 
 Run `npm run dev` and navigate to `http://localhost:5173/realworld.html` or select **TaskFlow Workspace** from `/demos.html`.
 
-## 4. Benchmarks
+## 4. Render, Store, and Data Labs
+
+These small diagnostic pages are designed for the browser console. Each writes component or data events with a distinct prefix so you can connect a click to the work ZUI performs:
+
+- **Render Scope Lab (`/render-lab.html`)**: Compare a local `useState` update, an App-owned update, and a Zustand slice update. Look for `[render-lab]` entries.
+- **Store Selector Lab (`/store-lab.html`)**: Update one selected field at a time and compare atomic selectors with a shallow object selector. Look for `[store-lab]` entries.
+- **Reactive Data Lab (`/data-lab.html`)**: Add/edit/reorder keyed rows and refetch an async resource. Row creation, row data updates, and resource status use `[data-lab]` entries.
+
+The log lines count component function calls or explicit data events. They do not imply that an existing DOM element was replaced; the browser smoke flow also checks element identity where it matters.
+
+## 5. Benchmarks
 
 ```sh
 # Synchronous browser benchmark vs React, Preact, Vue (Playwright Chromium)

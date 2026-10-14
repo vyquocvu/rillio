@@ -1,4 +1,3 @@
-import { api } from "../api.js";
 import { useAppStore } from "../store.js";
 import type { Issue, IssueStatus, TeamMember } from "../types.js";
 import { PlusIcon, TrashIcon } from "./Icons.js";
@@ -6,7 +5,8 @@ import { PlusIcon, TrashIcon } from "./Icons.js";
 interface KanbanBoardProps {
   issues: Issue[];
   members: TeamMember[];
-  onRefresh: () => void;
+  onUpdateIssue: (issueId: string, patch: Partial<Issue>) => Promise<void>;
+  onDeleteIssue: (issueId: string) => Promise<void>;
 }
 
 const columns: Array<{ id: IssueStatus; title: string; color: string }> = [
@@ -17,7 +17,7 @@ const columns: Array<{ id: IssueStatus; title: string; color: string }> = [
   { id: "done", title: "Done", color: "#10b981" },
 ];
 
-export function KanbanBoard({ issues, members, onRefresh }: KanbanBoardProps) {
+export function KanbanBoard({ issues, members, onUpdateIssue, onDeleteIssue }: KanbanBoardProps) {
   const filter = useAppStore(state => state.filter);
   const openEditModal = useAppStore(state => state.openEditModal);
   const openCreateModal = useAppStore(state => state.openCreateModal);
@@ -44,13 +44,12 @@ export function KanbanBoard({ issues, members, onRefresh }: KanbanBoardProps) {
 
   const handleMoveStatus = async (issue: Issue, nextStatus: IssueStatus) => {
     try {
-      await api.updateIssue(issue.id, { status: nextStatus });
+      await onUpdateIssue(issue.id, { status: nextStatus });
       addToast({
         type: "info",
         title: "Status updated",
         message: `${issue.id} moved to ${nextStatus.replace("_", " ")}`,
       });
-      onRefresh();
     } catch {
       addToast({
         type: "error",
@@ -62,13 +61,12 @@ export function KanbanBoard({ issues, members, onRefresh }: KanbanBoardProps) {
 
   const handleDelete = async (issueId: string) => {
     try {
-      await api.deleteIssue(issueId);
+      await onDeleteIssue(issueId);
       addToast({
         type: "info",
         title: "Issue deleted",
         message: `${issueId} was removed.`,
       });
-      onRefresh();
     } catch {
       addToast({
         type: "error",

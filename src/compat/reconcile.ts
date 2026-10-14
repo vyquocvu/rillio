@@ -295,6 +295,18 @@ export function mountValue(
   return nodeId;
 }
 
+function shallowEqualProps(a: Record<string, any>, b: Record<string, any>): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  let count = 0;
+  for (const key in a) {
+    if (!Object.prototype.hasOwnProperty.call(b, key) || !Object.is(a[key], b[key])) return false;
+    count++;
+  }
+  for (const _ in b) count--;
+  return count === 0;
+}
+
 export function renderComponent(nodeId: NodeId, props: Record<string, any>, tx: PatchTransaction): void {
   const record = nodeRegistry.getNode(nodeId);
   const state = record.payload;
@@ -372,7 +384,21 @@ export function reconcileMatched(
     return;
   }
 
-  if (typeof value.type === "function") renderComponent(oldId, value.props, tx);
+  if (typeof value.type === "function") {
+    // Parent-driven bailout: state updates are applied synchronously via the
+    // component's own updater, so a child whose props are shallow-equal has
+    // nothing new to render. JSX `children` are fresh objects, so they never bail.
+    // Explicit root.render() calls (no active parent component) always re-render.
+    const state = old.payload;
+    if (
+      active !== undefined &&
+      value.type !== ErrorBoundary &&
+      isComponentState(state) &&
+      !state.disposed &&
+      shallowEqualProps(state.props, value.props)
+    ) return;
+    renderComponent(oldId, value.props, tx);
+  }
   else {
     const nextChildren = value.props.children as Child;
     const childrenAreUnchangedPrimitive =
