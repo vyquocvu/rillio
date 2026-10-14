@@ -201,9 +201,25 @@ stateDiagram-v2
     Disposed --> [*]: 🏁 Retain diagnostics
 ```
 
+## Module structure (`src/flat/`)
+
+The flat addressable DOM engine is decomposed into cohesive, single-responsibility modules under `src/flat/`, while preserving `src/flat.ts` as a 100% backward-compatible public re-export façade:
+
+- **`src/flat.ts`**: Backward-compatible re-export façade pointing to `./flat/index.js`.
+- **`src/flat/index.ts`**: Public export barrel for the internal flat DOM engine.
+- **`src/flat/types.ts`**: Addressable DOM types, monotonic ID aliases (`NodeId`, `RootId`, `OwnerId`), record structures (`FlatNode`, `FlatOwner`, `RootHandle`, `OwnerHost`), patch operations (`PatchOp`), and diagnostic interfaces.
+- **`src/flat/registry.ts`**: `NodeRegistry` as the single authoritative source of truth for node identity, ownership scopes, hierarchical parent/sibling pointers, unrolled multi-slot MRU caches, diagnostic tombstones, and index invariant validation (`assertConsistent`).
+- **`src/flat/transaction.ts`**: `PatchTransaction` providing batch planning, monotonic ID tracking, multi-pass validation, specialized commit fast paths (`commitCreatedOnly`, `commitTextOnly`), inverse rollback undo closures, and ref deferral.
+- **`src/flat/engine.ts`**: `PatchEngine` as the sole gateway for DOM mutations, enforcing lifecycle boundaries, namespace resolution, and subtree disposal.
+- **`src/flat/dom.ts`**: Range extraction (`extractRange`), appending (`appendRange`), and parent/anchor resolution (`parentDom`, `parentAnchor`).
+- **`src/flat/properties.ts`**: Normalized property applicators (`setProperty`, `setHtmlProperty`, `setSvgProperty`, `setCustomElementProperty`), inline style diffing (`applyStyle`), attribute reflection (`setAttribute`), and XML/SVG namespace constants.
+- **`src/flat/security.ts`**: Sink protection, URL scheme sanitization (`isUnsafeUrlProperty`), and property safety assertions (`validateProperty`).
+- **`src/flat/focus.ts`**: Active focus and selection preservation across DOM replacements and sibling moves (`captureFocus`, `captureFocusInRecords`, `captureFocusInChildren`, `restoreFocus`).
+
 ## Files
 
-- `src/flat.ts`: `NodeRegistry`, `PatchTransaction`, and the single `PatchEngine` mutation boundary.
+- `src/flat/`: Addressable DOM modules (`registry.ts`, `transaction.ts`, `engine.ts`, `dom.ts`, `properties.ts`, `security.ts`, `focus.ts`, `types.ts`, `index.ts`).
+- `src/flat.ts`: Re-export façade for backward compatibility.
 - `src/compat.ts`: JSX component planner, hooks, reconciliation, and root API.
 - `src/dom.ts`: explicit reactive planner and `Show`/`For` regions using the shared engine.
 - `src/reactive.ts`: stores, computed values, effects, batching, and owner-host integration.
