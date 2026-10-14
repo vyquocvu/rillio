@@ -5,9 +5,11 @@ ZUI ships a dashboard showcase for the JSX runtime, an external Zustand store ad
 | Page / Subpath | Focus |
 |---|---|
 | `/` or `/admin.html` | ZUI Studio dashboard showcase with responsive layout and interactive team management |
+| `/realworld.html` | TaskFlow real-world project management application (Kanban, issues table, analytics, team, settings, Portals, ErrorBoundary, Zustand, DevTools) |
 | `zui/ui` | Reusable visual primitives, tokens, and accessible controls |
 | `zui/zustand` | First-class, zero-dependency Zustand stores (`create`, `shallow`, `useShallow`, `useStore`) |
 | `zui/dom` | Explicit mount-once reactive DOM API (`createStore`, `select`, `mount`, `Show`, `For`) |
+| `zui/devtools` | Live in-browser Flat Index inspector overlay and diagnostics |
 | `npm run bench:all` | Node benchmark suites for reactive invalidation, keyed reconciliation, and Flat Index updates |
 | `npm run bench:browser` | Headless Playwright Chromium benchmark comparing ZUI, React, Preact, and Vue |
 
@@ -106,7 +108,24 @@ function App() {
 mount(App, document.getElementById("app")!);
 ```
 
-## 3. Benchmarks
+## 3. Real-World Application Showcase (`/realworld.html`)
+
+The TaskFlow application under `examples/realworld/` showcases a complete, production-grade workspace built with ZUI:
+
+- **State Management (`zui/zustand`)**: Centralized store with atomic selection for filters, active project, search query, modals, theme toggling, and toasts.
+- **Portals (`createPortal`)**: Floating toast notification manager mounted directly to `document.body`, and an accessible task creation/editing modal dialog with backdrop dismiss and escape handling.
+- **Error Boundaries (`ErrorBoundary`)**: Subtree resilience leveraging transactional savepoints (`savepoint()` / `rollbackTo()`) to catch and recover from isolated render failures without crashing parent layouts.
+- **DevTools HUD (`zui/devtools`)**: Embedded Flat Index inspector overlay displaying real-time `NodeId`, `Kind`, `OwnerId`, and transaction diagnostics.
+- **Rich Interactive Views**:
+  - **Kanban Board**: Drag-and-drop-style status progression across Backlog, Todo, In Progress, In Review, and Done.
+  - **Issues Table**: Multi-column data grid with status, priority, assignee, tag filters, and sorting.
+  - **Workspace Analytics**: Progress tracking, priority distribution metrics, and live activity audit logs.
+  - **Team Directory**: Member workloads, assigned task meters, and role definitions.
+  - **Settings**: Theme persistence, mock database reset, and interactive ErrorBoundary recovery testing.
+
+Run `npm run dev` and navigate to `http://localhost:5173/realworld.html` or select **TaskFlow Workspace** from `/demos.html`.
+
+## 4. Benchmarks
 
 ```sh
 # Synchronous browser benchmark vs React, Preact, Vue (Playwright Chromium)

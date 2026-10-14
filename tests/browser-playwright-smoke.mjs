@@ -234,7 +234,45 @@ try {
     dtContainer.remove();
   });
 
-  console.log(`browser: PASS — dashboard (${result.checks}); Modal keyboard/focus; Zustand store lifecycle; root ownership; HTML/URL/event sink guards; Input/Progress semantics; DevTools Flat Index inspector`);
+  // Verify real-world TaskFlow app in Playwright browser
+  await page.goto(`http://127.0.0.1:${address.port}/realworld.html`, { waitUntil: "load" });
+  await page.waitForSelector("header");
+  await page.waitForSelector("text=Loading TaskFlow Workspace...", { state: "detached" });
+  const taskflowHeader = await page.textContent("header");
+  if (!taskflowHeader?.includes("New Issue")) {
+    throw new Error("TaskFlow workspace header was not rendered");
+  }
+
+  // Click on "Issues List" tab
+  const listTab = page.locator('nav button:has-text("Issues List")');
+  await listTab.click();
+  await page.waitForSelector("table");
+
+  // Click on "Analytics" tab
+  const analyticsTab = page.locator('nav button:has-text("Analytics")');
+  await analyticsTab.click();
+  await page.waitForSelector('h2:has-text("Workspace Analytics")');
+
+  // Click on "Settings" tab
+  const settingsTab = page.locator('nav button:has-text("Settings")');
+  await settingsTab.click();
+  await page.waitForSelector('h2:has-text("Workspace Settings")');
+
+  // Test ErrorBoundary recovery in settings
+  const triggerBtn = page.locator('button:has-text("Trigger Simulated Render Error")');
+  await triggerBtn.click();
+  await page.waitForSelector('button:has-text("Recover Subtree")');
+  const recoverBtn = page.locator('button:has-text("Recover Subtree")');
+  await recoverBtn.click();
+  await page.waitForSelector('text=Protected subtree is operating normally');
+
+  // Toggle DevTools HUD
+  const devToolsBtn = page.locator('header button:has-text("Flat Index")');
+  await devToolsBtn.click();
+  await page.waitForSelector("[data-zui-devtools]");
+  await devToolsBtn.click(); // Close
+
+  console.log(`browser: PASS — dashboard (${result.checks}); Modal keyboard/focus; Zustand store lifecycle; root ownership; HTML/URL/event sink guards; Input/Progress semantics; DevTools Flat Index inspector; TaskFlow real-world app`);
 } finally {
   await browser?.close();
   if (server) await new Promise(resolveClose => server.httpServer.close(resolveClose));

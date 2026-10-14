@@ -23,7 +23,8 @@ export default {
       input: {
         index: page("index.html"),
         admin: page("admin.html"),
-        demos: page("demos.html")
+        demos: page("demos.html"),
+        realworld: page("realworld.html")
       }
     }
   }
