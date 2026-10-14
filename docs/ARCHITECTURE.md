@@ -216,16 +216,45 @@ The flat addressable DOM engine is decomposed into cohesive, single-responsibili
 - **`src/flat/security.ts`**: Sink protection, URL scheme sanitization (`isUnsafeUrlProperty`), and property safety assertions (`validateProperty`).
 - **`src/flat/focus.ts`**: Active focus and selection preservation across DOM replacements and sibling moves (`captureFocus`, `captureFocusInRecords`, `captureFocusInChildren`, `restoreFocus`).
 
+## Module structure (`src/dom/`)
+
+The explicit mount-once reactive DOM surface is decomposed into cohesive, single-responsibility submodules under `src/dom/`, maintaining `src/dom.ts` as a 100% backward-compatible re-export façade:
+
+- **`src/dom.ts`**: Backward-compatible re-export façade pointing to `./dom/index.js`.
+- **`src/dom/index.ts`**: Barrel index re-exporting the entire reactive DOM surface.
+- **`src/dom/types.ts`**: Core interfaces (`Binding<T>`, `Child`, `VNode`, `Conditional`, `Repetition<T>`, `Scope<T>`) and the `BINDING` brand symbol.
+- **`src/dom/bindings.ts`**: Fine-grained reactive bindings (`select`, `derive`), store primitives (`createStore`, `useStore`), reactive evaluation utilities (`isStore`, `isBinding`, `readReactive`, `evaluate`, `stringify`), and computation dispatchers (`computed`, `batch`, `untrack`).
+- **`src/dom/control-flow.ts`**: Declarative control flow components (`Show`, `For`, `Fragment`, `jsx`, `jsxs`) and structural predicates (`isConditional`, `isRepetition`).
+- **`src/dom/mount.ts`**: Lifecycle and mounting coordinator (`mount`), scope managers (`createScope`, `attachScope`), property renderers (`renderProps`), child dispatchers (`renderChild`, `renderList`), and key diffing (`longestIncreasingIds`).
+
+## Module structure (`src/compat/`)
+
+The JSX component runtime and reconciliation engine is decomposed into cohesive submodules under `src/compat/`:
+
+- **`src/compat.ts`**: Backward-compatible re-export façade pointing to `./compat/index.js`.
+- **`src/compat/index.ts`**: Public export barrel for the JSX compatibility runtime.
+- **`src/compat/types.ts`**: Types for component records, hook states, reconciliation contexts, and portals.
+- **`src/compat/state.ts`**: Global singletons (`nodeRegistry`, `patchEngine`, `componentState`, `cleanupState`).
+- **`src/compat/hooks.ts`**: React-compatible hook implementations (`useState`, `useReducer`, `useEffect`, `useLayoutEffect`, `useRef`, `useMemo`, `useCallback`, `useTransition`, `useId`).
+- **`src/compat/portal.ts`**: `createPortal` implementation integrating out-of-band target roots into the Flat Index.
+- **`src/compat/error-boundary.ts`**: `ErrorBoundary` component with transactional savepoints (`savepoint()`, `rollbackTo()`).
+- **`src/compat/reconcile.ts`**: Fine-grained component subtree reconciliation and diffing.
+- **`src/compat/root.ts`**: Public root mounting APIs (`createRoot`, `render`).
+
 ## Files
 
 - `src/flat/`: Addressable DOM modules (`registry.ts`, `transaction.ts`, `engine.ts`, `dom.ts`, `properties.ts`, `security.ts`, `focus.ts`, `types.ts`, `index.ts`).
 - `src/flat.ts`: Re-export façade for backward compatibility.
-- `src/compat.ts`: JSX component planner, hooks, reconciliation, and root API.
-- `src/dom.ts`: explicit reactive planner and `Show`/`For` regions using the shared engine.
+- `src/compat/`: JSX runtime and reconciliation modules (`types.ts`, `state.ts`, `hooks.ts`, `portal.ts`, `error-boundary.ts`, `reconcile.ts`, `root.ts`, `index.ts`).
+- `src/compat.ts`: Re-export façade for JSX runtime.
+- `src/dom/`: Explicit reactive DOM modules (`types.ts`, `bindings.ts`, `control-flow.ts`, `mount.ts`, `index.ts`).
+- `src/dom.ts`: Re-export façade for explicit reactive DOM.
 - `src/reactive.ts`: stores, computed values, effects, batching, and owner-host integration.
 - `src/jsx-runtime.ts`, `src/jsx-dev-runtime.ts`: automatic JSX transform entries.
 - `tests/flat.test.ts`: registry and transaction unit tests.
+- `tests/flat-submodules.test.ts`: isolated unit tests for flat submodules.
 - `tests/flat-random.test.ts`: seeded keyed randomized consistency checks.
+- `tests/dom-submodules.test.ts`: isolated unit tests for reactive DOM submodules.
 - `tests/lifecycle.test.ts`: repeated disposal and owner/node leak checks.
 
 ## Current limitations
