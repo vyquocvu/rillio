@@ -16,7 +16,8 @@
       "zui/dom": ["src/dom.ts"],
       "zui/legacy": ["src/dom.ts"],
       "zui/reactive": ["src/reactive.ts"],
-      "zui/flat": ["src/flat.ts"]
+      "zui/flat": ["src/flat.ts"],
+      "zui/devtools": ["src/devtools.ts"]
     },
     "lib": [
       "ES2022",

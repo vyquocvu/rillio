@@ -131,7 +131,7 @@ mount(() => <button onClick={() => count.set(n => n + 1)}>
 
 ## Scope
 
-ZUI currently targets small client-side browser applications. SSR/hydration, portals, async resources, complete SVG/property normalization, exhaustive DOM typings, devtools, and a compiler are future work rather than compatibility promises.
+ZUI currently targets small client-side browser applications. SSR/hydration, complete SVG/property normalization, exhaustive DOM typings, and a dedicated compiler are future work rather than compatibility promises.
 
 See [the roadmap](ROADMAP.md), [the API contract](docs/API.md), [the architecture](docs/ARCHITECTURE.md), [testing](docs/TESTING.md), and [verification status](docs/STATUS.md).
 

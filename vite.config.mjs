@@ -14,6 +14,7 @@ export default {
       "zui/legacy": source("dom.ts"),
       "zui/flat": source("flat.ts"),
       "zui/reactive": source("reactive.ts"),
+      "zui/devtools": source("devtools.ts"),
       zui: source("index.ts")
     }
   },

@@ -4,6 +4,7 @@ import { useStore as useZustandStore, create as createBoundStore, shallow, useSh
 import { createStore as createDomStore, mount as mountDom } from "zui/dom";
 import { createStore, mount } from "zui/legacy";
 import { createEngine } from "zui/reactive";
+import { inspectRoot, trackTransactions, createInspectorOverlay } from "zui/devtools";
 
 const domStore = createDomStore("dom");
 const legacyStore = createStore("legacy");
@@ -44,7 +45,11 @@ const container = document.createElement("div");
 createRoot(container).render(<ConsumerApp />);
 const reactiveContainer = document.createElement("div");
 mount(() => legacyStore.get(), reactiveContainer);
-reactiveStore.set(value => value + 1);
+const rootSnapshot = inspectRoot(container);
+const tracker = trackTransactions();
+const overlay = createInspectorOverlay();
+overlay.dispose();
+tracker.dispose();
 
-export { container, reactiveContainer, domStore, legacyStore, reactiveStore, ZustandCounter, typedInput, typedSvg, invalidAttribute, invalidHandler };
+export { container, reactiveContainer, domStore, legacyStore, reactiveStore, ZustandCounter, typedInput, typedSvg, invalidAttribute, invalidHandler, rootSnapshot };
 export { Button, StyleSheet };

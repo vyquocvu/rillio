@@ -248,14 +248,17 @@ The JSX component runtime and reconciliation engine is decomposed into cohesive 
 - `src/flat.ts`: Re-export façade for backward compatibility.
 - `src/compat/`: JSX runtime and reconciliation modules (`types.ts`, `state.ts`, `hooks.ts`, `portal.ts`, `error-boundary.ts`, `reconcile.ts`, `root.ts`, `index.ts`).
 - `src/compat.ts`: Re-export façade for JSX runtime.
-- `src/dom/`: Explicit reactive DOM modules (`types.ts`, `bindings.ts`, `control-flow.ts`, `mount.ts`, `index.ts`).
+- `src/dom/`: Explicit reactive DOM modules (`types.ts`, `bindings.ts`, `control-flow.ts`, `mount.ts`, `resource.ts`, `index.ts`).
 - `src/dom.ts`: Re-export façade for explicit reactive DOM.
-- `src/reactive.ts`: stores, computed values, effects, batching, and owner-host integration.
+- `src/devtools.ts`: Live Flat Index inspector, node/root serializers, transaction telemetry tracker, and browser HUD overlay.
+- `src/reactive.ts`: stores, computed values, effects, batching, resource stores, and owner-host integration.
 - `src/jsx-runtime.ts`, `src/jsx-dev-runtime.ts`: automatic JSX transform entries.
 - `tests/flat.test.ts`: registry and transaction unit tests.
 - `tests/flat-submodules.test.ts`: isolated unit tests for flat submodules.
 - `tests/flat-random.test.ts`: seeded keyed randomized consistency checks.
 - `tests/dom-submodules.test.ts`: isolated unit tests for reactive DOM submodules.
+- `tests/resource.test.ts`: async resource primitive and Show integration tests.
+- `tests/devtools.test.ts`: Flat Index serialization, telemetry tracking, and browser HUD tests.
 - `tests/lifecycle.test.ts`: repeated disposal and owner/node leak checks.
 
 ## Current limitations

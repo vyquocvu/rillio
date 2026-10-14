@@ -129,13 +129,14 @@ Exports include:
 - `select(store, selector)` — deferred binding descriptor;
 - `derive(read)` — deferred binding descriptor;
 - `computed`, `batch`, `untrack`;
+- `resource(fetcher, options)` — asynchronous resource store (`.loading`, `.data`, `.error`, `.status`, `.mutate()`, `.refetch()`);
 - `mount`, `Show`, and `For`.
 
 `Show` owns a conditional boundary. `For` requires stable unique keys and preserves the boundary `NodeId` for an item while its position or current value changes.
 
 ```tsx
-<Show when={select(state, value => value.visible)} fallback={<p>Hidden</p>}>
-  <p>Visible</p>
+<Show when={user.loading} fallback={<p>Loaded: {user.data}</p>}>
+  <p>Loading...</p>
 </Show>
 
 <For each={select(state, value => value.items)} by={item => item.id}>
@@ -144,6 +145,23 @@ Exports include:
 ```
 
 Ordinary `store.get()` reads during mount are snapshots. Use a binding or a reactive region for live DOM updates.
+
+## DevTools and Flat Index inspection
+
+`zui/devtools` exposes real-time inspection, node range highlighting, transaction tracking, and an in-browser HUD overlay:
+
+```ts
+import { inspectRoot, highlightNode, trackTransactions, createInspectorOverlay } from "zui/devtools";
+
+// Inspect serialized node hierarchy
+const snapshot = inspectRoot(document.getElementById("app")!);
+
+// Track live transactions with duration and operation details
+const tracker = trackTransactions();
+
+// Mount floating dark-mode diagnostic HUD directly in browser
+const overlay = createInspectorOverlay({ targetRoot: document.getElementById("app")! });
+```
 
 ## Reactive engine
 
@@ -163,10 +181,10 @@ The graph engine tracks dependencies, batches writes, bounds flush rounds, rejec
 
 ## Mutation and lifecycle contract
 
-Renderers must use `PatchEngine` for every browser DOM write. A transaction validates operations before writes, attempts to undo structural/property writes if commit fails, and then disposes removed subtrees. Rollback is best-effort: user ref callbacks and cleanup side effects cannot be made atomic, and cleanup failures may be reported after the DOM commit. Direct `createElement`, `insertBefore`, `remove`, event-listener, attribute, style, and ref writes belong only in `src/flat.ts`.
+Renderers must use `PatchEngine` for every browser DOM write. A transaction validates operations before writes, attempts to undo structural/property writes if commit fails, and then disposes removed subtrees. Rollback is best-effort: user ref callbacks and cleanup side effects cannot be made atomic, and cleanup failures may be reported after the DOM commit. Direct `createElement`, `insertBefore`, `remove`, event-listener, attribute, style, and ref writes belong only in `src/flat/`.
 
 Any `innerHTML`, `outerHTML`, or `srcdoc` prop is rejected with `ZUI_UNSAFE_HTML_PROP`, including empty values; these sinks can bypass the indexed child tree. String-valued inline event-handler props are rejected with `ZUI_UNSAFE_EVENT_PROP`; use function listeners such as `onClick`. `javascript:`/`vbscript:` URLs and `data:text/html` are rejected with `ZUI_UNSAFE_URL_PROP`. Render untrusted content as text children; ZUI does not sanitize arbitrary application data or CSS.
 
 ## Not currently guaranteed
 
-SSR/hydration, portals, async resources, Suspense, full SVG semantics, compiler output, router integration, devtools, broad accessibility/property normalization, and React/Preact drop-in compatibility.
+SSR/hydration, full SVG semantics, compiler output, router integration, broad accessibility/property normalization, and React/Preact drop-in compatibility.

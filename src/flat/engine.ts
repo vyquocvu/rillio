@@ -4,7 +4,7 @@
 
 import { PatchTransaction } from "./transaction.js";
 import type { NodeRegistry } from "./registry.js";
-import type { FlatNode, FocusState, NodeId, PatchEngineOptions, RootId } from "./types.js";
+import type { Dispose, FlatNode, FocusState, NodeId, PatchEngineOptions, RootId, TransactionCommitInfo } from "./types.js";
 import { SVG_NAMESPACE, isKnownSVGTag, setProperty, setAttribute, eventName } from "./properties.js";
 import { parentDom, parentAnchor, extractRange, appendRange } from "./dom.js";
 import { captureFocus, captureFocusInRecords, captureFocusInChildren, restoreFocus } from "./focus.js";
@@ -18,6 +18,7 @@ import { isEventProperty } from "./security.js";
 export class PatchEngine {
   private activeTransaction: PatchTransaction | undefined;
   private readonly assertAfterCommit: boolean;
+  private readonly commitListeners = new Set<(info: TransactionCommitInfo) => void>();
 
   constructor(
     readonly registry: NodeRegistry,
@@ -27,6 +28,11 @@ export class PatchEngine {
     this.assertAfterCommit = options.assertAfterCommit ?? false;
   }
 
+  onCommit(listener: (info: TransactionCommitInfo) => void): Dispose {
+    this.commitListeners.add(listener);
+    return () => this.commitListeners.delete(listener);
+  }
+
   transaction<T>(rootId: RootId, work: (tx: PatchTransaction) => T): T {
     if (this.activeTransaction) {
       if (this.activeTransaction.rootId !== rootId) throw new Error("ZUI_NESTED_ROOT_TRANSACTION");
@@ -34,10 +40,29 @@ export class PatchEngine {
     }
     const tx = new PatchTransaction(this, rootId);
     this.activeTransaction = tx;
+    const now = () => globalThis.performance?.now?.() ?? Date.now();
+    const start = now();
     try {
       const value = work(tx);
+      const ops = tx.ops.slice();
       tx.commit();
       if (this.assertAfterCommit) this.registry.assertConsistent(rootId);
+      if (this.commitListeners.size > 0) {
+        const info: TransactionCommitInfo = {
+          rootId,
+          opCount: ops.length,
+          operations: ops,
+          durationMs: now() - start,
+          timestamp: Date.now(),
+        };
+        for (const listener of this.commitListeners) {
+          try {
+            listener(info);
+          } catch {
+            // DevTools observer failure must never crash application transaction
+          }
+        }
+      }
       return value;
     } catch (error) {
       tx.rollback();

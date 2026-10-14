@@ -84,9 +84,10 @@ flowchart LR
 
 - [x] Portal support through addressable mount targets (`createPortal`).
 - [x] Explicit error boundary primitive (`ErrorBoundary`) with fallback UI and recovery.
-- Async resources and Suspense loading primitives.
+- [x] Async resource and fine-grained loading primitive (`resource()`, `createResource()`) integrated with `<Show>`.
+- [x] Live Flat Index inspector, transaction telemetry tracker, and diagnostic HUD (`zui/devtools`).
 - SSR/hydration if a server-rendered use case is confirmed.
-- Compiler and devtools work only after the runtime contract is stable.
+- Ahead-of-time compiler exploration for template extraction.
 
 ## Release gates
 

@@ -202,7 +202,39 @@ try {
     uiContainer.remove();
   });
 
-  console.log(`browser: PASS — dashboard (${result.checks}); Modal keyboard/focus; Zustand store lifecycle; root ownership; HTML/URL/event sink guards; Input/Progress semantics`);
+  await page.evaluate(async () => {
+    const { createRoot, jsx } = await import("/package/index.js");
+    const { inspectRoot, createInspectorOverlay, highlightNode } = await import("/package/devtools.js");
+    const dtContainer = document.createElement("div");
+    document.body.append(dtContainer);
+    const dtRoot = createRoot(dtContainer);
+    dtRoot.render(jsx("button", { id: "dt-btn", children: "DevTools Button" }));
+
+    const snapshot = inspectRoot(dtContainer);
+    if (!snapshot || snapshot.totalNodes < 2) {
+      throw new Error("DevTools inspectRoot did not serialize active tree in browser");
+    }
+
+    const overlay = createInspectorOverlay({ targetRoot: dtContainer });
+    if (!document.querySelector("[data-zui-devtools]")) {
+      throw new Error("DevTools overlay was not rendered in browser DOM");
+    }
+
+    const hl = highlightNode(snapshot.tree.children[0].id);
+    if (!hl) {
+      throw new Error("DevTools highlightNode failed to create highlight box in browser");
+    }
+
+    overlay.dispose();
+    if (document.querySelector("[data-zui-devtools]")) {
+      throw new Error("DevTools overlay was not cleanly disposed in browser DOM");
+    }
+
+    dtRoot.unmount();
+    dtContainer.remove();
+  });
+
+  console.log(`browser: PASS — dashboard (${result.checks}); Modal keyboard/focus; Zustand store lifecycle; root ownership; HTML/URL/event sink guards; Input/Progress semantics; DevTools Flat Index inspector`);
 } finally {
   await browser?.close();
   if (server) await new Promise(resolveClose => server.httpServer.close(resolveClose));

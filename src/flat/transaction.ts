@@ -31,6 +31,10 @@ export class PatchTransaction {
     this.startNodeId = engine.registry.nextId;
   }
 
+  get ops(): readonly PatchOp[] {
+    return this.operations;
+  }
+
   private isCreated(nodeId: NodeId): boolean {
     return nodeId >= this.startNodeId;
   }

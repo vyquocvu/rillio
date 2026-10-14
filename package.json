@@ -104,6 +104,11 @@
       "types": "./dist/package/flat.d.ts",
       "import": "./dist/package/flat.js",
       "default": "./dist/package/flat.js"
+    },
+    "./devtools": {
+      "types": "./dist/package/devtools.d.ts",
+      "import": "./dist/package/devtools.js",
+      "default": "./dist/package/devtools.js"
     }
   }
 }

@@ -10,7 +10,11 @@ All notable changes to ZUI are documented here.
 - Added transaction savepoint support (`savepoint()` and `rollbackTo(savepoint)`) on `PatchTransaction`, enabling atomic sub-transaction rollback of failed child renders without discarding the parent boundary.
 - Modularized `src/flat.ts` (~2,094 LOC) into 9 architectural modules under `src/flat/` (`types.ts`, `security.ts`, `properties.ts`, `dom.ts`, `focus.ts`, `registry.ts`, `transaction.ts`, `engine.ts`, `index.ts`), keeping `src/flat.ts` as a 100% backward-compatible re-export facade.
 - Modularized `src/compat.ts` (~950 LOC) into 8 architectural modules under `src/compat/` (`types.ts`, `state.ts`, `hooks.ts`, `portal.ts`, `error-boundary.ts`, `reconcile.ts`, `root.ts`, `index.ts`), keeping `src/compat.ts` as a 100% backward-compatible re-export facade.
-- Added dedicated test suites: `tests/portal.test.ts` (9 tests), `tests/error-boundary.test.ts` (9 tests), and `tests/flat-submodules.test.ts` (9 tests). Total test suite expanded to 140 tests.
+- Modularized `src/dom.ts` into 6 architectural modules under `src/dom/` (`types.ts`, `bindings.ts`, `control-flow.ts`, `mount.ts`, `resource.ts`, `index.ts`), keeping `src/dom.ts` as a 100% backward-compatible re-export facade.
+- Added asynchronous resource primitive `resource()` and `createResource()` in `zui/dom` and `zui/reactive`, providing fine-grained `.loading`, `.data`, `.error`, and `.status` stores, optimistic `.mutate()`, manual `.refetch()`, race condition suppression, and seamless `<Show when={res.loading} fallback={...}>` integration without throw-Promise / VDOM-stack-breaking anti-patterns.
+- Added `zui/devtools` subpath featuring `inspectRoot`, `inspectNode`, `trackTransactions`, `highlightNode`, and `createInspectorOverlay`, providing real-time in-browser inspection of the Addressable Flat Index (`NodeId`, `Kind`, `OwnerId`, `Version`, `Tombstones`, and active `PatchOp` transactions) with zero overhead on non-inspected nodes.
+- Added `onCommit` transaction telemetry observer and `ops` getter on `PatchEngine` and `PatchTransaction`.
+- Added dedicated test suites: `tests/portal.test.ts` (9 tests), `tests/error-boundary.test.ts` (9 tests), `tests/flat-submodules.test.ts` (9 tests), `tests/dom-submodules.test.ts` (9 tests), `tests/resource.test.ts` (9 tests), and `tests/devtools.test.ts` (5 tests). Total test suite expanded to 163 tests across 17 test files.
 
 ## [0.1.0] - 2026-10-13
 

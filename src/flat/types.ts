@@ -130,3 +130,12 @@ export interface TransactionSavepoint {
   readonly hasRemovals: boolean;
 }
 
+export interface TransactionCommitInfo {
+  readonly rootId: RootId;
+  readonly opCount: number;
+  readonly operations?: readonly PatchOp[];
+  readonly durationMs: number;
+  readonly timestamp: number;
+}
+
+
