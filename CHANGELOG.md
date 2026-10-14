@@ -2,6 +2,16 @@
 
 All notable changes to ZUI are documented here.
 
+## [Unreleased]
+
+### Added
+- Added `createPortal(children, container, key?)` primitive and `PORTAL_TYPE` component symbol in `zui/compat` and `zui`, allowing JSX subtrees to render into arbitrary external DOM target containers while preserving component hierarchy, context, reactive state, effects, and zero-leak unmount cleanup.
+- Added `ErrorBoundary` primitive component in `zui/compat` and `zui`, providing declarative render error catching, fallback UI rendering (`fallback` prop as `Child` or `(error, reset) => Child`), `reset()` recovery, hierarchical boundary escalation, and `onError(error, { componentStack })` diagnostics.
+- Added transaction savepoint support (`savepoint()` and `rollbackTo(savepoint)`) on `PatchTransaction`, enabling atomic sub-transaction rollback of failed child renders without discarding the parent boundary.
+- Modularized `src/flat.ts` (~2,094 LOC) into 9 architectural modules under `src/flat/` (`types.ts`, `security.ts`, `properties.ts`, `dom.ts`, `focus.ts`, `registry.ts`, `transaction.ts`, `engine.ts`, `index.ts`), keeping `src/flat.ts` as a 100% backward-compatible re-export facade.
+- Modularized `src/compat.ts` (~950 LOC) into 8 architectural modules under `src/compat/` (`types.ts`, `state.ts`, `hooks.ts`, `portal.ts`, `error-boundary.ts`, `reconcile.ts`, `root.ts`, `index.ts`), keeping `src/compat.ts` as a 100% backward-compatible re-export facade.
+- Added dedicated test suites: `tests/portal.test.ts` (9 tests), `tests/error-boundary.test.ts` (9 tests), and `tests/flat-submodules.test.ts` (9 tests). Total test suite expanded to 140 tests.
+
 ## [0.1.0] - 2026-10-13
 
 ### Added

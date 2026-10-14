@@ -82,8 +82,9 @@ flowchart LR
 
 ## Post-v0.1 options
 
-- Async resources and an explicit loading/error primitive.
-- Portal support through addressable mount targets.
+- [x] Portal support through addressable mount targets (`createPortal`).
+- [x] Explicit error boundary primitive (`ErrorBoundary`) with fallback UI and recovery.
+- Async resources and Suspense loading primitives.
 - SSR/hydration if a server-rendered use case is confirmed.
 - Compiler and devtools work only after the runtime contract is stable.
 
