@@ -1,6 +1,6 @@
 # ZUI Status — Flat Index / UI library work
 
-Updated: 2026-10-13. The verified clean-checkout release revision is `79ebab4`.
+Updated: 2026-10-14. The verified clean-checkout release revision is `ba338f8`.
 
 ## Implemented
 

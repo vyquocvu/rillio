@@ -30,7 +30,7 @@ flowchart TB
 The two public planning surfaces are:
 
 - the JSX component runtime in `src/compat.ts`, which reruns a component for hook state updates;
-- the explicit reactive surface in `src/dom.ts`, which mounts a subtree once and binds reactive text, properties, regions, and list items.
+- the explicit reactive DOM surface in `src/dom.ts` (exported as `zui/dom`, with `zui/legacy` as deprecated compatibility alias), which mounts a subtree once and binds reactive text, properties, regions, and list items.
 
 They share the same `NodeRegistry`, `PatchEngine`, DOM operation helpers, and owner host. They are not independent DOM mutation implementations.
 
@@ -157,6 +157,15 @@ flowchart TB
 ```
 
 Hooks are attached to component payloads stored on component records. A state setter addresses the owning component by `NodeId`; it cannot update a disposed record or write during render. Effects are flushed after the root transaction.
+
+## External store integration (`zui/zustand`)
+
+ZUI applications can manage global state outside the component tree through external stores. Rather than relying on a React-like Context tree (which causes cascade re-renders across consumers), `zui/zustand` connects directly to external store APIs using structural typing (`getState`, `subscribe`):
+
+1. **Bound hooks via `create()`**: `create` generates a component hook bound to either a state creator function or an existing vanilla store. It matches the standard Zustand API while invoking ZUI's `useStore` internally.
+2. **Fine-grained selector caching**: Components subscribe only to their selected slice. When the store updates, the listener recomputes `selector(nextState)`. If the result passes `equalityFn` (`Object.is` by default, or `shallow`), the component skips reconciliation completely.
+3. **Reference stability with `useShallow()`**: For multi-field selections returning objects or arrays, `useShallow` caches the previous reference across calls, preventing reference churn from triggering unnecessary component updates.
+4. **Subscription safety**: `useStore` maintains `selectorRef` and `equalityRef` so inline arrow selectors do not trigger re-subscriptions. Upon subscribing, a synchronous check runs immediately to prevent race conditions or stale snapshots between render and effect. When a component boundary unmounts, the subscription unregisters cleanly with PatchEngine disposal.
 
 ## Explicit reactive lifecycle
 
