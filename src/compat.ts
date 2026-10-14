@@ -8,6 +8,7 @@
 import {
   NodeRegistry,
   PatchEngine,
+  extractRange,
   type FlatNode,
   type Key,
   type NodeId,
@@ -24,6 +25,28 @@ export interface VNode {
   type: string | Component;
   props: Record<string, any>;
   key?: Key;
+}
+
+export const PORTAL_TYPE: Component<{ children?: Child; container: Element }> = () => null;
+
+export interface PortalState {
+  placeholderId: NodeId;
+  portalBoundaryId: NodeId;
+  container: Element;
+  rootId: number;
+  ownerId: OwnerId;
+  disposed: boolean;
+}
+
+export function createPortal(children: Child, container: Element, key?: Key): VNode {
+  if (!container || typeof container !== "object" || (container as any).nodeType !== 1) {
+    throw new Error("ZUI_INVALID_PORTAL_CONTAINER");
+  }
+  return {
+    type: PORTAL_TYPE,
+    props: { children, container },
+    key
+  };
 }
 
 export const Fragment: Component<{ children?: Child }> = props => props.children ?? null;
@@ -269,6 +292,10 @@ function mountValue(
     return nodeId;
   }
 
+  if (value.type === PORTAL_TYPE) {
+    return mountPortal(value, parentId, ownerId, root, tx, parentRecord);
+  }
+
   if (typeof value.type === "function") {
     const componentOwner = nodeRegistry.createOwner(root.rootId, ownerId);
     const state: ComponentState = {
@@ -318,6 +345,51 @@ function mountValue(
     tx.insert(nodeId, parentId, null, record, parentRecord);
   }
   return nodeId;
+}
+
+function mountPortal(
+  value: VNode,
+  parentId: NodeId,
+  ownerId: OwnerId,
+  root: FlatRoot,
+  tx: PatchTransaction,
+  parentRecord?: FlatNode
+): NodeId {
+  const container = value.props.container as Element;
+  if (!container || typeof container !== "object" || (container as any).nodeType !== 1) {
+    throw new Error("ZUI_INVALID_PORTAL_CONTAINER");
+  }
+
+  const placeholderId = tx.createBoundary(ownerId, "zui:portal-placeholder", "/zui:portal-placeholder", value.key);
+  const portalOwner = nodeRegistry.createOwner(root.rootId, ownerId);
+  const portalBoundaryId = tx.createBoundary(portalOwner, "zui:portal", "/zui:portal", value.key);
+  const portalRecord = nodeRegistry.getNode(portalBoundaryId);
+
+  container.appendChild(portalRecord.domStart);
+  container.appendChild(portalRecord.domEnd);
+
+  const state: PortalState = {
+    placeholderId,
+    portalBoundaryId,
+    container,
+    rootId: root.rootId,
+    ownerId: portalOwner,
+    disposed: false
+  };
+
+  nodeRegistry.updateNode(placeholderId, {
+    type: PORTAL_TYPE as any,
+    key: value.key,
+    props: value.props,
+    value,
+    payload: state
+  });
+
+  tx.attachCleanup(placeholderId, () => disposePortal(state));
+  tx.insert(placeholderId, parentId, null, undefined, parentRecord);
+
+  reconcileChildren(portalBoundaryId, value.props.children as Child, portalOwner, root, tx, portalRecord);
+  return placeholderId;
 }
 
 function renderComponent(nodeId: NodeId, props: Record<string, any>, tx: PatchTransaction): void {
@@ -383,6 +455,11 @@ function reconcileMatched(
     return;
   }
 
+  if (value.type === PORTAL_TYPE) {
+    reconcilePortal(oldId, old, value, root, tx);
+    return;
+  }
+
   if (typeof value.type === "function") renderComponent(oldId, value.props, tx);
   else {
     const nextChildren = value.props.children as Child;
@@ -391,6 +468,37 @@ function reconcileMatched(
     tx.patchProps(oldId, old.props, value.props);
     if (!childrenAreUnchangedPrimitive) reconcileChildren(oldId, nextChildren, old.ownerId, root, tx, old);
   }
+}
+
+function reconcilePortal(
+  placeholderId: NodeId,
+  placeholder: FlatNode,
+  value: VNode,
+  root: FlatRoot,
+  tx: PatchTransaction
+): void {
+  const state = placeholder.payload as PortalState | undefined;
+  if (!state || state.disposed) return;
+
+  const nextContainer = value.props.container as Element;
+  if (!nextContainer || typeof nextContainer !== "object" || (nextContainer as any).nodeType !== 1) {
+    throw new Error("ZUI_INVALID_PORTAL_CONTAINER");
+  }
+
+  const portalBoundary = nodeRegistry.getNode(state.portalBoundaryId);
+
+  if (state.container !== nextContainer) {
+    const doc = portalBoundary.domStart.ownerDocument ?? globalThis.document;
+    const fragment = extractRange(doc, portalBoundary);
+    nextContainer.appendChild(fragment);
+    state.container = nextContainer;
+  }
+
+  if (placeholder.props !== value.props) {
+    tx.setMeta(placeholderId, { props: value.props, value });
+  }
+
+  reconcileChildren(state.portalBoundaryId, value.props.children as Child, state.ownerId, root, tx, portalBoundary);
 }
 
 function reconcileChildren(
@@ -725,6 +833,23 @@ function disposeComponent(state: ComponentState): void {
   }
   try { nodeRegistry.disposeOwner(state.ownerId); }
   catch (error) { failure ??= error; }
+  if (failure) throw failure;
+}
+
+function disposePortal(state: PortalState): void {
+  if (state.disposed) return;
+  state.disposed = true;
+  let failure: unknown;
+  try {
+    patchEngine.removeSubtree(state.portalBoundaryId);
+  } catch (error) {
+    failure = error;
+  }
+  try {
+    nodeRegistry.disposeOwner(state.ownerId);
+  } catch (error) {
+    failure ??= error;
+  }
   if (failure) throw failure;
 }
 
