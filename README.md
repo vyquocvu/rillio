@@ -92,12 +92,26 @@ Available primitives include `Button`, `IconButton`, `Badge`, `Avatar`, `Card`, 
 
 ## Zustand
 
-Use [`zui/zustand`](docs/API.md#zustand-integration) to select state from a Zustand vanilla or bound store inside ZUI components. It follows the store's `getState`/`subscribe` API and does not add Zustand or React as runtime dependencies.
-
-## Explicit reactive API
+Use [`zui/zustand`](docs/API.md#zustand-integration) for first-class, zero-dependency Zustand stores in ZUI components. It exports `create`, `createStore`, `useStore`, `shallow`, and `useShallow`:
 
 ```tsx
-import { createStore, select, mount } from "zui/legacy";
+import { create, useShallow } from "zui/zustand";
+
+const useCounter = create(set => ({
+  count: 0,
+  inc: () => set(s => ({ count: s.count + 1 }))
+}));
+
+function Counter() {
+  const count = useCounter(s => s.count);
+  return <button onClick={() => useCounter.getState().inc()}>{count}</button>;
+}
+```
+
+## Explicit reactive DOM API
+
+```tsx
+import { createStore, select, mount } from "zui/dom";
 
 const count = createStore(0);
 mount(() => <button onClick={() => count.set(n => n + 1)}>
@@ -105,7 +119,7 @@ mount(() => <button onClick={() => count.set(n => n + 1)}>
 </button>, document.getElementById("app")!);
 ```
 
-`zui/legacy` is a compatibility alias for the explicit reactive surface during the pre-1.0 migration. It uses the same `NodeRegistry` and `PatchEngine`; it is not an independent DOM renderer.
+`zui/dom` is the canonical subpath for the mount-once explicit reactive DOM surface (`zui/legacy` remains as a deprecated compatibility alias). It uses the same `NodeRegistry` and `PatchEngine`; it is not an independent DOM renderer.
 
 ## Architecture guarantees
 

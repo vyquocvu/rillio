@@ -85,6 +85,11 @@
       "import": "./dist/package/zustand.js",
       "default": "./dist/package/zustand.js"
     },
+    "./dom": {
+      "types": "./dist/package/dom.d.ts",
+      "import": "./dist/package/dom.js",
+      "default": "./dist/package/dom.js"
+    },
     "./legacy": {
       "types": "./dist/package/dom.d.ts",
       "import": "./dist/package/dom.js",

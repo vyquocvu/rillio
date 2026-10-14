@@ -54,24 +54,42 @@ ZUI does not claim React hook scheduling, batching, synthetic event, Context, Su
 
 ## Zustand integration
 
-Use the optional `zui/zustand` adapter to read a Zustand vanilla store or a bound store created with `create`. It follows Zustand's Store API structurally, so the ZUI runtime does not import Zustand or React:
+`zui/zustand` provides first-class, zero-dependency Zustand integration without importing React. It exports `create`, `createStore`, `useStore`, `shallow`, and `useShallow`:
 
 ```tsx
-import { createStore } from "zustand/vanilla";
-import { useStore } from "zui/zustand";
+import { create, useShallow } from "zui/zustand";
 
-const counter = createStore<{ count: number; increment: () => void }>()(set => ({
+interface CounterState {
+  count: number;
+  multiplier: number;
+  increment: () => void;
+}
+
+// Create a bound store hook with full getState, setState, and subscribe API
+const useCounter = create<CounterState>(set => ({
   count: 0,
+  multiplier: 2,
   increment: () => set(state => ({ count: state.count + 1 }))
 }));
 
 function Counter() {
-  const count = useStore(counter, state => state.count);
-  return <button onClick={() => counter.getState().increment()}>{count}</button>;
+  // 1. Primitive selection (atomic re-renders):
+  const count = useCounter(state => state.count);
+
+  // 2. Object selection with shallow comparison:
+  const { total } = useCounter(
+    useShallow(state => ({ total: state.count * state.multiplier }))
+  );
+
+  return (
+    <button onClick={() => useCounter.getState().increment()}>
+      Count: {count} (Total: {total})
+    </button>
+  );
 }
 ```
 
-The adapter accepts Zustand's `getState()` and `subscribe()` API, subscribes after mount, and unsubscribes with the ZUI component lifecycle. A component rerenders only when its selected value changes by `Object.is`; pass a third equality function for tuple/object selections. Zustand's own `useStore` is a React Hook and should not be called inside ZUI components; use this adapter instead. This does not add Zustand as a runtime dependency, and ZUI still does not provide SSR/hydration.
+The adapter also accepts standalone vanilla stores via `create(existingStore)` or `useStore(store, selector, equalityFn)`. When selecting objects or arrays, use `useShallow(selector)` or pass `shallow` as the equality function to prevent redundant re-renders. Do not import `create` or `useStore` from `"zustand"` in ZUI components, as Zustand's default React entry point expects React's `useSyncExternalStore`.
 
 ## Addressable DOM API
 
@@ -92,12 +110,12 @@ Full-root consistency verification is opt-in after each transaction to avoid a t
 
 The low-level implementation is also available from `zui/flat`.
 
-## Explicit reactive API
+## Explicit reactive DOM API
 
-The `zui/legacy` subpath is a compatibility alias for the explicit reactive surface:
+The canonical subpath for the mount-once explicit reactive DOM surface is `zui/dom` (`zui/legacy` remains as a deprecated compatibility alias):
 
 ```tsx
-import { createStore, select, mount } from "zui/legacy";
+import { createStore, select, mount } from "zui/dom";
 
 const count = createStore(0);
 mount(() => <button onClick={() => count.set(n => n + 1)}>
@@ -107,7 +125,7 @@ mount(() => <button onClick={() => count.set(n => n + 1)}>
 
 Exports include:
 
-- `createStore`, `useStore` — synchronous immutable snapshot store;
+- `createStore` — synchronous immutable snapshot store;
 - `select(store, selector)` — deferred binding descriptor;
 - `derive(read)` — deferred binding descriptor;
 - `computed`, `batch`, `untrack`;

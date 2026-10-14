@@ -7,7 +7,7 @@ ZUI is a small addressable-DOM runtime. JSX is the authoring syntax; the Flat In
 - Release target: `v0.1.0`.
 - Stability target: dependable small browser applications.
 - Breaking changes are allowed before `v1.0.0`, but must be documented.
-- `zui/legacy` remains a compatibility alias for the explicit reactive API while the public naming settles.
+- `zui/dom` is established as the canonical explicit reactive DOM subpath; `zui/legacy` remains as a deprecated compatibility alias.
 - There is one production DOM mutation path: `PatchEngine`.
 
 ## v0.1 scope

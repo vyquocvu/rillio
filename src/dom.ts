@@ -14,7 +14,10 @@ export const patches = patchEngine;
 /** Graph engine powers the explicit reactive frontend surface. */
 export const engine = createEngine("graph", { ownerHost: registry });
 export const createStore = <T>(initial: T): Store<T> => engine.createStore(initial);
-/** React-familiar naming; unlike React useState, returns a live Store. */
+/**
+ * React-familiar naming; unlike React useState, returns a live Store.
+ * @deprecated Prefer `createStore` directly in `zui/dom`, or `import { useStore } from "zui/zustand"` for Zustand stores.
+ */
 export const useStore = createStore;
 export const computed = <T>(fn: () => T) => engine.computed(fn);
 export const batch = <T>(fn: () => T) => engine.batch(fn);

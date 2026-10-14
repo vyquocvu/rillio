@@ -1,9 +1,11 @@
 import { createRoot, useState } from "zui";
 import { Button, StyleSheet } from "zui/ui";
-import { useStore as useZustandStore } from "zui/zustand";
+import { useStore as useZustandStore, create as createBoundStore, shallow, useShallow } from "zui/zustand";
+import { createStore as createDomStore, mount as mountDom } from "zui/dom";
 import { createStore, mount } from "zui/legacy";
 import { createEngine } from "zui/reactive";
 
+const domStore = createDomStore("dom");
 const legacyStore = createStore("legacy");
 const engine = createEngine("graph");
 const reactiveStore = engine.createStore(1);
@@ -44,5 +46,5 @@ const reactiveContainer = document.createElement("div");
 mount(() => legacyStore.get(), reactiveContainer);
 reactiveStore.set(value => value + 1);
 
-export { container, reactiveContainer, legacyStore, reactiveStore, ZustandCounter, typedInput, typedSvg, invalidAttribute, invalidHandler };
+export { container, reactiveContainer, domStore, legacyStore, reactiveStore, ZustandCounter, typedInput, typedSvg, invalidAttribute, invalidHandler };
 export { Button, StyleSheet };

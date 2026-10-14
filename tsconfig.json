@@ -13,6 +13,7 @@
       "zui/jsx-dev-runtime": ["src/jsx-dev-runtime.ts"],
       "zui/ui": ["src/ui.ts"],
       "zui/zustand": ["src/zustand.ts"],
+      "zui/dom": ["src/dom.ts"],
       "zui/legacy": ["src/dom.ts"],
       "zui/reactive": ["src/reactive.ts"],
       "zui/flat": ["src/flat.ts"]

@@ -18,7 +18,7 @@ ZUI supports the standard automatic JSX transform shape (`jsx`, `jsxs`, `jsxDEV`
 - Effects are flushed after the root transaction; there is no React post-paint or concurrent scheduler contract.
 - Events are native listeners, not a React synthetic event system.
 - `NodeRegistry` and `PatchEngine` own identity and DOM lifecycle; there is no React Virtual DOM compatibility layer.
-- The explicit reactive API under `zui/legacy` is a separate authoring surface but shares the same DOM mutation engine.
+- The explicit reactive API under `zui/dom` (with `zui/legacy` as deprecated compatibility alias) is a separate authoring surface but shares the same DOM mutation engine.
 
 ## Not promised
 

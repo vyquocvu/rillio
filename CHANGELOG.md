@@ -19,7 +19,12 @@ All notable changes to ZUI are documented here.
 - Best-effort commit rollback with inverse DOM operations and renderer hook snapshot restoration.
 - Added security guards rejecting unsafe HTML sinks (`innerHTML`, `outerHTML`, `srcdoc`), executable URL schemes (`javascript:`, `vbscript:`, `data:text/html`), and string-valued inline event handlers before commit.
 - Added `nodeRegistry.diagnostics()` reporting real-time counts for active/tombstoned nodes, owners, roots, and capacity bounds.
+- Added `create`, `createStore`, `shallow`, and `useShallow` in `zui/zustand` for zero-dependency bound stores without React.
+- Added canonical `zui/dom` subpath for the explicit reactive DOM API (`zui/legacy` deprecated as compatibility alias).
 - Licensed under the MIT License.
+
+### Removed
+- Removed obsolete pre-Playwright `tests/browser-smoke.cjs`.
 
 ### Performance
 - Zero-allocation transaction tracking in `PatchTransaction` via monotonic ID comparisons instead of `Set` allocations.
@@ -39,7 +44,7 @@ All notable changes to ZUI are documented here.
 - Lazy listener and style allocation; stripped disposed records retaining a bounded tombstone pool.
 
 ### Verification
-- 109 unit/regression/oracle tests across 11 test suites.
+- 113 unit/regression/oracle tests across 11 test suites.
 - Strict external consumer package verification (production and dev JSX, subpaths, expected compile failures).
 - Playwright Chromium browser test suite verifying dashboard flows, modal keyboard/focus traps, and sink guards.
 - Clean-checkout verification passing all release gates.

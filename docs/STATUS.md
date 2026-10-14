@@ -15,13 +15,15 @@ Updated: 2026-10-13. The verified clean-checkout release revision is `79ebab4`.
 - ESM/declaration exports and strict external consumer tests cover package subpaths and both JSX modes.
 - Expand the DOM contract for SVG namespaces (`createElementNS`), presentation attributes, and XML namespaces (`xlink:href`, `xml:space`); form properties (`selected`, `indeterminate`, `readOnly`, `required`, `multiple`, `autoFocus`, `formNoValidate`, `htmlFor`) and controlled input drift restoration; custom elements with `is` attribute and property assignment; and accessibility-oriented ARIA boolean/token normalization.
 - `nodeRegistry.diagnostics()` reports real-time diagnostic counts of active/tombstoned nodes, owners, and roots to verify memory boundedness and leak prevention.
+- First-class, zero-dependency Zustand integration in `zui/zustand` with `create`, `createStore`, `useStore`, `shallow`, and `useShallow`.
+- Canonical `zui/dom` subpath established for the explicit reactive DOM API, retaining `zui/legacy` as a deprecated compatibility alias.
 
 ## Verification
 
 Environment: macOS arm64; Node v26.5.0; npm 12.0.2; TypeScript 5.9.3; Vitest 5.0.3; Vite 6.4.4; headless Chromium 156.0.8078.4.
 
 - `npm run typecheck`: **PASS**
-- `npm test`: **PASS — 11 files, 109 tests**
+- `npm test`: **PASS — 11 files, 113 tests**
 - `npm run build:release`: **PASS — Vite showcase/admin/demos (3 HTML entries) and package declarations**
 - `npm run test:smoke`: **PASS — 16/16**
 - `npm run test:oracle`: **PASS — 2,400 updates**
