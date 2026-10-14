@@ -17,6 +17,37 @@ export interface Diagnostics {
   dependencyEdges: number;
 }
 
+export type ResourceStatus = "idle" | "pending" | "success" | "error";
+
+export interface ResourceState<T> {
+  readonly data: T | undefined;
+  readonly loading: boolean;
+  readonly error: Error | undefined;
+  readonly status: ResourceStatus;
+}
+
+export interface Resource<T, S = unknown> {
+  readonly data: Store<T | undefined>;
+  readonly loading: Store<boolean>;
+  readonly error: Store<Error | undefined>;
+  readonly status: Store<ResourceStatus>;
+  get(): ResourceState<T>;
+  refetch(): Promise<T | undefined>;
+  mutate(next: T | undefined | ((previous: T | undefined) => T | undefined)): void;
+  dispose(): void;
+}
+
+export type ResourceFetcher<T, S = unknown> = (
+  source: S,
+  info: { refetching: boolean; previous: T | undefined }
+) => Promise<T> | T;
+
+export interface ResourceOptions<T, S = unknown> {
+  initialValue?: T;
+  onSuccess?: (data: T) => void;
+  onError?: (error: Error) => void;
+}
+
 interface Source { observers: Set<Computation> }
 interface Computation extends Source {
   kind: "computed" | "effect";
@@ -351,8 +382,207 @@ export class ReactiveEngine {
       dependencyEdges: edges
     };
   }
+
+  resource<T>(
+    fetcher: ResourceFetcher<T, void>,
+    options?: ResourceOptions<T, void>
+  ): Resource<T, void>;
+  resource<T, S>(
+    source: Store<S> | (() => S),
+    fetcher: ResourceFetcher<T, S>,
+    options?: ResourceOptions<T, S>
+  ): Resource<T, S>;
+  resource<T, S>(
+    arg1: (Store<S> | (() => S)) | ResourceFetcher<T, void>,
+    arg2?: ResourceFetcher<T, S> | ResourceOptions<T, void>,
+    arg3?: ResourceOptions<T, S>
+  ): Resource<T, S> {
+    return createResource(this, arg1 as any, arg2 as any, arg3 as any);
+  }
 }
 
 export function createEngine(mode: Mode, options?: EngineOptions): ReactiveEngine {
   return new ReactiveEngine(mode, options);
 }
+
+export function createResource<T>(
+  engine: ReactiveEngine,
+  fetcher: ResourceFetcher<T, void>,
+  options?: ResourceOptions<T, void>
+): Resource<T, void>;
+export function createResource<T, S>(
+  engine: ReactiveEngine,
+  source: Store<S> | (() => S),
+  fetcher: ResourceFetcher<T, S>,
+  options?: ResourceOptions<T, S>
+): Resource<T, S>;
+export function createResource<T, S>(
+  engine: ReactiveEngine,
+  arg1: (Store<S> | (() => S)) | ResourceFetcher<T, void>,
+  arg2?: ResourceFetcher<T, S> | ResourceOptions<T, void>,
+  arg3?: ResourceOptions<T, S>
+): Resource<T, S> {
+  const hasSource = typeof arg2 === "function";
+  const source = hasSource ? (arg1 as Store<S> | (() => S)) : undefined;
+  const fetcher = hasSource
+    ? (arg2 as ResourceFetcher<T, S>)
+    : (arg1 as ResourceFetcher<T, void>);
+  const options = hasSource
+    ? arg3
+    : (arg2 as ResourceOptions<T, void> | undefined);
+
+  const initialVal = options?.initialValue;
+  const dataStore = engine.createStore<T | undefined>(initialVal);
+  const loadingStore = engine.createStore<boolean>(false);
+  const errorStore = engine.createStore<Error | undefined>(undefined);
+  const statusStore = engine.createStore<ResourceStatus>("idle");
+
+  let currentRequestId = 0;
+  let disposed = false;
+  let lastSourceValue: S | undefined;
+
+  const runFetch = (sourceVal: any, isRefetch = false): Promise<T | undefined> => {
+    if (disposed) return Promise.resolve(undefined);
+    lastSourceValue = sourceVal;
+    const requestId = ++currentRequestId;
+
+    engine.batch(() => {
+      loadingStore.set(true);
+      statusStore.set("pending");
+    });
+
+    const previous = dataStore.get();
+    let resultPromise: Promise<T> | T;
+    try {
+      resultPromise = fetcher(sourceVal, { refetching: isRefetch, previous });
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      if (requestId === currentRequestId && !disposed) {
+        engine.batch(() => {
+          errorStore.set(error);
+          loadingStore.set(false);
+          statusStore.set("error");
+        });
+        options?.onError?.(error);
+      }
+      return Promise.reject(error);
+    }
+
+    if (resultPromise instanceof Promise) {
+      return resultPromise.then(
+        data => {
+          if (requestId === currentRequestId && !disposed) {
+            engine.batch(() => {
+              dataStore.set(data);
+              errorStore.set(undefined);
+              loadingStore.set(false);
+              statusStore.set("success");
+            });
+            options?.onSuccess?.(data);
+          }
+          return data;
+        },
+        err => {
+          const error = err instanceof Error ? err : new Error(String(err));
+          if (requestId === currentRequestId && !disposed) {
+            engine.batch(() => {
+              errorStore.set(error);
+              loadingStore.set(false);
+              statusStore.set("error");
+            });
+            options?.onError?.(error);
+          }
+          return undefined;
+        }
+      );
+    } else {
+      const data = resultPromise;
+      if (requestId === currentRequestId && !disposed) {
+        engine.batch(() => {
+          dataStore.set(data);
+          errorStore.set(undefined);
+          loadingStore.set(false);
+          statusStore.set("success");
+        });
+        options?.onSuccess?.(data);
+      }
+      return Promise.resolve(data);
+    }
+  };
+
+  let stopEffect: Dispose | undefined;
+
+  if (hasSource && source) {
+    let initial = true;
+    stopEffect = engine.effect(() => {
+      const sourceVal =
+        typeof source === "function"
+          ? (source as () => S)()
+          : (source as Store<S>).get();
+      engine.untrack(() => {
+        runFetch(sourceVal, !initial);
+      });
+      initial = false;
+    });
+  } else {
+    runFetch(undefined as any, false);
+  }
+
+  const res: Resource<T, S> = {
+    data: dataStore,
+    loading: loadingStore,
+    error: errorStore,
+    status: statusStore,
+    get() {
+      return {
+        data: dataStore.get(),
+        loading: loadingStore.get(),
+        error: errorStore.get(),
+        status: statusStore.get(),
+      };
+    },
+    refetch() {
+      const sourceVal = hasSource
+        ? typeof source === "function"
+          ? (source as () => S)()
+          : (source as Store<S>).get()
+        : lastSourceValue;
+      return runFetch(sourceVal, true);
+    },
+    mutate(next) {
+      if (disposed) return;
+      currentRequestId++;
+      const prev = dataStore.get();
+      const nextVal =
+        typeof next === "function"
+          ? (next as (prev: T | undefined) => T | undefined)(prev)
+          : next;
+      engine.batch(() => {
+        dataStore.set(nextVal);
+        errorStore.set(undefined);
+        loadingStore.set(false);
+        statusStore.set("success");
+      });
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      currentRequestId++;
+      if (stopEffect) {
+        stopEffect();
+        stopEffect = undefined;
+      }
+    },
+  };
+
+  try {
+    engine.onCleanup(() => {
+      res.dispose();
+    });
+  } catch {
+    // No active owner
+  }
+
+  return res;
+}
+

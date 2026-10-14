@@ -226,6 +226,7 @@ The explicit mount-once reactive DOM surface is decomposed into cohesive, single
 - **`src/dom/bindings.ts`**: Fine-grained reactive bindings (`select`, `derive`), store primitives (`createStore`, `useStore`), reactive evaluation utilities (`isStore`, `isBinding`, `readReactive`, `evaluate`, `stringify`), and computation dispatchers (`computed`, `batch`, `untrack`).
 - **`src/dom/control-flow.ts`**: Declarative control flow components (`Show`, `For`, `Fragment`, `jsx`, `jsxs`) and structural predicates (`isConditional`, `isRepetition`).
 - **`src/dom/mount.ts`**: Lifecycle and mounting coordinator (`mount`), scope managers (`createScope`, `attachScope`), property renderers (`renderProps`), child dispatchers (`renderChild`, `renderList`), and key diffing (`longestIncreasingIds`).
+- **`src/dom/resource.ts`**: Asynchronous resource store primitive (`resource`, `createResource`) providing fine-grained loading/data/error states, race condition suppression, and zero-VDOM-stack-break `<Show>` integration.
 
 ## Module structure (`src/compat/`)
 

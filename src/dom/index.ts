@@ -10,3 +10,4 @@ export * from "./types.js";
 export * from "./bindings.js";
 export * from "./control-flow.js";
 export * from "./mount.js";
+export * from "./resource.js";
