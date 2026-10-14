@@ -121,3 +121,12 @@ export interface FocusState {
   end: number | null;
   direction: "forward" | "backward" | "none" | null;
 }
+
+export interface TransactionSavepoint {
+  readonly operationsCount: number;
+  readonly createdCount: number;
+  readonly onlyTextOperations: boolean;
+  readonly onlyCreatedOperations: boolean;
+  readonly hasRemovals: boolean;
+}
+

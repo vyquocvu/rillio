@@ -15,10 +15,11 @@ import {
   type RootHandle,
   type OwnerId,
   type PatchTransaction,
-  type RegistryDiagnostics
+  type RegistryDiagnostics,
+  type TransactionSavepoint
 } from "./flat.js";
 
-export type { Key, NodeId, OwnerId, RegistryDiagnostics } from "./flat.js";
+export type { Key, NodeId, OwnerId, RegistryDiagnostics, TransactionSavepoint } from "./flat.js";
 export type Child = VNode | string | number | boolean | null | undefined | Child[];
 export type Component<P = any> = (props: P) => Child;
 export interface VNode {
@@ -48,6 +49,19 @@ export function createPortal(children: Child, container: Element, key?: Key): VN
     key
   };
 }
+
+export interface ErrorBoundaryProps {
+  children?: Child;
+  fallback: Child | ((error: Error, reset: () => void) => Child);
+  onError?: (error: Error, info: { componentStack?: string }) => void;
+}
+
+export interface ErrorBoundaryState {
+  error: Error | null;
+  reset: () => void;
+}
+
+export const ErrorBoundary: Component<ErrorBoundaryProps> = props => props.children ?? null;
 
 export const Fragment: Component<{ children?: Child }> = props => props.children ?? null;
 
@@ -79,6 +93,8 @@ interface ComponentState {
   hookCount?: number;
   rendering: boolean;
   disposed: boolean;
+  boundaryState?: ErrorBoundaryState;
+  parentComponent?: ComponentState;
 }
 
 export const nodeRegistry = new NodeRegistry();
@@ -89,6 +105,7 @@ let renderingDepth = 0;
 const pendingEffects = new Set<Hook>();
 const roots = new WeakMap<Element, RootController>();
 let flushingEffects = false;
+let lastFailedState: ComponentState | undefined;
 
 interface ComponentSnapshot {
   state: ComponentState;
@@ -96,6 +113,7 @@ interface ComponentSnapshot {
   cursor: number;
   hookCount: number | undefined;
   hooks: Array<{ slot: Hook; value: Hook }>;
+  boundaryError?: Error | null;
 }
 
 interface RenderTransactionSnapshot {
@@ -201,7 +219,8 @@ function snapshotComponent(state: ComponentState): void {
     props: state.props,
     cursor: state.cursor,
     hookCount: state.hookCount,
-    hooks: state.hooks.map(slot => ({ slot, value: { ...slot } }))
+    hooks: state.hooks.map(slot => ({ slot, value: { ...slot } })),
+    boundaryError: state.boundaryState ? state.boundaryState.error : undefined
   });
 }
 
@@ -214,6 +233,9 @@ function restoreComponentSnapshot(snapshot: ComponentSnapshot): void {
   for (const { slot, value } of snapshot.hooks) {
     for (const key of Object.keys(slot) as Array<keyof Hook>) delete slot[key];
     Object.assign(slot, value);
+  }
+  if (state.boundaryState && "boundaryError" in snapshot) {
+    state.boundaryState.error = snapshot.boundaryError ?? null;
   }
 }
 
@@ -397,8 +419,15 @@ function renderComponent(nodeId: NodeId, props: Record<string, any>, tx: PatchTr
   const state = record.payload;
   if (!isComponentState(state)) throw new Error("ZUI_COMPONENT_STATE");
   if (state.rendering) throw new Error("ZUI_RENDER_PHASE_UPDATE");
+
+  if (state.type === ErrorBoundary) {
+    renderErrorBoundary(nodeId, state, props as ErrorBoundaryProps, tx, record);
+    return;
+  }
+
   snapshotComponent(state);
   const previous = active;
+  state.parentComponent = previous;
   active = state;
   state.props = props;
   state.cursor = 0;
@@ -411,11 +440,105 @@ function renderComponent(nodeId: NodeId, props: Record<string, any>, tx: PatchTr
     else if (state.cursor !== state.hookCount) throw new Error("ZUI_HOOK_ORDER");
     if (record.props !== props) tx.setMeta(nodeId, { props });
     reconcileChildren(nodeId, result, state.ownerId, rootForId(state.rootId), tx, record);
+  } catch (error) {
+    lastFailedState ??= state;
+    throw error;
   } finally {
     renderingDepth--;
     active = previous;
     state.rendering = false;
   }
+}
+
+function renderErrorBoundary(
+  nodeId: NodeId,
+  state: ComponentState,
+  props: ErrorBoundaryProps,
+  tx: PatchTransaction,
+  record: FlatNode
+): void {
+  state.boundaryState ??= {
+    error: null,
+    reset: () => {
+      if (state.disposed) return;
+      state.boundaryState!.error = null;
+      updateComponent(nodeId);
+    }
+  };
+
+  const boundaryState = state.boundaryState;
+
+  if (boundaryState.error !== null) {
+    const fallbackChild = typeof props.fallback === "function"
+      ? props.fallback(boundaryState.error, boundaryState.reset)
+      : props.fallback;
+    if (record.props !== props) tx.setMeta(nodeId, { props });
+    reconcileChildren(nodeId, fallbackChild, state.ownerId, rootForId(state.rootId), tx, record);
+    return;
+  }
+
+  snapshotComponent(state);
+  state.props = props;
+
+  const sp = tx.savepoint();
+  const snapKeys = renderTransactionSnapshot ? new Set(renderTransactionSnapshot.components.keys()) : undefined;
+  const effectsSnapshot = new Set(pendingEffects);
+
+  try {
+    if (record.props !== props) tx.setMeta(nodeId, { props });
+    reconcileChildren(nodeId, props.children ?? null, state.ownerId, rootForId(state.rootId), tx, record);
+  } catch (err) {
+    const failingState = lastFailedState ?? state;
+    lastFailedState = undefined;
+    const componentStack = formatComponentStack(failingState);
+    const error = err instanceof Error ? err : new Error(String(err));
+    tx.rollbackTo(sp);
+
+    if (renderTransactionSnapshot && snapKeys) {
+      for (const [comp, snap] of renderTransactionSnapshot.components) {
+        if (!snapKeys.has(comp)) {
+          if (!comp.disposed) restoreComponentSnapshot(snap);
+          renderTransactionSnapshot.components.delete(comp);
+        }
+      }
+    }
+    pendingEffects.clear();
+    for (const eff of effectsSnapshot) pendingEffects.add(eff);
+
+    boundaryState.error = error;
+    try {
+      props.onError?.(error, { componentStack });
+    } catch {
+      // Keep boundary resilient if onError throws
+    }
+
+    const fallbackChild = typeof props.fallback === "function"
+      ? props.fallback(error, boundaryState.reset)
+      : props.fallback;
+    reconcileChildren(nodeId, fallbackChild, state.ownerId, rootForId(state.rootId), tx, record);
+  }
+}
+
+function formatComponentStack(state?: ComponentState): string {
+  const stack: string[] = [];
+  let current: ComponentState | undefined = state;
+  while (current) {
+    stack.push(`    in ${current.type.name || "Component"}`);
+    current = current.parentComponent;
+  }
+  return stack.length ? `\n${stack.join("\n")}` : "";
+}
+
+function findNearestErrorBoundary(nodeId: NodeId, skipSelf = false): NodeId | null {
+  let current: NodeId | null = skipSelf
+    ? (nodeRegistry.hasNode(nodeId) ? nodeRegistry.getNode(nodeId).parentId : null)
+    : nodeId;
+  while (current !== null && nodeRegistry.hasNode(current)) {
+    const node = nodeRegistry.getNode(current);
+    if (node.type === ErrorBoundary) return current;
+    current = node.parentId;
+  }
+  return null;
 }
 
 function reconcile(
@@ -862,8 +985,38 @@ function updateComponent(nodeId: NodeId): void {
   const state = record.payload;
   if (!isComponentState(state) || state.disposed) return;
   const root = rootForId(state.rootId);
-  renderTransaction(root.rootId, tx => renderComponent(nodeId, state.props, tx));
-  flushEffects();
+  try {
+    renderTransaction(root.rootId, tx => renderComponent(nodeId, state.props, tx));
+    flushEffects();
+  } catch (error) {
+    const failingState = lastFailedState ?? state;
+    lastFailedState = undefined;
+    const boundaryId = findNearestErrorBoundary(nodeId, true);
+    if (boundaryId !== null) {
+      const boundaryRecord = nodeRegistry.getNode(boundaryId);
+      const boundaryState = boundaryRecord.payload as ComponentState | undefined;
+      if (boundaryState && !boundaryState.disposed) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        boundaryState.boundaryState ??= {
+          error: null,
+          reset: () => {
+            if (boundaryState.disposed) return;
+            boundaryState.boundaryState!.error = null;
+            updateComponent(boundaryId);
+          }
+        };
+        boundaryState.boundaryState.error = err;
+        try {
+          (boundaryState.props as ErrorBoundaryProps).onError?.(err, {
+            componentStack: formatComponentStack(failingState)
+          });
+        } catch { /* ignore onError error */ }
+        updateComponent(boundaryId);
+        return;
+      }
+    }
+    throw error;
+  }
 }
 
 export interface Root {

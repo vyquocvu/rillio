@@ -10,7 +10,8 @@ import type {
   NodeId,
   OwnerId,
   PatchOp,
-  RootId
+  RootId,
+  TransactionSavepoint
 } from "./types.js";
 import { SVG_NAMESPACE } from "./properties.js";
 import { validateProperty } from "./security.js";
@@ -294,6 +295,33 @@ export class PatchTransaction {
       const node = this.engine.registry.getNode(nodeId);
       if (!node.disposed) this.engine.discardSubtree(nodeId);
     }
+  }
+
+  savepoint(): TransactionSavepoint {
+    return {
+      operationsCount: this.operations.length,
+      createdCount: this.created.length,
+      onlyTextOperations: this.onlyTextOperations,
+      onlyCreatedOperations: this.onlyCreatedOperations,
+      hasRemovals: this.hasRemovals
+    };
+  }
+
+  rollbackTo(savepoint: TransactionSavepoint): void {
+    if (this.committed) return;
+    for (let index = this.created.length - 1; index >= savepoint.createdCount; index--) {
+      const nodeId = this.created[index]!;
+      if (!this.engine.registry.hasNode(nodeId)) continue;
+      const node = this.engine.registry.getNode(nodeId);
+      if (!node.disposed) this.engine.discardSubtree(nodeId);
+    }
+    this.created.length = savepoint.createdCount;
+    this.operations.length = savepoint.operationsCount;
+    this.onlyTextOperations = savepoint.onlyTextOperations;
+    this.onlyCreatedOperations = savepoint.onlyCreatedOperations;
+    this.hasRemovals = savepoint.hasRemovals;
+    this.lastCreatedId = 0;
+    this.lastCreatedNode = undefined;
   }
 
   private commitTextOnly(): void {
