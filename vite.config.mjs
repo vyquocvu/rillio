@@ -27,7 +27,8 @@ export default {
         realworld: page("realworld.html"),
         renderLab: page("render-lab.html"),
         storeLab: page("store-lab.html"),
-        dataLab: page("data-lab.html")
+        dataLab: page("data-lab.html"),
+        docs: page("docs.html")
       }
     }
   }
