@@ -90,12 +90,12 @@ function SignIn() {
 
 Available primitives include `Button`, `IconButton`, `Badge`, `Avatar`, `Card`, `Field`, `Input`, `Progress`, `Modal`, `Stack`, `Inline`, and `EmptyState`. `tokens`, `cx`, and `uiStyles` are exported for teams that want to extend the visual language.
 
-## Zustand
+## External store
 
-Use [`zui/zustand`](docs/API.md#zustand-integration) for first-class, zero-dependency Zustand stores in ZUI components. It exports `create`, `createStore`, `useStore`, `shallow`, and `useShallow`:
+Use [`zui/external-store`](docs/API.md#external-store-integration) for first-class, zero-dependency Zustand-compatible external stores in ZUI components. It exports `create`, `createStore`, `useStore`, `shallow`, and `useShallow`:
 
 ```tsx
-import { create, useShallow } from "zui/zustand";
+import { create, useShallow } from "zui/external-store";
 
 const useCounter = create(set => ({
   count: 0,

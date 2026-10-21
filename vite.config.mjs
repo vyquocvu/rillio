@@ -9,6 +9,7 @@ export default {
       "zui/jsx-runtime": source("jsx-runtime.ts"),
       "zui/jsx-dev-runtime": source("jsx-dev-runtime.ts"),
       "zui/ui": source("ui.ts"),
+      "zui/external-store": source("external-store.ts"),
       "zui/zustand": source("zustand.ts"),
       "zui/dom": source("dom.ts"),
       "zui/legacy": source("dom.ts"),

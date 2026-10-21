@@ -1,6 +1,6 @@
 import { createRoot, useState } from "zui";
 import { Button, StyleSheet } from "zui/ui";
-import { useStore as useZustandStore, create as createBoundStore, shallow, useShallow } from "zui/zustand";
+import { useStore as useZustandStore, create as createBoundStore, shallow, useShallow } from "zui/external-store";
 import { createStore as createDomStore, mount as mountDom } from "zui/dom";
 import { createStore, mount } from "zui/legacy";
 import { createEngine } from "zui/reactive";

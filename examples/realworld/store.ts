@@ -1,4 +1,4 @@
-import { create } from "zui/zustand";
+import { create } from "zui/external-store";
 import type { ActivityLog, FilterState, Issue, ToastMessage, ViewMode } from "./types.js";
 
 export interface AppState {

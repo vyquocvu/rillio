@@ -44,10 +44,10 @@ export class PatchEngine {
     const start = now();
     try {
       const value = work(tx);
-      const ops = tx.ops.slice();
+      const ops = this.commitListeners.size > 0 ? tx.ops.slice() : undefined;
       tx.commit();
       if (this.assertAfterCommit) this.registry.assertConsistent(rootId);
-      if (this.commitListeners.size > 0) {
+      if (ops) {
         const info: TransactionCommitInfo = {
           rootId,
           opCount: ops.length,

@@ -204,6 +204,34 @@ describe("async resource primitive (resource())", () => {
     expect(container.childNodes.length).toBe(0);
   });
 
+  it("reads the source untracked inside refetch()", async () => {
+    const source = createStore(1);
+    const res = resource(source, async id => id * 10);
+    await delay(20);
+    expect(res.data.get()).toBe(10);
+
+    let runs = 0;
+    const dispose = mount(() => {
+      engine.effect(() => {
+        runs++;
+        res.refetch();
+      });
+      return null;
+    }, document.createElement("div"));
+    expect(runs).toBe(1);
+    await delay(20);
+
+    // If refetch() had subscribed this effect to the source, the write below
+    // would re-run it. Only the resource's own source effect may react.
+    source.set(2);
+    await delay(20);
+    expect(runs).toBe(1);
+    expect(res.data.get()).toBe(20);
+
+    dispose();
+    res.dispose();
+  });
+
   it("cleans up resource subscriptions upon owner disposal", async () => {
     const customEngine = createEngine("graph");
     let res: any;

@@ -4,6 +4,9 @@
 
 import {
   extractRange,
+  longestIncreasingSubsequencePositions,
+  planStationaryMoves,
+  shallowEqual,
   type FlatNode,
   type Key,
   type NodeId,
@@ -295,18 +298,6 @@ export function mountValue(
   return nodeId;
 }
 
-function shallowEqualProps(a: Record<string, any>, b: Record<string, any>): boolean {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  let count = 0;
-  for (const key in a) {
-    if (!Object.prototype.hasOwnProperty.call(b, key) || !Object.is(a[key], b[key])) return false;
-    count++;
-  }
-  for (const _ in b) count--;
-  return count === 0;
-}
-
 export function renderComponent(nodeId: NodeId, props: Record<string, any>, tx: PatchTransaction): void {
   const record = nodeRegistry.getNode(nodeId);
   const state = record.payload;
@@ -395,7 +386,7 @@ export function reconcileMatched(
       value.type !== ErrorBoundary &&
       isComponentState(state) &&
       !state.disposed &&
-      shallowEqualProps(state.props, value.props)
+      shallowEqual(state.props, value.props)
     ) return;
     renderComponent(oldId, value.props, tx);
   }
@@ -489,25 +480,14 @@ export function reconcileChildren(
   }
 
   const stationaryIndexes = longestIncreasingSubsequencePositions(oldIndexByNextIndex);
-
-  let newSuffixStart = nextIds.length;
-  while (newSuffixStart > 0 && oldIndexByNextIndex[newSuffixStart - 1] === 0) newSuffixStart--;
-
-  let anchor: NodeId | null = null;
-  const movingIds: NodeId[] = [];
-  const beforeIds: Array<NodeId | null> = [];
-  for (let i = nextIds.length - 1; i >= 0; i--) {
-    const id = nextIds[i]!;
-    const isNewSuffix = i >= newSuffixStart;
-    if (!isNewSuffix && stationaryIndexes[i] === 0) {
-      if (allChildrenReused) {
-        movingIds.push(id);
-        beforeIds.push(anchor);
-      } else tx.move(id, parentId, anchor);
-    }
-    anchor = id;
+  const plan = planStationaryMoves(nextIds, stationaryIndexes, index => oldIndexByNextIndex[index] !== 0);
+  if (allChildrenReused) {
+    tx.moveMany(parentId, oldIds, nextIds, plan.movingIds, plan.beforeIds);
+    return;
   }
-  if (allChildrenReused) tx.moveMany(parentId, oldIds, nextIds, movingIds, beforeIds);
+  for (let index = 0; index < plan.movingIds.length; index++) {
+    tx.move(plan.movingIds[index]!, parentId, plan.beforeIds[index]!);
+  }
 }
 
 function reconcileOrderedChildren(
@@ -692,33 +672,8 @@ function reconcileReversedChildren(
   return true;
 }
 
-export function longestIncreasingSubsequencePositions(oldIndexByNextIndex: readonly number[]): Uint8Array {
-  const predecessors = new Int32Array(oldIndexByNextIndex.length);
-  predecessors.fill(-1);
-  const tails: number[] = [];
-  for (let i = 0; i < oldIndexByNextIndex.length; i++) {
-    const oldIndex = oldIndexByNextIndex[i]!;
-    if (oldIndex === 0) continue;
-    let low = 0;
-    let high = tails.length;
-    while (low < high) {
-      const middle = (low + high) >>> 1;
-      if (oldIndexByNextIndex[tails[middle]!]! < oldIndex) low = middle + 1;
-      else high = middle;
-    }
-    if (low > 0) predecessors[i] = tails[low - 1]!;
-    tails[low] = i;
-  }
-
-  const stationary = new Uint8Array(oldIndexByNextIndex.length);
-  if (tails.length === 0) return stationary;
-  let cursor = tails[tails.length - 1]!;
-  while (cursor !== -1) {
-    stationary[cursor] = 1;
-    cursor = predecessors[cursor]!;
-  }
-  return stationary;
-}
+// Public surface compat: the shared implementation lives in flat/lis.ts.
+export { longestIncreasingSubsequencePositions } from "../flat.js";
 
 export function updateComponent(nodeId: NodeId): void {
   const record = nodeRegistry.getNode(nodeId);

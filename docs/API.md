@@ -52,12 +52,12 @@ Hook ordering is checked. State writes during component evaluation throw `ZUI_RE
 
 ZUI does not claim React hook scheduling, batching, synthetic event, Context, Suspense, or ecosystem compatibility.
 
-## Zustand integration
+## External store integration
 
-`zui/zustand` provides first-class, zero-dependency Zustand integration without importing React. It exports `create`, `createStore`, `useStore`, `shallow`, and `useShallow`:
+`zui/external-store` provides first-class, zero-dependency Zustand-compatible external store integration without importing React. It exports `create`, `createStore`, `useStore`, `shallow`, and `useShallow`:
 
 ```tsx
-import { create, useShallow } from "zui/zustand";
+import { create, useShallow } from "zui/external-store";
 
 interface CounterState {
   count: number;
@@ -89,7 +89,7 @@ function Counter() {
 }
 ```
 
-The adapter also accepts standalone vanilla stores via `create(existingStore)` or `useStore(store, selector, equalityFn)`. When selecting objects or arrays, use `useShallow(selector)` or pass `shallow` as the equality function to prevent redundant re-renders. Do not import `create` or `useStore` from `"zustand"` in ZUI components, as Zustand's default React entry point expects React's `useSyncExternalStore`.
+The adapter also accepts standalone vanilla stores via `create(existingStore)` or `useStore(store, selector, equalityFn)`. When selecting objects or arrays, use `useShallow(selector)` or pass `shallow` as the equality function to prevent redundant re-renders. Do not import `create` or `useStore` from `"zustand"` in ZUI components, as Zustand's default React entry point expects React's `useSyncExternalStore`. The legacy `zui/zustand` import path remains available as a deprecated alias.
 
 ## Addressable DOM API
 

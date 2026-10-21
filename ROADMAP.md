@@ -4,7 +4,7 @@ ZUI is a small addressable-DOM runtime. JSX is the authoring syntax; the Flat In
 
 ## Release policy
 
-- Release target: `v0.1.0`.
+- Release baseline: `v0.1.0` (2026-10-13); later work remains unreleased until a new version is tagged.
 - Stability target: dependable small browser applications.
 - Breaking changes are allowed before `v1.0.0`, but must be documented.
 - `zui/dom` is established as the canonical explicit reactive DOM subpath; `zui/legacy` remains as a deprecated compatibility alias.
@@ -22,11 +22,12 @@ ZUI is a small addressable-DOM runtime. JSX is the authoring syntax; the Flat In
 - Transactional `PatchEngine` with validate → commit → dispose semantics.
 - ESM JavaScript, declarations, strict external consumer verification, lifecycle tests, randomized consistency tests, and measured benchmarks.
 
-### Explicitly excluded
+### Excluded from the v0.1.0 release scope
 
 - React API parity, synthetic events, React scheduling semantics, and ecosystem drop-in compatibility.
-- SSR/hydration/streaming, portals, async resources, Suspense, and server components.
-- Full SVG/property normalization, compiler optimizations, devtools, and router/data-layer integrations.
+- SSR/hydration/streaming, Suspense, and server components.
+- Complete SVG/property normalization, an ahead-of-time compiler, and router/data-layer integrations.
+- React/Preact ecosystem devtools integration. ZUI's own `zui/devtools` package was added after the v0.1.0 baseline.
 
 ## Work plan
 
@@ -43,8 +44,7 @@ flowchart LR
     classDef complete fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
     classDef next fill:#fef9c3,stroke:#ca8a04,stroke-width:2px,color:#713f12
 
-    class m0,m1,m2,m3 complete
-    class m4 next
+    class m0,m1,m2,m3,m4 complete
 ```
 
 ### M0 — Contract and invariants — complete
@@ -77,10 +77,10 @@ flowchart LR
 - [x] Add renderer hook snapshots and best-effort inverse operations for failed DOM commits; document non-atomic user callback/cleanup behavior.
 - [x] Expand the DOM contract for SVG namespaces, form properties, custom elements, and accessibility-oriented properties.
 - [x] Replace catch-all JSX `any` props with checked common HTML/SVG attributes and tag-aware common event targets; both production and development runtimes are consumer-compiled. Full DOM/SVG coverage remains future work.
-- [x] Bound retained tombstones and release disposed DOM/component references; registry diagnostics implemented (`nodeRegistry.diagnostics()`); deep V8 heap allocation profiling snapshots remain for devtools.
+- [x] Bound retained tombstones and release disposed DOM/component references; registry diagnostics implemented (`nodeRegistry.diagnostics()`). Deep V8 heap allocation profiling snapshots remain future work; `zui/devtools` provides live Flat Index and transaction inspection.
 - [x] Run all gates from a clean checkout and record the exact code revision.
 
-## Post-v0.1 options
+## Post-v0.1 additions and remaining options
 
 - [x] Portal support through addressable mount targets (`createPortal`).
 - [x] Explicit error boundary primitive (`ErrorBoundary`) with fallback UI and recovery.
@@ -104,4 +104,4 @@ flowchart LR
 
 ## Definition of done
 
-ZUI is ready for `v0.1.0` when the release gates pass on one recorded code revision, the package is reproducible from a clean install, and the documentation distinguishes measured evidence from future work.
+The v0.1.0 release gates were recorded as passing on a clean checkout. Future releases should record their gates against one exact revision, reproduce the package from a clean install, and distinguish measured evidence from future work.

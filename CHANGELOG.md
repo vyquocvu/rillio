@@ -13,9 +13,21 @@ All notable changes to ZUI are documented here.
 - Modularized `src/dom.ts` into 6 architectural modules under `src/dom/` (`types.ts`, `bindings.ts`, `control-flow.ts`, `mount.ts`, `resource.ts`, `index.ts`), keeping `src/dom.ts` as a 100% backward-compatible re-export facade.
 - Added asynchronous resource primitive `resource()` and `createResource()` in `zui/dom` and `zui/reactive`, providing fine-grained `.loading`, `.data`, `.error`, and `.status` stores, optimistic `.mutate()`, manual `.refetch()`, race condition suppression, and seamless `<Show when={res.loading} fallback={...}>` integration without throw-Promise / VDOM-stack-breaking anti-patterns.
 - Added `zui/devtools` subpath featuring `inspectRoot`, `inspectNode`, `trackTransactions`, `highlightNode`, and `createInspectorOverlay`, providing real-time in-browser inspection of the Addressable Flat Index (`NodeId`, `Kind`, `OwnerId`, `Version`, `Tombstones`, and active `PatchOp` transactions) with zero overhead on non-inspected nodes.
-- Added TaskFlow real-world project management showcase (`examples/realworld/` and `/realworld.html`), demonstrating an end-to-end modern workspace with a 5-column Kanban board, sortable/filterable issues table, real-time analytics KPIs and priority charts, team capacity management, workspace settings with live `ErrorBoundary` transactional recovery, floating toast notifications and accessible modal dialogs via `createPortal`, centralized reactive state via `zui/zustand`, persistent async mock storage, and interactive Flat Index inspection HUD via `zui/devtools`.
+- Added TaskFlow real-world project management showcase (`examples/realworld/` and `/realworld.html`), demonstrating an end-to-end modern workspace with a 5-column Kanban board, sortable/filterable issues table, real-time analytics KPIs and priority charts, team capacity management, workspace settings with live `ErrorBoundary` transactional recovery, floating toast notifications and accessible modal dialogs via `createPortal`, centralized reactive state via `zui/external-store`, persistent async mock storage, and interactive Flat Index inspection HUD via `zui/devtools`.
 - Added `onCommit` transaction telemetry observer and `ops` getter on `PatchEngine` and `PatchTransaction`.
-- Added dedicated test suites: `tests/portal.test.ts` (9 tests), `tests/error-boundary.test.ts` (9 tests), `tests/flat-submodules.test.ts` (9 tests), `tests/dom-submodules.test.ts` (9 tests), `tests/resource.test.ts` (9 tests), and `tests/devtools.test.ts` (5 tests). Total test suite expanded to 163 tests across 17 test files, verified by browser Playwright integration covering the full TaskFlow workspace lifecycle.
+- Added dedicated test suites for portals, error boundaries, Flat Index and reactive DOM submodules, resources, and devtools. Later coverage added the component lifecycle matrix and render diagnostics suites; browser Playwright integration exercises the TaskFlow workspace lifecycle.
+
+### Changed
+- Renamed `src/zustand.ts` to `src/external-store.ts` and added `zui/external-store` as the primary subpath export. The `zui/zustand` import path is retained as a deprecated re-export alias for backward compatibility.
+- Extracted the keyed-list LIS (`longestIncreasingSubsequencePositions`) and move planner (`planStationaryMoves`) into shared `src/flat/lis.ts`, and shallow equality into `src/flat/equality.ts` (`shallowEqual`), replacing duplicated implementations in the compat reconciler, the `zui/dom` list renderer, and the external-store adapter. Public exports are preserved: `zui/compat` still re-exports the LIS and `zui/dom` keeps `longestIncreasingIds` as an adapter. `shallowEqual` now ignores inherited enumerable properties, so the parent-driven render bailout also fires for prop objects carrying prototype-inherited keys.
+
+### Performance
+- `PatchEngine.transaction` no longer snapshots the operation list unless commit listeners are attached.
+- `PatchTransaction.commit` executes removals without allocating filtered operation copies, and `validate()` reuses pooled validation collections instead of allocating four per commit.
+- `Resource.refetch()` and `Resource.mutate()` are fully untracked: calling them inside an effect no longer subscribes that effect to the source store or to resource internals.
+
+### Fixed
+- `PatchTransaction.commit` now consumes operations enqueued by ref callbacks during a commit that also contains removals (the previous filtered snapshot silently dropped them).
 
 ## [0.1.0] - 2026-10-13
 

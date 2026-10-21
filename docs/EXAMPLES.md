@@ -11,7 +11,7 @@ ZUI ships a dashboard showcase for the JSX runtime, an external Zustand store ad
 | `/data-lab.html` | Mount-once reactive bindings, keyed list updates, DOM identity, and async resources |
 | [`docs/COMPONENT-LIFECYCLE.md`](COMPONENT-LIFECYCLE.md) | 100 logged lifecycle tests and current ZUI/React/Preact/Vue browser comparison |
 | `zui/ui` | Reusable visual primitives, tokens, and accessible controls |
-| `zui/zustand` | First-class, zero-dependency Zustand stores (`create`, `shallow`, `useShallow`, `useStore`) |
+| `zui/external-store` | First-class, zero-dependency external stores (`create`, `shallow`, `useShallow`, `useStore`) |
 | `zui/dom` | Explicit mount-once reactive DOM API (`createStore`, `select`, `mount`, `Show`, `For`) |
 | `zui/devtools` | Live in-browser Flat Index inspector overlay and diagnostics |
 | `npm run bench:all` | Node benchmark suites for reactive invalidation, keyed reconciliation, and Flat Index updates |
@@ -19,12 +19,12 @@ ZUI ships a dashboard showcase for the JSX runtime, an external Zustand store ad
 
 Open `/demos.html` for a browser-friendly interactive index.
 
-## 1. Zustand Integration (`zui/zustand`)
+## 1. External Store Integration (`zui/external-store`)
 
 Create bound stores directly without React dependencies, and select slices with atomic or shallow comparison:
 
 ```tsx
-import { create, useShallow } from "zui/zustand";
+import { create, useShallow } from "zui/external-store";
 import { createRoot } from "zui";
 
 interface CartState {
@@ -116,7 +116,7 @@ mount(App, document.getElementById("app")!);
 
 The TaskFlow application under `examples/realworld/` showcases a complete, production-grade workspace built with ZUI:
 
-- **State Management (`zui/zustand`)**: Centralized store with atomic selection for filters, active project, search query, modals, theme toggling, and toasts.
+- **State Management (`zui/external-store`)**: Centralized store with atomic selection for filters, active project, search query, modals, theme toggling, and toasts.
 - **Portals (`createPortal`)**: Floating toast notification manager mounted directly to `document.body`, and an accessible task creation/editing modal dialog with backdrop dismiss and escape handling.
 - **Error Boundaries (`ErrorBoundary`)**: Subtree resilience leveraging transactional savepoints (`savepoint()` / `rollbackTo()`) to catch and recover from isolated render failures without crashing parent layouts.
 - **DevTools HUD (`zui/devtools`)**: Embedded Flat Index inspector overlay displaying real-time `NodeId`, `Kind`, `OwnerId`, and transaction diagnostics.

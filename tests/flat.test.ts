@@ -360,6 +360,48 @@ describe("addressable DOM foundation", () => {
     registry.assertConsistent(root.rootId);
   });
 
+  it("rejects structural operations that overlap a move-many batch", () => {
+    const registry = new NodeRegistry();
+    const patches = new PatchEngine(registry);
+    const container = document.createElement("div");
+    const root = registry.createRoot(container);
+    const owner = registry.createOwner(root.rootId, root.ownerId);
+    const ids: number[] = [];
+
+    patches.transaction(root.rootId, tx => {
+      for (const label of ["a", "b", "c"]) {
+        const id = tx.createElement(owner, "i");
+        ids.push(id);
+        tx.insert(id, root.nodeId);
+      }
+    });
+    const [first, second, third] = ids;
+
+    expect(() => patches.transaction(root.rootId, tx => {
+      tx.insert(tx.createElement(owner, "i"), root.nodeId);
+      tx.moveMany(root.nodeId, ids, [third!, first!, second!], [third!], [first!]);
+    })).toThrow("ZUI_INVALID_CHILD_ORDER");
+
+    expect(() => patches.transaction(root.rootId, tx => {
+      tx.moveMany(root.nodeId, ids, [third!, first!, second!], [third!], [first!]);
+      tx.move(first!, root.nodeId, null);
+    })).toThrow("ZUI_INVALID_CHILD_ORDER");
+
+    expect(() => patches.transaction(root.rootId, tx => {
+      tx.moveMany(root.nodeId, ids, [third!, first!, second!], [third!], [first!]);
+      tx.remove(second!);
+    })).toThrow("ZUI_INVALID_CHILD_ORDER");
+
+    expect(() => patches.transaction(root.rootId, tx => {
+      tx.moveMany(root.nodeId, ids, [third!, first!, second!], [third!], [first!]);
+      tx.moveMany(root.nodeId, ids, [first!, second!, third!], [first!], [second!]);
+    })).toThrow("ZUI_INVALID_CHILD_ORDER");
+
+    expect(registry.children(root.nodeId)).toEqual(ids);
+    expect([...container.children].map(node => node.tagName)).toEqual(["I", "I", "I"]);
+    registry.assertConsistent(root.rootId);
+  });
+
   it("rolls back earlier writes when a text-only batch fails validation", () => {
     const registry = new NodeRegistry();
     const patches = new PatchEngine(registry);

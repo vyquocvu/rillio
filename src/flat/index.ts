@@ -10,6 +10,8 @@ export * from "./security.js";
 export * from "./properties.js";
 export * from "./dom.js";
 export * from "./focus.js";
+export * from "./lis.js";
+export * from "./equality.js";
 export * from "./registry.js";
 export * from "./transaction.js";
 export * from "./engine.js";

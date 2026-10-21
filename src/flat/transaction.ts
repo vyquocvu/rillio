@@ -16,6 +16,32 @@ import type {
 import { SVG_NAMESPACE } from "./properties.js";
 import { validateProperty } from "./security.js";
 
+type ValidationScratch = {
+  removed: Set<NodeId>;
+  inserted: Set<NodeId>;
+  projectedChildren: Set<NodeId>;
+  projectedParents: Map<NodeId, NodeId | null>;
+};
+
+// Pools are per engine, and a scratch frame stays checked out until its
+// validation finishes. Reentrant validation therefore gets a distinct frame.
+const validationScratchPools = new WeakMap<PatchEngine, ValidationScratch[]>();
+
+function acquireValidationScratch(engine: PatchEngine): ValidationScratch {
+  let pool = validationScratchPools.get(engine);
+  if (!pool) validationScratchPools.set(engine, pool = []);
+  return pool.pop() ?? {
+    removed: new Set<NodeId>(),
+    inserted: new Set<NodeId>(),
+    projectedChildren: new Set<NodeId>(),
+    projectedParents: new Map<NodeId, NodeId | null>()
+  };
+}
+
+function releaseValidationScratch(engine: PatchEngine, scratch: ValidationScratch): void {
+  validationScratchPools.get(engine)!.push(scratch);
+}
+
 export class PatchTransaction {
   private readonly operations: PatchOp[] = [];
   private readonly created: NodeId[] = [];
@@ -109,6 +135,14 @@ export class PatchTransaction {
     this.pushOperation({ kind: "move", nodeId, parentId, beforeId });
   }
 
+  /**
+   * Batched sibling reorder for keyed lists whose children were all reused.
+   * Contract: no other structural operation may overlap this batch — no
+   * insert/move/remove targeting `parentId`, no move/remove of the moved ids,
+   * and no second move-many on the same parent. `validate()` enforces this
+   * with ZUI_INVALID_CHILD_ORDER; the reconcilers uphold it by only batching
+   * fully-reused reorderings (see reconcileChildren and renderList).
+   */
   moveMany(
     parentId: NodeId,
     originalIds: NodeId[],
@@ -183,7 +217,10 @@ export class PatchTransaction {
       this.commitTextOnly();
       return;
     }
-    if (this.onlyCreatedOperations && !this.hasRemovals) {
+    const hasDeferredRefs = this.operations.some(operation =>
+      operation.kind === "props" && this.isCreated(operation.nodeId) && operation.changedKeys.includes("ref")
+    );
+    if (this.onlyCreatedOperations && !this.hasRemovals && !hasDeferredRefs) {
       try {
         this.commitCreatedOnly();
         return;
@@ -192,12 +229,11 @@ export class PatchTransaction {
         throw error;
       }
     }
-    this.validate();
-    const removals = this.hasRemovals ? this.operations.filter(op => op.kind === "remove") : undefined;
-    const changes = removals ? this.operations.filter(op => op.kind !== "remove") : this.operations;
+    let validatedOperationCount = this.validate();
     // Fresh records are discarded as a subtree if commit fails, so per-op
     // undo closures are unnecessary when this transaction only touches them.
-    const undo: Array<() => void> | undefined = this.onlyCreatedOperations ? undefined : [];
+    let undo: Array<() => void> | undefined =
+      this.onlyCreatedOperations && !hasDeferredRefs ? undefined : [];
     const deferredRefs: Array<() => void> = [];
     let operationIndex = 0;
     let refIndex = 0;
@@ -205,13 +241,25 @@ export class PatchTransaction {
       // Ref callbacks on fresh nodes run after their newly-built DOM subtree is
       // attached. A callback may enqueue more work into this same transaction,
       // so keep consuming operations before advancing to the next callback.
-      while (operationIndex < changes.length || refIndex < deferredRefs.length) {
-        if (operationIndex >= changes.length) {
+      // Removals are skipped here and executed after the structural/property
+      // commit, without materializing a filtered copy of the op list.
+      while (operationIndex < this.operations.length || refIndex < deferredRefs.length) {
+        if (validatedOperationCount < this.operations.length) {
+          // A ref callback may append work after the first validation pass.
+          // Revalidate the uncommitted suffix against the registry as it now
+          // stands, while carrying forward removals that are still deferred.
+          validatedOperationCount = this.validateFrom(operationIndex);
+          // A callback can extend a created-only transaction with existing
+          // nodes after the undo mode was selected.
+          if (!undo && !this.onlyCreatedOperations) undo = [];
+        }
+        if (operationIndex >= this.operations.length) {
           deferredRefs[refIndex++]!();
           continue;
         }
-        const operation = changes[operationIndex++]!;
-        if (operation.kind === "move-many") {
+      const operation = this.operations[operationIndex++]!;
+      if (operation.kind === "remove") continue;
+      if (operation.kind === "move-many") {
           if (undo) undo.push(() => this.engine.restoreChildrenOrder(operation.parentId, operation.originalIds));
           this.engine.moveChildren(
             operation.parentId,
@@ -275,9 +323,12 @@ export class PatchTransaction {
       }
       this.committed = true;
       let disposalFailure: unknown;
-      for (const operation of removals ?? []) {
-        try { this.engine.removeSubtree(operation.nodeId); }
-        catch (error) { disposalFailure ??= error; }
+      if (this.hasRemovals) {
+        for (const operation of this.operations) {
+          if (operation.kind !== "remove") continue;
+          try { this.engine.removeSubtree(operation.nodeId); }
+          catch (error) { disposalFailure ??= error; }
+        }
       }
       if (disposalFailure) throw disposalFailure;
     } catch (error) {
@@ -424,71 +475,94 @@ export class PatchTransaction {
   private pushOperation(operation: PatchOp): void {
     if (operation.kind !== "text") this.onlyTextOperations = false;
     if (operation.kind === "remove") this.hasRemovals = true;
-    if (operation.kind !== "move-many" && !this.isCreated(operation.nodeId)) this.onlyCreatedOperations = false;
+    if (operation.kind !== "move-many" && !this.isCreated(operation.nodeId)) {
+      this.onlyCreatedOperations = false;
+    }
     this.operations.push(operation);
   }
 
-  private validate(): void {
-    const removed = new Set<NodeId>();
-    const inserted = new Set<NodeId>();
-    const projectedChildren = new Set<NodeId>();
-    const projectedParents = new Map<NodeId, NodeId | null>();
+  private validate(): number {
+    return this.validateFrom(0);
+  }
+
+  private validateFrom(startIndex: number): number {
+    const endIndex = this.operations.length;
+    const scratch = acquireValidationScratch(this.engine);
+    const { removed, inserted, projectedChildren, projectedParents } = scratch;
+    removed.clear();
+    inserted.clear();
+    projectedChildren.clear();
+    projectedParents.clear();
     const projectedParent = (nodeId: NodeId): NodeId | null =>
       projectedParents.has(nodeId)
         ? projectedParents.get(nodeId)!
         : this.engine.registry.getNode(nodeId).parentId;
 
-    for (const operation of this.operations) {
-      if (operation.kind === "move-many") {
-        this.validateMoveMany(operation);
-        continue;
+    try {
+      // Prefix removals are not physically applied until the end of commit,
+      // but suffix operations must still observe their logical removal.
+      for (let index = 0; index < startIndex; index++) {
+        const operation = this.operations[index]!;
+        if (operation.kind === "remove") removed.add(operation.nodeId);
       }
-      const node = this.engine.registry.getNode(operation.nodeId);
-      if (node.rootId !== this.rootId || node.disposed) throw new Error("ZUI_TRANSACTION_NODE");
-      if (operation.kind === "remove") {
-        if (removed.has(operation.nodeId)) throw new Error("ZUI_TRANSACTION_DUPLICATE_REMOVE");
-        removed.add(operation.nodeId);
-        continue;
-      }
-      if (removed.has(operation.nodeId)) throw new Error("ZUI_TRANSACTION_AFTER_REMOVE");
-      if (operation.kind === "insert" || operation.kind === "move") {
-        const parent = this.engine.registry.getNode(operation.parentId);
-        if (parent.rootId !== this.rootId || parent.disposed) throw new Error("ZUI_TRANSACTION_PARENT");
-        if (operation.beforeId !== null) {
-          const before = this.engine.registry.getNode(operation.beforeId);
-          if (before.rootId !== this.rootId || before.disposed) throw new Error("ZUI_TRANSACTION_ANCHOR");
-          if (operation.beforeId === operation.nodeId || projectedParent(operation.beforeId) !== operation.parentId) {
-            throw new Error("ZUI_INVALID_ANCHOR");
+
+      for (let index = startIndex; index < endIndex; index++) {
+        const operation = this.operations[index]!;
+        if (operation.kind === "move-many") {
+          this.validateMoveMany(operation, endIndex);
+          continue;
+        }
+        const node = this.engine.registry.getNode(operation.nodeId);
+        if (node.rootId !== this.rootId || node.disposed) throw new Error("ZUI_TRANSACTION_NODE");
+        if (operation.kind === "remove") {
+          if (removed.has(operation.nodeId)) throw new Error("ZUI_TRANSACTION_DUPLICATE_REMOVE");
+          removed.add(operation.nodeId);
+          continue;
+        }
+        if (removed.has(operation.nodeId)) throw new Error("ZUI_TRANSACTION_AFTER_REMOVE");
+        if (operation.kind === "insert" || operation.kind === "move") {
+          const parent = this.engine.registry.getNode(operation.parentId);
+          if (parent.rootId !== this.rootId || parent.disposed) throw new Error("ZUI_TRANSACTION_PARENT");
+          if (operation.beforeId !== null) {
+            const before = this.engine.registry.getNode(operation.beforeId);
+            if (before.rootId !== this.rootId || before.disposed) throw new Error("ZUI_TRANSACTION_ANCHOR");
+            if (operation.beforeId === operation.nodeId || projectedParent(operation.beforeId) !== operation.parentId) {
+              throw new Error("ZUI_INVALID_ANCHOR");
+            }
+          }
+          if (operation.kind === "insert" && projectedParent(operation.nodeId) !== null) {
+            throw new Error("ZUI_TRANSACTION_INSERT_ATTACHED");
+          }
+          if (inserted.has(operation.nodeId) && operation.kind === "insert") {
+            throw new Error("ZUI_TRANSACTION_DUPLICATE_INSERT");
+          }
+          if (operation.nodeId === operation.parentId) throw new Error("ZUI_TRANSACTION_CYCLE");
+          inserted.add(operation.nodeId);
+          const isSameParentMove = operation.kind === "move" &&
+            projectedParent(operation.nodeId) === operation.parentId;
+          const newLeafInsert = this.isCreated(operation.nodeId) &&
+            node.firstChild === null && !projectedChildren.has(operation.nodeId);
+          if (!isSameParentMove && !newLeafInsert) {
+            let ancestor: NodeId | null = operation.parentId;
+            while (ancestor !== null) {
+              if (ancestor === operation.nodeId) throw new Error("ZUI_TRANSACTION_CYCLE");
+              ancestor = projectedParent(ancestor);
+            }
+          }
+          projectedParents.set(operation.nodeId, operation.parentId);
+          projectedChildren.add(operation.parentId);
+        }
+        if (operation.kind === "text" && node.kind !== "text") throw new Error("ZUI_TRANSACTION_TEXT");
+        if (operation.kind === "props") {
+          if (node.kind !== "element") throw new Error("ZUI_TRANSACTION_PROPS");
+          for (const name of operation.changedKeys) {
+            validateProperty(name, operation.next[name]);
           }
         }
-        if (operation.kind === "insert" && projectedParent(operation.nodeId) !== null) {
-          throw new Error("ZUI_TRANSACTION_INSERT_ATTACHED");
-        }
-        if (inserted.has(operation.nodeId) && operation.kind === "insert") {
-          throw new Error("ZUI_TRANSACTION_DUPLICATE_INSERT");
-        }
-        if (operation.nodeId === operation.parentId) throw new Error("ZUI_TRANSACTION_CYCLE");
-        inserted.add(operation.nodeId);
-        const isSameParentMove = operation.kind === "move" &&
-          projectedParent(operation.nodeId) === operation.parentId;
-        const newLeafInsert = this.isCreated(operation.nodeId) && !projectedChildren.has(operation.nodeId);
-        if (!isSameParentMove && !newLeafInsert) {
-          let ancestor: NodeId | null = operation.parentId;
-          while (ancestor !== null) {
-            if (ancestor === operation.nodeId) throw new Error("ZUI_TRANSACTION_CYCLE");
-            ancestor = projectedParent(ancestor);
-          }
-        }
-        projectedParents.set(operation.nodeId, operation.parentId);
-        projectedChildren.add(operation.parentId);
       }
-      if (operation.kind === "text" && node.kind !== "text") throw new Error("ZUI_TRANSACTION_TEXT");
-      if (operation.kind === "props") {
-        if (node.kind !== "element") throw new Error("ZUI_TRANSACTION_PROPS");
-        for (const name of operation.changedKeys) {
-          validateProperty(name, operation.next[name]);
-        }
-      }
+      return endIndex;
+    } finally {
+      releaseValidationScratch(this.engine, scratch);
     }
   }
 
@@ -498,14 +572,18 @@ export class PatchTransaction {
     this.lastCreatedNode = node ?? this.engine.registry.getNode(nodeId);
   }
 
-  private validateMoveMany(operation: Extract<PatchOp, { kind: "move-many" }>): void {
+  private validateMoveMany(
+    operation: Extract<PatchOp, { kind: "move-many" }>,
+    candidateEndIndex = this.operations.length
+  ): void {
     const parent = this.engine.registry.getNode(operation.parentId);
     if (parent.rootId !== this.rootId || parent.disposed) throw new Error("ZUI_TRANSACTION_PARENT");
     if (operation.movingIds.length !== operation.beforeIds.length || operation.finalIds.length !== operation.originalIds.length) {
       throw new Error("ZUI_INVALID_CHILD_ORDER");
     }
     const batchedIds = new Set(operation.originalIds);
-    for (const candidate of this.operations) {
+    for (let candidateIndex = 0; candidateIndex < candidateEndIndex; candidateIndex++) {
+      const candidate = this.operations[candidateIndex]!;
       if (candidate === operation) continue;
       if (candidate.kind === "insert" && candidate.parentId === operation.parentId) {
         throw new Error("ZUI_INVALID_CHILD_ORDER");
@@ -568,4 +646,5 @@ export class PatchTransaction {
     operation.movingRecords = movingRecords;
     operation.beforeRecords = beforeRecords;
   }
+
 }

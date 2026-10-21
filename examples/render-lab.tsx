@@ -1,5 +1,5 @@
 import { createRoot, useRef, useState } from "zui";
-import { create } from "zui/zustand";
+import { create } from "zui/external-store";
 
 interface LabStore {
   count: number;

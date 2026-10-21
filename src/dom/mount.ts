@@ -1,4 +1,5 @@
 import type { Dispose, Store } from "../reactive.js";
+import { longestIncreasingSubsequencePositions, planStationaryMoves } from "../flat.js";
 import type { Key, NodeId, OwnerId, PatchTransaction, RootHandle } from "../flat.js";
 import type { Scope, Child, Conditional, Repetition, VNode, Binding } from "./types.js";
 import {
@@ -231,14 +232,15 @@ export function renderList<T>(
         }
 
         const nextIds = keys.map(key => reordered.get(key)!.nodeId);
-        const stationary = longestIncreasingIds(nextIds, oldIndexById);
-        let newSuffixStart = nextIds.length;
-        while (newSuffixStart > 0 && !oldIndexById.has(nextIds[newSuffixStart - 1]!)) newSuffixStart--;
-        let anchor: NodeId | null = null;
-        for (let i = nextIds.length - 1; i >= 0; i--) {
-          const nodeId = nextIds[i]!;
-          if (i < newSuffixStart && !stationary.has(nodeId)) update.move(nodeId, regionId, anchor);
-          anchor = nodeId;
+        const encoded = new Array<number>(nextIds.length).fill(0);
+        for (let index = 0; index < nextIds.length; index++) {
+          const oldIndex = oldIndexById.get(nextIds[index]!);
+          if (oldIndex !== undefined) encoded[index] = oldIndex + 1;
+        }
+        const stationary = longestIncreasingSubsequencePositions(encoded);
+        const plan = planStationaryMoves(nextIds, stationary, index => encoded[index] !== 0);
+        for (let index = 0; index < plan.movingIds.length; index++) {
+          update.move(plan.movingIds[index]!, regionId, plan.beforeIds[index]!);
         }
         entries = reordered;
       });
@@ -249,40 +251,20 @@ export function renderList<T>(
   return [scope.value];
 }
 
+/** Stationary-id set adapter over the shared LIS in `flat/lis.ts`. */
 export function longestIncreasingIds(
   nextIds: readonly NodeId[],
   oldIndexById: ReadonlyMap<NodeId, number>
 ): Set<NodeId> {
-  const ids: NodeId[] = [];
-  const indexes: number[] = [];
-  for (const id of nextIds) {
-    const index = oldIndexById.get(id);
-    if (index !== undefined) {
-      ids.push(id);
-      indexes.push(index);
-    }
+  const encoded = new Array<number>(nextIds.length).fill(0);
+  for (let index = 0; index < nextIds.length; index++) {
+    const oldIndex = oldIndexById.get(nextIds[index]!);
+    if (oldIndex !== undefined) encoded[index] = oldIndex + 1;
   }
-  if (indexes.length === 0) return new Set();
-
-  const predecessors = new Array<number>(indexes.length).fill(-1);
-  const tails: number[] = [];
-  for (let i = 0; i < indexes.length; i++) {
-    let low = 0;
-    let high = tails.length;
-    while (low < high) {
-      const middle = (low + high) >>> 1;
-      if (indexes[tails[middle]!]! < indexes[i]!) low = middle + 1;
-      else high = middle;
-    }
-    if (low > 0) predecessors[i] = tails[low - 1]!;
-    tails[low] = i;
-  }
-
+  const stationary = longestIncreasingSubsequencePositions(encoded);
   const result = new Set<NodeId>();
-  let cursor = tails[tails.length - 1]!;
-  while (cursor !== -1) {
-    result.add(ids[cursor]!);
-    cursor = predecessors[cursor]!;
+  for (let index = 0; index < nextIds.length; index++) {
+    if (stationary[index] === 1) result.add(nextIds[index]!);
   }
   return result;
 }

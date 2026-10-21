@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { createRoot, render, jsx, patchEngine, useState, useEffect, useMemo, useRef } from "../src/compat.js";
+import { createRoot, render, jsx, useState, useEffect, useMemo, useRef } from "../src/compat.js";
 
 describe("React-style compatibility runtime", () => {
   it("rerenders function component state while preserving host DOM identity", () => {
@@ -57,17 +57,23 @@ describe("React-style compatibility runtime", () => {
     });
 
     root.render(view(rows));
+    const list = container.querySelector("ul")!;
     const originalNodes = new Map(
       [...container.querySelectorAll("li")].map(node => [node.getAttribute("data-id"), node])
     );
-    const moveRange = vi.spyOn(patchEngine, "moveRange");
+    const originalInsertBefore = list.insertBefore.bind(list);
+    let insertBeforeCalls = 0;
+    const insertSpy = vi.spyOn(list, "insertBefore").mockImplementation((node, before) => {
+      insertBeforeCalls++;
+      return originalInsertBefore(node, before);
+    });
 
     root.render(view(rows.map(row => ({ ...row }))));
-    expect(moveRange).not.toHaveBeenCalled();
+    expect(insertBeforeCalls).toBe(0);
 
     const rotated = [...rows.slice(1), rows[0]!];
     root.render(view(rotated));
-    expect(moveRange).toHaveBeenCalledTimes(1);
+    expect(insertBeforeCalls).toBe(1);
     expect([...container.querySelectorAll("li")].map(node => node.getAttribute("data-id")))
       .toEqual(rows.slice(1).concat(rows[0]!).map(row => String(row.id)));
     for (const node of container.querySelectorAll("li")) {
@@ -75,9 +81,9 @@ describe("React-style compatibility runtime", () => {
     }
 
     root.render(view([...rotated, { id: 12, value: "row-12" }]));
-    expect(moveRange).toHaveBeenCalledTimes(1);
+    expect(insertBeforeCalls).toBe(1);
 
-    moveRange.mockRestore();
+    insertSpy.mockRestore();
     root.unmount();
   });
 

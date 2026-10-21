@@ -99,7 +99,7 @@ try {
 
   await page.evaluate(async () => {
     const { createRoot, jsx } = await import("/package/index.js");
-    const { useStore } = await import("/package/zustand.js");
+    const { useStore } = await import("/package/external-store.js");
     let state = { count: 0 };
     const listeners = new Set();
     const store = {

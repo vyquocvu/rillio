@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { createRoot, jsx, useState } from "../src/compat.js";
-import { create } from "../src/zustand.js";
+import { create } from "../src/external-store.js";
 
 describe("render diagnostics", () => {
   it("shows local updates stay in their owner and parent updates skip unchanged descendants", () => {

@@ -11,6 +11,7 @@ ZUI supports the standard automatic JSX transform shape (`jsx`, `jsxs`, `jsxDEV`
 - keyed `.map()` output;
 - native-style event props such as `onClick`, `onInput`, and `onDoubleClick`;
 - callback/object refs on host elements.
+- ZUI's `createPortal` and `ErrorBoundary` primitives, with the semantics documented in the API guide.
 
 ## Semantic differences
 
@@ -22,6 +23,6 @@ ZUI supports the standard automatic JSX transform shape (`jsx`, `jsxs`, `jsxDEV`
 
 ## Not promised
 
-React/Preact ecosystem drop-in compatibility, React hooks beyond the documented subset, Context, reducer APIs, synthetic events, concurrent rendering, Suspense, portals, SSR/hydration, full SVG/property normalization, or framework-specific devtools.
+React/Preact ecosystem drop-in compatibility, React hooks beyond the documented subset, Context, reducer APIs, synthetic events, concurrent rendering, Suspense, SSR/hydration, complete SVG/property normalization, or React/Preact devtools integration. ZUI provides its own inspector under `zui/devtools`.
 
 Use [`docs/API.md`](API.md) for the supported ZUI contract rather than treating the JSX spelling as a compatibility guarantee.

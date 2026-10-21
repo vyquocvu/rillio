@@ -542,26 +542,32 @@ export function createResource<T, S>(
       };
     },
     refetch() {
-      const sourceVal = hasSource
-        ? typeof source === "function"
-          ? (source as () => S)()
-          : (source as Store<S>).get()
-        : lastSourceValue;
-      return runFetch(sourceVal, true);
+      // Imperative call: a tracking caller must not subscribe to the source
+      // or to the resource internals that runFetch reads.
+      return engine.untrack(() => {
+        const sourceVal = hasSource
+          ? typeof source === "function"
+            ? (source as () => S)()
+            : (source as Store<S>).get()
+          : lastSourceValue;
+        return runFetch(sourceVal, true);
+      });
     },
     mutate(next) {
       if (disposed) return;
       currentRequestId++;
-      const prev = dataStore.get();
-      const nextVal =
-        typeof next === "function"
-          ? (next as (prev: T | undefined) => T | undefined)(prev)
-          : next;
-      engine.batch(() => {
-        dataStore.set(nextVal);
-        errorStore.set(undefined);
-        loadingStore.set(false);
-        statusStore.set("success");
+      engine.untrack(() => {
+        const prev = dataStore.get();
+        const nextVal =
+          typeof next === "function"
+            ? (next as (prev: T | undefined) => T | undefined)(prev)
+            : next;
+        engine.batch(() => {
+          dataStore.set(nextVal);
+          errorStore.set(undefined);
+          loadingStore.set(false);
+          statusStore.set("success");
+        });
       });
     },
     dispose() {

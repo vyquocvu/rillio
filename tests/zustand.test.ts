@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 import { createRoot, jsx } from "../src/compat.js";
-import { useStore, create as createZuiBound, shallow, useShallow, createStore as createZuiStore } from "../src/zustand.js";
+import { useStore, create as createZuiBound, shallow, useShallow, createStore as createZuiStore } from "../src/external-store.js";
 
 interface CounterStore {
   count: number;

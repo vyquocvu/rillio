@@ -158,9 +158,9 @@ flowchart TB
 
 Hooks are attached to component payloads stored on component records. A state setter addresses the owning component by `NodeId`; it cannot update a disposed record or write during render. Effects are flushed after the root transaction.
 
-## External store integration (`zui/zustand`)
+## External store integration (`zui/external-store`)
 
-ZUI applications can manage global state outside the component tree through external stores. Rather than relying on a React-like Context tree (which causes cascade re-renders across consumers), `zui/zustand` connects directly to external store APIs using structural typing (`getState`, `subscribe`):
+ZUI applications can manage global state outside the component tree through external stores. Rather than relying on a React-like Context tree (which causes cascade re-renders across consumers), `zui/external-store` connects directly to external store APIs using structural typing (`getState`, `subscribe`):
 
 1. **Bound hooks via `create()`**: `create` generates a component hook bound to either a state creator function or an existing vanilla store. It matches the standard Zustand API while invoking ZUI's `useStore` internally.
 2. **Fine-grained selector caching**: Components subscribe only to their selected slice. When the store updates, the listener recomputes `selector(nextState)`. If the result passes `equalityFn` (`Object.is` by default, or `shallow`), the component skips reconciliation completely.
@@ -215,6 +215,8 @@ The flat addressable DOM engine is decomposed into cohesive, single-responsibili
 - **`src/flat/properties.ts`**: Normalized property applicators (`setProperty`, `setHtmlProperty`, `setSvgProperty`, `setCustomElementProperty`), inline style diffing (`applyStyle`), attribute reflection (`setAttribute`), and XML/SVG namespace constants.
 - **`src/flat/security.ts`**: Sink protection, URL scheme sanitization (`isUnsafeUrlProperty`), and property safety assertions (`validateProperty`).
 - **`src/flat/focus.ts`**: Active focus and selection preservation across DOM replacements and sibling moves (`captureFocus`, `captureFocusInRecords`, `captureFocusInChildren`, `restoreFocus`).
+- **`src/flat/lis.ts`**: Shared keyed-list diffing algorithms — patience-sorting LIS (`longestIncreasingSubsequencePositions`) and the right-to-left move planner (`planStationaryMoves`) used by both the compat reconciler and the `zui/dom` list renderer.
+- **`src/flat/equality.ts`**: Allocation-free shallow equality over own enumerable keys (`shallowEqual`), shared by the compat props bailout and the external-store adapter.
 
 ## Module structure (`src/dom/`)
 
@@ -225,7 +227,7 @@ The explicit mount-once reactive DOM surface is decomposed into cohesive, single
 - **`src/dom/types.ts`**: Core interfaces (`Binding<T>`, `Child`, `VNode`, `Conditional`, `Repetition<T>`, `Scope<T>`) and the `BINDING` brand symbol.
 - **`src/dom/bindings.ts`**: Fine-grained reactive bindings (`select`, `derive`), store primitives (`createStore`, `useStore`), reactive evaluation utilities (`isStore`, `isBinding`, `readReactive`, `evaluate`, `stringify`), and computation dispatchers (`computed`, `batch`, `untrack`).
 - **`src/dom/control-flow.ts`**: Declarative control flow components (`Show`, `For`, `Fragment`, `jsx`, `jsxs`) and structural predicates (`isConditional`, `isRepetition`).
-- **`src/dom/mount.ts`**: Lifecycle and mounting coordinator (`mount`), scope managers (`createScope`, `attachScope`), property renderers (`renderProps`), child dispatchers (`renderChild`, `renderList`), and key diffing (`longestIncreasingIds`).
+- **`src/dom/mount.ts`**: Lifecycle and mounting coordinator (`mount`), scope managers (`createScope`, `attachScope`), property renderers (`renderProps`), child dispatchers (`renderChild`, `renderList`), and the `longestIncreasingIds` adapter over the shared LIS in `src/flat/lis.ts`.
 - **`src/dom/resource.ts`**: Asynchronous resource store primitive (`resource`, `createResource`) providing fine-grained loading/data/error states, race condition suppression, and zero-VDOM-stack-break `<Show>` integration.
 
 ## Module structure (`src/compat/`)
@@ -236,7 +238,7 @@ The JSX component runtime and reconciliation engine is decomposed into cohesive 
 - **`src/compat/index.ts`**: Public export barrel for the JSX compatibility runtime.
 - **`src/compat/types.ts`**: Types for component records, hook states, reconciliation contexts, and portals.
 - **`src/compat/state.ts`**: Global singletons (`nodeRegistry`, `patchEngine`, `componentState`, `cleanupState`).
-- **`src/compat/hooks.ts`**: React-compatible hook implementations (`useState`, `useReducer`, `useEffect`, `useLayoutEffect`, `useRef`, `useMemo`, `useCallback`, `useTransition`, `useId`).
+- **`src/compat/hooks.ts`**: Component hooks currently implemented by ZUI (`useState`, `useEffect`, `useRef`, `useMemo`, and `useCallback`).
 - **`src/compat/portal.ts`**: `createPortal` implementation integrating out-of-band target roots into the Flat Index.
 - **`src/compat/error-boundary.ts`**: `ErrorBoundary` component with transactional savepoints (`savepoint()`, `rollbackTo()`).
 - **`src/compat/reconcile.ts`**: Fine-grained component subtree reconciliation and diffing.
@@ -244,7 +246,7 @@ The JSX component runtime and reconciliation engine is decomposed into cohesive 
 
 ## Files
 
-- `src/flat/`: Addressable DOM modules (`registry.ts`, `transaction.ts`, `engine.ts`, `dom.ts`, `properties.ts`, `security.ts`, `focus.ts`, `types.ts`, `index.ts`).
+- `src/flat/`: Addressable DOM modules (`registry.ts`, `transaction.ts`, `engine.ts`, `dom.ts`, `properties.ts`, `security.ts`, `focus.ts`, `lis.ts`, `equality.ts`, `types.ts`, `index.ts`).
 - `src/flat.ts`: Re-export façade for backward compatibility.
 - `src/compat/`: JSX runtime and reconciliation modules (`types.ts`, `state.ts`, `hooks.ts`, `portal.ts`, `error-boundary.ts`, `reconcile.ts`, `root.ts`, `index.ts`).
 - `src/compat.ts`: Re-export façade for JSX runtime.

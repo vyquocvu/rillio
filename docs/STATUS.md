@@ -1,6 +1,6 @@
 # ZUI Status — Flat Index / UI library work
 
-Updated: 2026-10-14. The verified clean-checkout release revision is `ba338f8`.
+Updated: 2026-10-21. The v0.1.0 clean-checkout verification record is for `ba338f8`. The source snapshot reviewed includes post-release work recorded under `[Unreleased]` in the changelog.
 
 ## Implemented
 
@@ -15,10 +15,14 @@ Updated: 2026-10-14. The verified clean-checkout release revision is `ba338f8`.
 - ESM/declaration exports and strict external consumer tests cover package subpaths and both JSX modes.
 - Expand the DOM contract for SVG namespaces (`createElementNS`), presentation attributes, and XML namespaces (`xlink:href`, `xml:space`); form properties (`selected`, `indeterminate`, `readOnly`, `required`, `multiple`, `autoFocus`, `formNoValidate`, `htmlFor`) and controlled input drift restoration; custom elements with `is` attribute and property assignment; and accessibility-oriented ARIA boolean/token normalization.
 - `nodeRegistry.diagnostics()` reports real-time diagnostic counts of active/tombstoned nodes, owners, and roots to verify memory boundedness and leak prevention.
-- First-class, zero-dependency Zustand integration in `zui/zustand` with `create`, `createStore`, `useStore`, `shallow`, and `useShallow`.
+- First-class, zero-dependency external store integration in `zui/external-store` with `create`, `createStore`, `useStore`, `shallow`, and `useShallow` (Zustand-compatible API).
 - Canonical `zui/dom` subpath established for the explicit reactive DOM API, retaining `zui/legacy` as a deprecated compatibility alias.
+- Post-release additions include `createPortal`, `ErrorBoundary`, asynchronous resources, the `zui/devtools` inspector, and the TaskFlow application showcase.
+- The JSX runtime skips child reconciliation when a parent update supplies shallow-equal child props.
 
-## Verification
+## v0.1.0 release verification
+
+The results below are the recorded clean-checkout release baseline at `ba338f8`; they are not a new verification run for this documentation update.
 
 Environment: macOS arm64; Node v26.5.0; npm 12.0.2; TypeScript 5.9.3; Vitest 5.0.3; Vite 6.4.4; headless Chromium 156.0.8078.4.
 
@@ -35,14 +39,17 @@ Environment: macOS arm64; Node v26.5.0; npm 12.0.2; TypeScript 5.9.3; Vitest 5.0
 - `npm run profile:browser`: **PASS — Playwright CPU sample ranking for mount/text/no-op; diagnostic only, not timing data**
 - React/Preact behavioral parity: **NOT CLAIMED**
 
-The latest browser medians and methodology are in [PERFORMANCE.md](PERFORMANCE.md). At 2,000 rows ZUI matches or leads React, Preact, and Vue across unchanged (0.3 ms), append/remove (0.4 ms), text update (0.6 ms), and rotation (0.3 ms), is ~6.4×–7.5× faster on reversal (1.0 ms vs 7.5 ms React), and narrowed the cold mount gap to 2.0 ms. These are local diagnostics, not a general ranking.
+The unreleased feature work and its added test coverage are listed in [`CHANGELOG.md`](../CHANGELOG.md). The recorded 113-test count above applies to the v0.1.0 release baseline.
 
-## Remaining release gaps
+The browser medians and methodology are in [PERFORMANCE.md](PERFORMANCE.md). They are local diagnostics, not a general ranking.
 
-- Transaction rollback cannot undo arbitrary ref callbacks or cleanup side effects (documented non-atomic behavior); clean-checkout release verification passed at `79ebab4`.
-- Memory diagnostics are implemented via `nodeRegistry.diagnostics()`; deep V8 heap allocation profiling snapshots remain deferred to future devtools.
-- Cold mount remains slower than React/Vue (2.1 ms vs 1.1 ms / 1.1 ms), though greatly improved from 3.1 ms through zero-allocation commits, monotonic transaction tracking, and cached parent propagation. See [the performance notes](PERFORMANCE.md).
-- CI/CD remains intentionally unconfigured per the repository's existing policy (local gates pass cleanly on Node v26).
-- SSR/hydration, portals, async resources, compiler optimization, devtools, and router/data-layer integrations remain out of scope.
+## Known limitations and future work
+
+- Transaction rollback cannot undo arbitrary ref callbacks or cleanup side effects; cleanup failures may occur after commit.
+- Deep V8 heap allocation profiling snapshots remain future work. The `zui/devtools` package provides live Flat Index inspection and transaction telemetry.
+- Cold mount remains slower than React and Vue in the recorded local comparison. See [the performance notes](PERFORMANCE.md) for measurements and limitations.
+- CI/CD remains intentionally unconfigured per the repository's existing policy.
+- SSR/hydration/streaming, Suspense, server components, an ahead-of-time compiler, and router/data-layer integrations remain out of scope.
+- React/Preact behavioral, scheduling, synthetic-event, and ecosystem compatibility are not promised.
 
 See [the roadmap](../ROADMAP.md), [architecture](ARCHITECTURE.md), [API contract](API.md), and [testing plan](TESTING.md).

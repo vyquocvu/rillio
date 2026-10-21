@@ -80,6 +80,11 @@
       "import": "./dist/package/ui.js",
       "default": "./dist/package/ui.js"
     },
+    "./external-store": {
+      "types": "./dist/package/external-store.d.ts",
+      "import": "./dist/package/external-store.js",
+      "default": "./dist/package/external-store.js"
+    },
     "./zustand": {
       "types": "./dist/package/zustand.d.ts",
       "import": "./dist/package/zustand.js",

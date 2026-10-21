@@ -1,5 +1,5 @@
 import { createRoot, useRef } from "zui";
-import { create, shallow } from "zui/zustand";
+import { create, shallow } from "zui/external-store";
 
 interface StoreState {
   count: number;

@@ -12,7 +12,7 @@ export const createStore = <T>(initial: T): Store<T> => engine.createStore(initi
 
 /**
  * React-familiar naming; unlike React useState, returns a live Store.
- * @deprecated Prefer `createStore` directly in `zui/dom`, or `import { useStore } from "zui/zustand"` for Zustand stores.
+ * @deprecated Prefer `createStore` directly in `zui/dom`, or `import { useStore } from "zui/external-store"` for external stores.
  */
 export const useStore = createStore;
 

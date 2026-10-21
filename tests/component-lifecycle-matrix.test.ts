@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { createRoot, jsx, useEffect, useState } from "../src/compat.js";
-import { create } from "../src/zustand.js";
+import { create } from "../src/external-store.js";
 
 const sizes = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000] as const;
 const cases = [
