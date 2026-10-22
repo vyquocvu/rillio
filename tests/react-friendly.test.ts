@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { jsx, mount, useStore, engine } from "../src/dom.js";
+import { createStore, engine } from "../src/reactive-api.js";
+import { jsx, mount } from "../src/dom.js";
 
 describe("React-friendly ZUI DX", () => {
   it("supports direct store children and controlled value props without rerender", () => {
-    const count = useStore(0);
+    const count = createStore(0);
     const root = document.createElement("div");
     let renders = 0;
     const dispose = mount(() => {
@@ -20,8 +21,8 @@ describe("React-friendly ZUI DX", () => {
   });
 
   it("supports conditional function children and disposes old branches", () => {
-    const visible = useStore(true);
-    const label = useStore("Initial");
+    const visible = createStore(true);
+    const label = createStore("Initial");
     const root = document.createElement("div");
     const baseline = engine.diagnostics().activeComputations;
     const dispose = mount(jsx("main", {
@@ -46,8 +47,8 @@ describe("React-friendly ZUI DX", () => {
     expect(ref.current).toBeNull();
   });
   it("does not remount a conditional branch when only a nested component store changes", () => {
-    const visible = useStore(true);
-    const nested = useStore("before");
+    const visible = createStore(true);
+    const nested = createStore("before");
     const root = document.createElement("div");
     let mounts = 0;
     const baseline = engine.diagnostics().activeComputations;
@@ -76,8 +77,8 @@ describe("React-friendly ZUI DX", () => {
   });
 
   it("untrack prevents unintentional subscriptions", () => {
-    const trigger = useStore(0);
-    const ignored = useStore(0);
+    const trigger = createStore(0);
+    const ignored = createStore(0);
     const root = document.createElement("div");
     let evaluations = 0;
     const dispose = mount(jsx("div", {

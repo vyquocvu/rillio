@@ -25,6 +25,13 @@ button { cursor: pointer; }
 .lab-card h2 { margin: 0 0 7px; font-size: 17px; letter-spacing: -.02em; }
 .lab-card p { color: #67748b; font-size: 13px; line-height: 1.55; }
 .lab-card .lab-muted { margin: 0 0 16px; color: #8792a4; font-size: 12px; }
+.lab-render-overview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 24px; margin-bottom: 16px; }
+.lab-render-overview h2 { margin-bottom: 7px; }
+.lab-render-overview .lab-muted { margin: 0; }
+.lab-render-counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.lab-render-counts > div { padding: 11px 12px; border: 1px solid #e8ebf2; border-radius: 10px; background: #fbfcfe; }
+.lab-render-counts dt { overflow: hidden; color: #7c879b; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.lab-render-counts dd { margin: 5px 0 0; color: #30276f; font-size: 22px; font-weight: 800; letter-spacing: -.04em; }
 .lab-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .lab-button { padding: 9px 12px; border: 1px solid #dce1eb; border-radius: 9px; color: #303b52; background: #f8f9fc; font-size: 12px; font-weight: 700; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
 .lab-button:hover { transform: translateY(-1px); border-color: #b8b0ed; background: #f2f0ff; }
@@ -42,4 +49,5 @@ button { cursor: pointer; }
 .lab-row button { padding: 5px 8px; border: 0; border-radius: 6px; color: #6256c9; background: #f0efff; font-size: 10px; font-weight: 700; }
 .lab-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 20px; color: #8792a4; font-size: 11px; }
 .lab-footer a { color: #6256c9; text-decoration: none; }
-@media (max-width: 720px) { .lab-shell { width: min(100% - 28px, 560px); padding-top: 28px; } .lab-grid { grid-template-columns: 1fr; } .lab-hero { padding: 23px; } }
+@media (max-width: 720px) { .lab-shell { width: min(100% - 28px, 560px); padding-top: 28px; } .lab-grid { grid-template-columns: 1fr; } .lab-hero { padding: 23px; } .lab-render-overview { grid-template-columns: 1fr; gap: 16px; } }
+@media (max-width: 420px) { .lab-render-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

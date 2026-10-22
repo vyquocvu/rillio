@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { createRoot, jsx, nodeRegistry, getAddressableRoot, useEffect, useState } from "../src/compat.js";
-import { mount, createStore, Show, select, registry } from "../src/dom.js";
+import { createStore } from "../src/reactive-api.js";
+import { mount, Show, select, registry } from "../src/dom.js";
 
 describe("addressable lifecycle", () => {
   it("rejects overlapping JSX and reactive roots without orphaning the mounted tree", () => {

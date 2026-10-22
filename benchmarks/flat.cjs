@@ -47,6 +47,50 @@ async function main() {
     }));
     root.unmount();
   }
+
+  const groupCount = 16;
+  const itemsPerGroup = 64;
+  const reorderIterations = 30;
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  let shuffled = false;
+  function groupedLists() {
+    return jsx("main", {
+      children: Array.from({ length: groupCount }, (_, group) => {
+        const ids = Array.from({ length: itemsPerGroup }, (_, id) => id);
+        const order = shuffled
+          ? ids.filter((_, index) => index % 2 === 1).concat(ids.filter((_, index) => index % 2 === 0))
+          : ids;
+        return jsx("section", {
+          children: jsx("ul", {
+            children: order.map(id => jsx("li", { children: `${group}:${id}` }, id))
+          })
+        }, group);
+      })
+    });
+  }
+  root.render(groupedLists());
+  shuffled = true;
+  root.render(groupedLists());
+  const reorderStarted = performance.now();
+  for (let iteration = 0; iteration < reorderIterations; iteration++) {
+    shuffled = !shuffled;
+    root.render(groupedLists());
+  }
+  const reorderElapsed = performance.now() - reorderStarted;
+  const reorderRoot = getAddressableRoot(container);
+  if (!reorderRoot) throw new Error("multi-list benchmark root missing");
+  nodeRegistry.assertConsistent(reorderRoot.rootId);
+  console.log(JSON.stringify({
+    architecture: "flat-index",
+    scenario: "multi-list-keyed-reorder",
+    groups: groupCount,
+    itemsPerGroup,
+    iterations: reorderIterations,
+    averageMs: reorderElapsed / reorderIterations,
+    nodes: container.querySelectorAll("li").length
+  }));
+  root.unmount();
 }
 
 main().catch(error => {

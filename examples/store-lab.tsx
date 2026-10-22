@@ -19,6 +19,12 @@ function useRenderTrace(name: string): number {
   const renders = useRef(0);
   renders.current += 1;
   console.log(`[store-lab] ${name} render #${renders.current}`);
+  // Keep the overview in sync without subscribing it to the demo store. If it
+  // subscribed, updating the counters could itself trigger more renders.
+  queueMicrotask(() => {
+    const counter = document.querySelector<HTMLOutputElement>(`[data-render-count="${name}"]`);
+    if (counter) counter.value = String(renders.current);
+  });
   return renders.current;
 }
 
@@ -72,8 +78,20 @@ function App() {
       <header class="lab-hero">
         <h1>Store selector lab</h1>
         <p>Update one field at a time, then compare the console. A selector should notify its component only when its selected value changes; the shallow object selector should update when either field changes.</p>
-        <div class="lab-callout">Logs use <code>[store-lab]</code>. The App render count should stay at {renders} while the store updates.</div>
+        <div class="lab-callout">Logs use <code>[store-lab]</code>. The App component renders {renders} time initially and should not render again when the store changes.</div>
       </header>
+      <section class="lab-card lab-render-overview" aria-labelledby="render-overview-title">
+        <div>
+          <h2 id="render-overview-title">Render count by component</h2>
+          <p class="lab-muted">Counts function renders. A text or DOM node can update without its parent component rendering.</p>
+        </div>
+        <dl class="lab-render-counts">
+          <div><dt>App</dt><dd><output data-render-count="App">{renders}</output></dd></div>
+          <div><dt>CountSlice</dt><dd><output data-render-count="CountSlice">0</output></dd></div>
+          <div><dt>NameSlice</dt><dd><output data-render-count="NameSlice">0</output></dd></div>
+          <div><dt>CombinedSlice</dt><dd><output data-render-count="CombinedSlice">0</output></dd></div>
+        </dl>
+      </section>
       <div class="lab-grid">
         <CountSlice />
         <NameSlice />

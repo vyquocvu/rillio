@@ -346,7 +346,16 @@ export class PatchEngine {
     const capture = (work: () => void): void => {
       try { work(); } catch (error) { failure ??= error; }
     };
-    for (const childId of this.registry.children(nodeId)) capture(() => this.disposeSubtree(childId));
+    // Disposal unlinks each child from this parent. Capture the next sibling
+    // before recursing so we can walk the linked list without allocating the
+    // snapshot array returned by registry.children().
+    let childId = node.firstChild;
+    while (childId !== null) {
+      const currentChildId = childId;
+      const nextSibling = this.registry.getNode(currentChildId).nextSibling;
+      capture(() => this.disposeSubtree(currentChildId));
+      childId = nextSibling;
+    }
     capture(() => this.clearBindings(node));
     const cleanup = node.cleanup;
     node.cleanup = undefined;

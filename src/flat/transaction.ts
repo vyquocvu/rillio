@@ -23,6 +23,14 @@ type ValidationScratch = {
   projectedParents: Map<NodeId, NodeId | null>;
 };
 
+type MoveManyConflictIndex = {
+  insertedParentIds: Set<NodeId>;
+  movedParentIds: Set<NodeId>;
+  movedNodeIds: Set<NodeId>;
+  removedNodeIds: Set<NodeId>;
+  moveManyParentCounts: Map<NodeId, number>;
+};
+
 // Pools are per engine, and a scratch frame stays checked out until its
 // validation finishes. Reentrant validation therefore gets a distinct frame.
 const validationScratchPools = new WeakMap<PatchEngine, ValidationScratch[]>();
@@ -52,6 +60,7 @@ export class PatchTransaction {
   private hasRemovals = false;
   private lastCreatedId = 0;
   private lastCreatedNode: FlatNode | undefined;
+  private moveManyConflicts: MoveManyConflictIndex | undefined;
 
   constructor(private readonly engine: PatchEngine, readonly rootId: RootId) {
     this.startNodeId = engine.registry.nextId;
@@ -153,7 +162,9 @@ export class PatchTransaction {
     if (movingIds.length === 0) return;
     this.onlyTextOperations = false;
     this.onlyCreatedOperations = false;
-    this.operations.push({ kind: "move-many", parentId, originalIds, finalIds, movingIds, beforeIds });
+    const operation = { kind: "move-many", parentId, originalIds, finalIds, movingIds, beforeIds } as const;
+    this.indexMoveManyConflict(operation);
+    this.operations.push(operation);
   }
 
   patchProps(nodeId: NodeId, previous: Record<string, any>, next: Record<string, any>): void {
@@ -372,6 +383,7 @@ export class PatchTransaction {
     }
     this.created.length = savepoint.createdCount;
     this.operations.length = savepoint.operationsCount;
+    if (this.moveManyConflicts) this.rebuildMoveManyConflictIndex();
     this.onlyTextOperations = savepoint.onlyTextOperations;
     this.onlyCreatedOperations = savepoint.onlyCreatedOperations;
     this.hasRemovals = savepoint.hasRemovals;
@@ -478,6 +490,7 @@ export class PatchTransaction {
     if (operation.kind !== "move-many" && !this.isCreated(operation.nodeId)) {
       this.onlyCreatedOperations = false;
     }
+    if (this.moveManyConflicts) this.addMoveManyConflict(operation);
     this.operations.push(operation);
   }
 
@@ -497,7 +510,6 @@ export class PatchTransaction {
       projectedParents.has(nodeId)
         ? projectedParents.get(nodeId)!
         : this.engine.registry.getNode(nodeId).parentId;
-
     try {
       // Prefix removals are not physically applied until the end of commit,
       // but suffix operations must still observe their logical removal.
@@ -509,7 +521,7 @@ export class PatchTransaction {
       for (let index = startIndex; index < endIndex; index++) {
         const operation = this.operations[index]!;
         if (operation.kind === "move-many") {
-          this.validateMoveMany(operation, endIndex);
+          this.validateMoveMany(operation, this.moveManyConflicts!);
           continue;
         }
         const node = this.engine.registry.getNode(operation.nodeId);
@@ -574,7 +586,7 @@ export class PatchTransaction {
 
   private validateMoveMany(
     operation: Extract<PatchOp, { kind: "move-many" }>,
-    candidateEndIndex = this.operations.length
+    conflicts: MoveManyConflictIndex
   ): void {
     const parent = this.engine.registry.getNode(operation.parentId);
     if (parent.rootId !== this.rootId || parent.disposed) throw new Error("ZUI_TRANSACTION_PARENT");
@@ -582,18 +594,15 @@ export class PatchTransaction {
       throw new Error("ZUI_INVALID_CHILD_ORDER");
     }
     const batchedIds = new Set(operation.originalIds);
-    for (let candidateIndex = 0; candidateIndex < candidateEndIndex; candidateIndex++) {
-      const candidate = this.operations[candidateIndex]!;
-      if (candidate === operation) continue;
-      if (candidate.kind === "insert" && candidate.parentId === operation.parentId) {
-        throw new Error("ZUI_INVALID_CHILD_ORDER");
-      }
-      if (candidate.kind === "move" &&
-        (candidate.parentId === operation.parentId || batchedIds.has(candidate.nodeId))) {
-        throw new Error("ZUI_INVALID_CHILD_ORDER");
-      }
-      if ((candidate.kind === "remove" && batchedIds.has(candidate.nodeId)) ||
-        (candidate.kind === "move-many" && candidate.parentId === operation.parentId)) {
+    if (
+      conflicts.insertedParentIds.has(operation.parentId) ||
+      conflicts.movedParentIds.has(operation.parentId) ||
+      conflicts.moveManyParentCounts.get(operation.parentId)! > 1
+    ) {
+      throw new Error("ZUI_INVALID_CHILD_ORDER");
+    }
+    for (const nodeId of batchedIds) {
+      if (conflicts.movedNodeIds.has(nodeId) || conflicts.removedNodeIds.has(nodeId)) {
         throw new Error("ZUI_INVALID_CHILD_ORDER");
       }
     }
@@ -645,6 +654,45 @@ export class PatchTransaction {
     operation.finalRecords = finalRecords;
     operation.movingRecords = movingRecords;
     operation.beforeRecords = beforeRecords;
+  }
+
+  private indexMoveManyConflict(operation: PatchOp): void {
+    if (!this.moveManyConflicts) {
+      this.moveManyConflicts = {
+        insertedParentIds: new Set(),
+        movedParentIds: new Set(),
+        movedNodeIds: new Set(),
+        removedNodeIds: new Set(),
+        moveManyParentCounts: new Map()
+      };
+      for (const existing of this.operations) this.addMoveManyConflict(existing);
+    }
+    this.addMoveManyConflict(operation);
+  }
+
+  private addMoveManyConflict(operation: PatchOp): void {
+    const conflicts = this.moveManyConflicts!;
+    if (operation.kind === "insert") conflicts.insertedParentIds.add(operation.parentId);
+    else if (operation.kind === "move") {
+      conflicts.movedParentIds.add(operation.parentId);
+      conflicts.movedNodeIds.add(operation.nodeId);
+    } else if (operation.kind === "remove") conflicts.removedNodeIds.add(operation.nodeId);
+    else if (operation.kind === "move-many") {
+      conflicts.moveManyParentCounts.set(
+        operation.parentId,
+        (conflicts.moveManyParentCounts.get(operation.parentId) ?? 0) + 1
+      );
+    }
+  }
+
+  private rebuildMoveManyConflictIndex(): void {
+    const conflicts = this.moveManyConflicts!;
+    conflicts.insertedParentIds.clear();
+    conflicts.movedParentIds.clear();
+    conflicts.movedNodeIds.clear();
+    conflicts.removedNodeIds.clear();
+    conflicts.moveManyParentCounts.clear();
+    for (const operation of this.operations) this.addMoveManyConflict(operation);
   }
 
 }

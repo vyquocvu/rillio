@@ -111,7 +111,8 @@ function Counter() {
 ## Explicit reactive DOM API
 
 ```tsx
-import { createStore, select, mount } from "zui/dom";
+import { createStore } from "zui/reactive";
+import { select, mount } from "zui/dom";
 
 const count = createStore(0);
 mount(() => <button onClick={() => count.set(n => n + 1)}>

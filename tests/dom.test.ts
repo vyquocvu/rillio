@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { createStore, select, derive, mount, jsx, Show, For, patches } from "../src/dom.js";
+import { createStore } from "../src/reactive-api.js";
+import { select, derive, mount, jsx, Show, For, patches } from "../src/dom.js";
 
 describe("frontend MVP", () => {
   it("mounts once and patches reactive text", () => {

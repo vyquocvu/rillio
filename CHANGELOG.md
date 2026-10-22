@@ -18,7 +18,6 @@ All notable changes to ZUI are documented here.
 - Added dedicated test suites for portals, error boundaries, Flat Index and reactive DOM submodules, resources, and devtools. Later coverage added the component lifecycle matrix and render diagnostics suites; browser Playwright integration exercises the TaskFlow workspace lifecycle.
 
 ### Changed
-- Renamed `src/zustand.ts` to `src/external-store.ts` and added `zui/external-store` as the primary subpath export. The `zui/zustand` import path is retained as a deprecated re-export alias for backward compatibility.
 - Extracted the keyed-list LIS (`longestIncreasingSubsequencePositions`) and move planner (`planStationaryMoves`) into shared `src/flat/lis.ts`, and shallow equality into `src/flat/equality.ts` (`shallowEqual`), replacing duplicated implementations in the compat reconciler, the `zui/dom` list renderer, and the external-store adapter. Public exports are preserved: `zui/compat` still re-exports the LIS and `zui/dom` keeps `longestIncreasingIds` as an adapter. `shallowEqual` now ignores inherited enumerable properties, so the parent-driven render bailout also fires for prop objects carrying prototype-inherited keys.
 
 ### Performance

@@ -10,11 +10,10 @@ export default {
       "zui/jsx-dev-runtime": source("jsx-dev-runtime.ts"),
       "zui/ui": source("ui.ts"),
       "zui/external-store": source("external-store.ts"),
-      "zui/zustand": source("zustand.ts"),
       "zui/dom": source("dom.ts"),
       "zui/legacy": source("dom.ts"),
       "zui/flat": source("flat.ts"),
-      "zui/reactive": source("reactive.ts"),
+      "zui/reactive": source("reactive-api.ts"),
       "zui/devtools": source("devtools.ts"),
       zui: source("index.ts")
     }
@@ -29,6 +28,7 @@ export default {
         renderLab: page("render-lab.html"),
         storeLab: page("store-lab.html"),
         dataLab: page("data-lab.html"),
+        pokemon: page("pokemon.html"),
         docs: page("docs.html")
       }
     }

@@ -1,4 +1,5 @@
-import { For, Show, createStore, derive, mount, resource, select } from "zui/dom";
+import { createStore } from "zui/reactive";
+import { For, Show, derive, mount, resource, select } from "zui/dom";
 
 interface Task {
   id: number;

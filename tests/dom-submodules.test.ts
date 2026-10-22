@@ -10,15 +10,11 @@ import {
   stringify,
   evaluate,
   resolveChild,
-  createStore,
-  useStore,
-  computed,
-  batch,
-  untrack,
   registry,
   patches,
   engine,
 } from "../src/dom/bindings.js";
+import { createStore, computed, batch, untrack } from "../src/reactive-api.js";
 import {
   jsx,
   jsxs,
@@ -72,8 +68,7 @@ describe("src/dom submodules isolated tests", () => {
       expect(resolveChild(() => "computed")).toBe("computed");
     });
 
-    it("exposes batch, untrack, and useStore alias", () => {
-      expect(useStore).toBe(createStore);
+    it("exposes store creation, batch, and untrack from the reactive API", () => {
       let runs = 0;
       const s = createStore(0);
       const c = computed(() => {
@@ -142,6 +137,7 @@ describe("src/dom submodules isolated tests", () => {
       const indexKeys = Object.keys(domIndex).sort();
       const facadeKeys = Object.keys(domFacade).sort();
       expect(indexKeys).toEqual(facadeKeys);
+      expect(indexKeys).not.toContain("createStore");
 
       for (const key of indexKeys) {
         expect((domFacade as any)[key]).toBe((domIndex as any)[key]);

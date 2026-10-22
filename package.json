@@ -85,11 +85,6 @@
       "import": "./dist/package/external-store.js",
       "default": "./dist/package/external-store.js"
     },
-    "./zustand": {
-      "types": "./dist/package/zustand.d.ts",
-      "import": "./dist/package/zustand.js",
-      "default": "./dist/package/zustand.js"
-    },
     "./dom": {
       "types": "./dist/package/dom.d.ts",
       "import": "./dist/package/dom.js",
@@ -101,9 +96,9 @@
       "default": "./dist/package/dom.js"
     },
     "./reactive": {
-      "types": "./dist/package/reactive.d.ts",
-      "import": "./dist/package/reactive.js",
-      "default": "./dist/package/reactive.js"
+      "types": "./dist/package/reactive-api.d.ts",
+      "import": "./dist/package/reactive-api.js",
+      "default": "./dist/package/reactive-api.js"
     },
     "./flat": {
       "types": "./dist/package/flat.d.ts",

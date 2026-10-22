@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
 import { createEngine } from "../src/reactive.js";
+import { createStore } from "../src/reactive-api.js";
 import {
   resource,
-  createStore,
   select,
   Show,
   mount,

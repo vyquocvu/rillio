@@ -7,8 +7,9 @@ import {
   inspectRoot,
   trackTransactions,
 } from "../src/devtools.js";
-import { createRoot, nodeRegistry, patchEngine } from "../src/compat.js";
-import { mount, createStore, jsx, Show } from "../src/dom/index.js";
+import { nodeRegistry, patchEngine } from "../src/compat.js";
+import { createStore } from "../src/reactive-api.js";
+import { mount, jsx, Show } from "../src/dom/index.js";
 
 describe("zui/devtools: Live Flat Index Inspector", () => {
   it("inspects an active root and serializes the Flat Index tree accurately", () => {

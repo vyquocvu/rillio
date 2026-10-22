@@ -487,7 +487,14 @@ export class NodeRegistry implements OwnerHost {
   disposeNode(nodeId: NodeId): void {
     const node = this.getNode(nodeId);
     if (node.disposed) return;
-    for (const childId of this.children(nodeId)) this.disposeNode(childId);
+    // Child disposal unlinks from this node, so save the next pointer first
+    // and avoid allocating a child-id snapshot for every subtree node.
+    let childId = node.firstChild;
+    while (childId !== null) {
+      const nextSibling = this.getNode(childId).nextSibling;
+      this.disposeNode(childId);
+      childId = nextSibling;
+    }
     this.unlinkChild(nodeId);
     const owner = this.owners.get(node.ownerId);
     owner?.nodeIds.delete(nodeId);

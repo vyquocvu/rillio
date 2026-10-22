@@ -13,10 +13,9 @@
       "zui/jsx-dev-runtime": ["src/jsx-dev-runtime.ts"],
       "zui/ui": ["src/ui.ts"],
       "zui/external-store": ["src/external-store.ts"],
-      "zui/zustand": ["src/zustand.ts"],
       "zui/dom": ["src/dom.ts"],
       "zui/legacy": ["src/dom.ts"],
-      "zui/reactive": ["src/reactive.ts"],
+      "zui/reactive": ["src/reactive-api.ts"],
       "zui/flat": ["src/flat.ts"],
       "zui/devtools": ["src/devtools.ts"]
     },

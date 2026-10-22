@@ -12,7 +12,7 @@ ZUI ships a dashboard showcase for the JSX runtime, an external Zustand store ad
 | [`docs/COMPONENT-LIFECYCLE.md`](COMPONENT-LIFECYCLE.md) | 100 logged lifecycle tests and current ZUI/React/Preact/Vue browser comparison |
 | `zui/ui` | Reusable visual primitives, tokens, and accessible controls |
 | `zui/external-store` | First-class, zero-dependency external stores (`create`, `shallow`, `useShallow`, `useStore`) |
-| `zui/dom` | Explicit mount-once reactive DOM API (`createStore`, `select`, `mount`, `Show`, `For`) |
+| `zui/reactive` + `zui/dom` | Reactive stores (`createStore`) with the explicit mount-once DOM API (`select`, `mount`, `Show`, `For`) |
 | `zui/devtools` | Live in-browser Flat Index inspector overlay and diagnostics |
 | `npm run bench:all` | Node benchmark suites for reactive invalidation, keyed reconciliation, and Flat Index updates |
 | `npm run bench:browser` | Headless Playwright Chromium benchmark comparing keyed lists and component updates in ZUI, React, Preact, and Vue |
@@ -80,7 +80,8 @@ createRoot(document.getElementById("app")!).render(
 Mount-once reactive DOM API without component re-evaluation:
 
 ```tsx
-import { createStore, select, mount, Show, For } from "zui/dom";
+import { createStore } from "zui/reactive";
+import { select, mount, Show, For } from "zui/dom";
 
 const store = createStore({
   count: 0,

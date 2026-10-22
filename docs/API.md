@@ -89,7 +89,7 @@ function Counter() {
 }
 ```
 
-The adapter also accepts standalone vanilla stores via `create(existingStore)` or `useStore(store, selector, equalityFn)`. When selecting objects or arrays, use `useShallow(selector)` or pass `shallow` as the equality function to prevent redundant re-renders. Do not import `create` or `useStore` from `"zustand"` in ZUI components, as Zustand's default React entry point expects React's `useSyncExternalStore`. The legacy `zui/zustand` import path remains available as a deprecated alias.
+The adapter also accepts standalone vanilla stores via `create(existingStore)` or `useStore(store, selector, equalityFn)`. When selecting objects or arrays, use `useShallow(selector)` or pass `shallow` as the equality function to prevent redundant re-renders. Do not import `create` or `useStore` from `"zustand"` in ZUI components, as Zustand's default React entry point expects React's `useSyncExternalStore`. The old `zui/zustand` compatibility path has been removed; import from `zui/external-store`.
 
 ## Addressable DOM API
 
@@ -115,7 +115,8 @@ The low-level implementation is also available from `zui/flat`.
 The canonical subpath for the mount-once explicit reactive DOM surface is `zui/dom` (`zui/legacy` remains as a deprecated compatibility alias):
 
 ```tsx
-import { createStore, select, mount } from "zui/dom";
+import { createStore } from "zui/reactive";
+import { select, mount } from "zui/dom";
 
 const count = createStore(0);
 mount(() => <button onClick={() => count.set(n => n + 1)}>
@@ -123,14 +124,14 @@ mount(() => <button onClick={() => count.set(n => n + 1)}>
 </button>, document.getElementById("app")!);
 ```
 
-Exports include:
+`zui/reactive` exports the shared reactive engine and store primitives, including `createStore`, `computed`, `batch`, and `untrack`. `zui/dom` exports:
 
-- `createStore` — synchronous immutable snapshot store;
 - `select(store, selector)` — deferred binding descriptor;
 - `derive(read)` — deferred binding descriptor;
-- `computed`, `batch`, `untrack`;
 - `resource(fetcher, options)` — asynchronous resource store (`.loading`, `.data`, `.error`, `.status`, `.mutate()`, `.refetch()`);
 - `mount`, `Show`, and `For`.
+
+The same reactive engine backs both subpaths, so stores created through `zui/reactive` can be consumed by bindings in `zui/dom`. The DOM subpath intentionally owns rendering and bindings, while the reactive subpath owns store creation and computation APIs.
 
 `Show` owns a conditional boundary. `For` requires stable unique keys and preserves the boundary `NodeId` for an item while its position or current value changes.
 
