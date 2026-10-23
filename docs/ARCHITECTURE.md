@@ -1,5 +1,9 @@
 # Addressable DOM architecture
 
+Explore the [interactive architecture, data-flow, transaction, lifecycle, and performance diagrams](diagrams/README.md).
+
+![ZUI runtime architecture diagram](diagrams/architecture.visual-check.1440x900.light.png)
+
 ## Core invariant
 
 The Flat Index is the only source of truth for rendered node identity, parent/sibling structure, ownership, and lifecycle. The browser DOM is a projection of that index. Render planners may keep temporary maps while planning a transaction, but they must not retain an authoritative child tree.

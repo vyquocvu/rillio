@@ -1,0 +1,42 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Patch Transaction Workflow",
+    "locale": "en",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    { "id": "caller", "label": "Caller" },
+    { "id": "runtime", "label": "Planner + patch engine" },
+    { "id": "errors", "label": "Nested failure paths", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "planning", "label": "Plan and validate", "fromCol": 0, "toCol": 1 },
+    { "id": "commit", "label": "Commit and report", "fromCol": 2, "toCol": 4, "variant": "emphasis" }
+  ],
+  "mainPath": ["plan", "validate", "commit", "finalize", "telemetry"],
+  "nodes": [
+    { "id": "plan", "lane": "runtime", "col": 0, "type": "backend", "label": "transaction(root)", "width": 170 },
+    { "id": "nested-callback", "lane": "caller", "col": 1, "type": "backend", "label": "Nested callback", "width": 150 },
+    { "id": "rollback", "lane": "caller", "col": 2, "type": "security", "label": "Rollback", "width": 150 },
+    { "id": "validate", "lane": "runtime", "col": 1, "type": "security", "label": "Validate", "width": 150 },
+    { "id": "commit", "lane": "runtime", "col": 2, "type": "backend", "label": "Commit", "width": 150 },
+    { "id": "finalize", "lane": "runtime", "col": 3, "type": "backend", "label": "Finalize", "width": 150 },
+    { "id": "telemetry", "lane": "runtime", "col": 4, "type": "database", "label": "Commit telemetry", "width": 150 },
+    { "id": "cross-root", "lane": "errors", "col": 0, "type": "security", "label": "Cross-root rejection", "width": 190 }
+  ],
+  "edges": [
+    { "id": "plan-validate", "from": "plan", "to": "validate", "label": "returns" },
+    { "id": "plan-nested", "from": "plan", "to": "nested-callback", "label": "same-root call", "variant": "dashed", "role": "branch" },
+    { "id": "nested-rollback", "from": "nested-callback", "to": "rollback", "label": "callback throws", "variant": "security", "role": "error" },
+    { "id": "plan-cross-root", "from": "plan", "to": "cross-root", "label": "cross-root", "variant": "security", "role": "error" },
+    { "id": "validate-commit", "from": "validate", "to": "commit", "label": "valid" },
+    { "id": "commit-finalize", "from": "commit", "to": "finalize", "label": "writes landed" },
+    { "id": "finalize-telemetry", "from": "finalize", "to": "telemetry", "label": "publish final status" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Before DOM writes", "items": ["Validation checks roots, anchors, and cycles before browser writes", "Same-root nested calls join a savepoint; callback failure discards nested ops and nodes", "Cross-root nesting raises ZUI_NESTED_ROOT_TRANSACTION"] },
+    { "dot": "rose", "title": "After commit", "items": ["PatchEngine applies DOM and Flat Index writes, then finalizes removed subtrees", "Commit telemetry records operation counts and finalization status"] }
+  ]
+}

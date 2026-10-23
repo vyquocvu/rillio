@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "ZUI Runtime Architecture",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [1350, 820]
+  },
+  "components": [
+    { "id": "jsx-api", "type": "frontend", "label": "JSX API", "sublabel": "createRoot · hooks", "pos": [40, 140], "size": [180, 84] },
+    { "id": "dom-api", "type": "frontend", "label": "Explicit DOM API", "sublabel": "mount · Show · For", "pos": [40, 340], "size": [180, 84] },
+    { "id": "store-api", "type": "frontend", "label": "Store surfaces", "sublabel": "reactive · external-store", "pos": [40, 540], "size": [180, 84] },
+    { "id": "compat-planner", "type": "backend", "label": "JSX reconciler", "sublabel": "keyed component updates", "pos": [295, 140], "size": [180, 84] },
+    { "id": "dom-planner", "type": "backend", "label": "DOM mount planner", "sublabel": "bindings · regions · lists", "pos": [295, 340], "size": [180, 84] },
+    { "id": "reactive-engine", "type": "backend", "label": "ReactiveEngine", "sublabel": "stores · effects · owners", "pos": [295, 540], "size": [180, 84] },
+    { "id": "transaction", "type": "backend", "label": "PatchTransaction", "sublabel": "validate · commit · rollback", "pos": [590, 245], "size": [180, 84] },
+    { "id": "registry", "type": "database", "label": "NodeRegistry", "sublabel": "Flat Index · OwnerHost", "pos": [590, 475], "size": [180, 84] },
+    { "id": "patch-engine", "type": "backend", "label": "PatchEngine", "sublabel": "sole DOM write boundary", "pos": [880, 245], "size": [180, 84] },
+    { "id": "browser-dom", "type": "external", "label": "Browser DOM", "sublabel": "projection of indexed state", "pos": [1150, 245], "size": [180, 84] }
+  ],
+  "connections": [
+    { "id": "jsx-to-compat", "from": "jsx-api", "to": "compat-planner" },
+    { "id": "dom-to-mount", "from": "dom-api", "to": "dom-planner" },
+    { "id": "store-to-reactive", "from": "store-api", "to": "reactive-engine" },
+    { "id": "compat-to-tx", "from": "compat-planner", "to": "transaction", "label": "PatchOps" },
+    { "id": "dom-to-tx", "from": "dom-planner", "to": "transaction" },
+    { "id": "reactive-to-tx", "from": "reactive-engine", "to": "transaction", "label": "effect updates", "variant": "dashed" },
+    { "id": "tx-to-registry", "from": "transaction", "to": "registry", "label": "validate + link", "variant": "dashed", "labelDy": 24 },
+    { "id": "tx-to-engine", "from": "transaction", "to": "patch-engine", "label": "commit" },
+    { "id": "registry-to-engine", "from": "registry", "to": "patch-engine", "label": "indexed state", "variant": "dashed" },
+    { "id": "engine-to-dom", "from": "patch-engine", "to": "browser-dom", "label": "DOM writes" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "One mutation boundary", "items": ["Both render planners share the Flat Index and PatchEngine", "The browser DOM is the projection of indexed state"] },
+    { "dot": "cyan", "title": "Ownership and inspection", "items": ["Reactive computations use NodeRegistry as their OwnerHost", "DevTools inspects roots and subscribes to commit telemetry"] }
+  ]
+}

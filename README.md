@@ -134,6 +134,6 @@ mount(() => <button onClick={() => count.set(n => n + 1)}>
 
 ZUI currently targets small client-side browser applications. SSR/hydration, complete SVG/property normalization, exhaustive DOM typings, and a dedicated compiler are future work rather than compatibility promises.
 
-See [the roadmap](ROADMAP.md), [the API contract](docs/API.md), [the architecture](docs/ARCHITECTURE.md), [testing](docs/TESTING.md), and [verification status](docs/STATUS.md).
+See [the roadmap](ROADMAP.md), [the API contract](docs/API.md), [the architecture](docs/ARCHITECTURE.md), [the architecture diagrams](docs/diagrams/README.md), [testing](docs/TESTING.md), and [verification status](docs/STATUS.md).
 
 No CI/CD is configured by design.

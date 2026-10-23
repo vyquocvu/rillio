@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Indexed Node and Owner Lifecycle",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [1000, 566]
+  },
+  "lanes": [
+    { "id": "main", "label": "Indexed node lifecycle" },
+    { "id": "cleanup", "label": "Subtree cleanup path" },
+    { "id": "terminal", "label": "Diagnostics retained after disposal" }
+  ],
+  "states": [
+    { "id": "allocated", "type": "start", "label": "Allocated", "sublabel": "NodeId + OwnerId", "lane": "main", "col": 0, "step": "01" },
+    { "id": "indexed", "type": "active", "label": "Indexed", "sublabel": "parent + owner links", "lane": "main", "col": 1, "step": "02" },
+    { "id": "mounted", "type": "active", "label": "Mounted", "sublabel": "updates + moves keep NodeId", "lane": "main", "col": 2, "step": "03" },
+    { "id": "removing", "type": "active", "label": "Removing", "sublabel": "queued for commit", "lane": "main", "col": 3, "step": "04" },
+    { "id": "disposed", "type": "success", "label": "Disposed", "sublabel": "cleanup + unlink", "lane": "main", "col": 4, "step": "05" },
+    { "id": "cleanup-walk", "type": "active", "label": "Cleanup walk", "sublabel": "iterative · child-first", "lane": "cleanup", "col": 1, "tag": "stack-safe" },
+    { "id": "tombstone", "type": "success", "label": "Tombstone", "sublabel": "bounded diagnostic record", "lane": "terminal", "col": 2, "tag": "retained", "yOffset": -90 }
+  ],
+  "transitions": [
+    { "id": "allocate-index", "from": "allocated", "to": "indexed", "label": "create registry record", "labelDy": 55 },
+    { "id": "index-mount", "from": "indexed", "to": "mounted", "label": "insert DOM range", "labelDy": 55 },
+    { "id": "mount-remove", "from": "mounted", "to": "removing", "label": "queue removal", "labelDy": 55 },
+    { "id": "remove-cleanup", "from": "removing", "to": "cleanup-walk", "label": "iterative cleanup", "labelDy": 55 },
+    { "id": "cleanup-dispose", "from": "cleanup-walk", "to": "disposed", "label": "release DOM + owner refs", "labelAt": [635, 350] },
+    { "id": "dispose-tombstone", "from": "disposed", "to": "tombstone", "label": "retain bounded diagnostics", "labelDy": 64 }
+  ]
+}

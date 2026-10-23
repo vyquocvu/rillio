@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "ZUI Reactive Update Data Flow",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [1080, 500]
+  },
+  "stages": [
+    { "label": "State sources" },
+    { "label": "Invalidation" },
+    { "label": "Planner or effects" },
+    { "label": "Transaction" },
+    { "label": "DOM commit" }
+  ],
+  "nodes": [
+    { "id": "state-sources", "type": "frontend", "label": "State + selectors", "sublabel": "hooks · stores · external-store", "stage": 0, "row": 0, "width": 152, "yOffset": 70 },
+    { "id": "reactive-engine", "type": "backend", "label": "ReactiveEngine", "sublabel": "track · invalidate · flush", "stage": 1, "row": 0, "width": 160, "yOffset": 70 },
+    { "id": "planners", "type": "backend", "label": "Planners + effects", "sublabel": "JSX reconcile · DOM bindings", "stage": 2, "row": 0, "width": 176, "yOffset": 70 },
+    { "id": "transaction", "type": "backend", "label": "PatchTransaction", "sublabel": "validate addressable operations", "stage": 3, "row": 0, "width": 160, "yOffset": 70 },
+    { "id": "index-engine", "type": "backend", "label": "PatchEngine + DOM", "sublabel": "NodeRegistry links · sole DOM writer", "stage": 4, "row": 0, "width": 168, "yOffset": 70 }
+  ],
+  "flows": [
+    { "id": "source-invalidation", "from": "state-sources", "to": "reactive-engine", "label": "writes + subscriptions", "labelDy": 55 },
+    { "id": "invalidation-planning", "from": "reactive-engine", "to": "planners", "label": "schedule affected work", "labelDy": 55 },
+    { "id": "planning-ops", "from": "planners", "to": "transaction", "label": "addressable PatchOps", "labelDy": 55 },
+    { "id": "transaction-index", "from": "transaction", "to": "index-engine", "label": "validate + commit", "labelDy": 55 }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Two update styles", "items": ["JSX updates rerun compatible component boundaries", "Explicit DOM effects patch mounted text, props, and regions"] },
+    { "dot": "amber", "title": "Live values are explicit", "items": ["Use select, derive, stores, Show, or For for reactive updates", "Ordinary values in the mount-once API are snapshots"] }
+  ]
+}
