@@ -2,6 +2,11 @@
 
 ZUI is an experimental addressable-DOM runtime. It preserves familiar JSX authoring, while DOM identity, structure, ownership, and lifecycle are owned by a Flat Index rather than by a Virtual DOM tree.
 
+<p align="center">
+  <img src="docs/assets/zui-studio-dashboard.png" alt="ZUI Studio workspace dashboard, rendered with ZUI" width="100%" />
+</p>
+<p align="center"><em>ZUI Studio — a full workspace dashboard built with the ZUI runtime.</em></p>
+
 The production DOM write path is one transactional `PatchEngine`:
 
 ```mermaid
