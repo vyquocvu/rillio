@@ -3,10 +3,8 @@
  */
 
 import {
-  extractRange,
   longestIncreasingSubsequencePositions,
   planStationaryMoves,
-  shallowEqual,
   type FlatNode,
   type Key,
   type NodeId,
@@ -23,7 +21,6 @@ import type {
 } from "./types.js";
 import {
   nodeRegistry,
-  active,
   setActive,
   renderingDepth,
   incrementRenderingDepth,
@@ -107,9 +104,6 @@ function mountPortal(
   const portalBoundaryId = tx.createBoundary(portalOwner, "zui:portal", "/zui:portal", value.key);
   const portalRecord = nodeRegistry.getNode(portalBoundaryId);
 
-  container.appendChild(portalRecord.domStart);
-  container.appendChild(portalRecord.domEnd);
-
   const state: PortalState = {
     placeholderId,
     portalBoundaryId,
@@ -118,6 +112,8 @@ function mountPortal(
     ownerId: portalOwner,
     disposed: false
   };
+
+  tx.placePortal(portalBoundaryId, container, state);
 
   nodeRegistry.updateNode(placeholderId, {
     type: PORTAL_TYPE as any,
@@ -150,12 +146,8 @@ function reconcilePortal(
   }
 
   const portalBoundary = nodeRegistry.getNode(state.portalBoundaryId);
-
   if (state.container !== nextContainer) {
-    const doc = portalBoundary.domStart.ownerDocument ?? globalThis.document;
-    const fragment = extractRange(doc, portalBoundary);
-    nextContainer.appendChild(fragment);
-    state.container = nextContainer;
+    tx.placePortal(state.portalBoundaryId, nextContainer, state);
   }
 
   if (placeholder.props !== value.props) {
@@ -376,18 +368,6 @@ export function reconcileMatched(
   }
 
   if (typeof value.type === "function") {
-    // Parent-driven bailout: state updates are applied synchronously via the
-    // component's own updater, so a child whose props are shallow-equal has
-    // nothing new to render. JSX `children` are fresh objects, so they never bail.
-    // Explicit root.render() calls (no active parent component) always re-render.
-    const state = old.payload;
-    if (
-      active !== undefined &&
-      value.type !== ErrorBoundary &&
-      isComponentState(state) &&
-      !state.disposed &&
-      shallowEqual(state.props, value.props)
-    ) return;
     renderComponent(oldId, value.props, tx);
   }
   else {

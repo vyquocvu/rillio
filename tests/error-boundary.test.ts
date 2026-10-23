@@ -225,6 +225,39 @@ describe("ErrorBoundary", () => {
     root.unmount();
   });
 
+  it("catches a child render error during a parent update with unchanged child props", () => {
+    let shouldCrash = false;
+    let rerender!: () => void;
+
+    function FragileChild(): Child {
+      if (shouldCrash) throw new Error("Parent update exposed failure");
+      return jsx("span", { id: "parent-update-child", children: "Healthy" });
+    }
+
+    function Parent(): Child {
+      const [, setVersion] = useState(0);
+      rerender = () => setVersion(version => version + 1);
+      return jsx("section", {
+        children: jsx(ErrorBoundary, {
+          fallback: (error: Error) => jsx("div", { id: "parent-update-fallback", children: error.message }),
+          children: jsx(FragileChild, {})
+        })
+      });
+    }
+
+    const root = createRoot(container);
+    root.render(jsx(Parent, {}));
+    expect(container.querySelector("#parent-update-child")?.textContent).toBe("Healthy");
+
+    shouldCrash = true;
+    rerender();
+
+    expect(container.querySelector("#parent-update-fallback")?.textContent)
+      .toBe("Parent update exposed failure");
+    expect(container.querySelector("#parent-update-child")).toBeNull();
+    root.unmount();
+  });
+
   it("re-throws error when no ErrorBoundary is present in the tree", () => {
     function Explode(): Child {
       throw new Error("Uncaught boom");

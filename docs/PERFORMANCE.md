@@ -7,9 +7,30 @@ npx playwright install chromium
 npm run bench:browser
 ```
 
-Playwright launches headless Chromium and compares keyed-list workloads plus component mount/update lifecycles across ZUI, React, Preact, and Vue. The benchmark validates final DOM state in untimed preflight contexts, then uses paired repeats and fresh browser contexts. Run `ZUI_BENCH_JSON=1 npm run bench:browser` for raw timings, medians, framework versions, and randomized run-position counts. Sizes and sampling settings are configurable as documented in the [benchmark guide](../benchmarks/README.md). The 100-case lifecycle matrix and the 2026-10-14 comparison are documented in [Component and data lifecycle evaluation](COMPONENT-LIFECYCLE.md).
+Playwright launches headless Chromium and compares keyed-list workloads plus component mount/update lifecycles across ZUI, React, Preact, and Vue. The benchmark validates final DOM state in untimed preflight contexts, then uses paired repeats and fresh browser contexts. Run `ZUI_BENCH_JSON=1 npm run bench:browser` for raw timings, medians, framework versions, and randomized run-position counts. Sizes and sampling settings are configurable as documented in the [benchmark guide](../benchmarks/README.md). The 100-case lifecycle matrix and current comparison are documented in [Component and data lifecycle evaluation](COMPONENT-LIFECYCLE.md).
 
 This is a runtime-level keyed-tree comparison, not a comparison of complete apps or equivalent programming models. React is forced synchronous with `flushSync`; React documents this as an uncommon escape hatch that can hurt performance. Preact and Vue use their `h`/`render` runtime APIs directly; compiler-driven Solid/Svelte workloads are intentionally kept out until they have separate compiled adapters. These local measurements do not establish a cross-machine or production ranking.
+
+## Current production run (2026-10-23)
+
+The full report is [`benchmarks/results/2026-10-23-browser-benchmark-post-fix.json`](../benchmarks/results/2026-10-23-browser-benchmark-post-fix.json). It used Chromium 156.0.8078.4 on an Apple M1 Pro (macOS arm64), ZUI 0.1.0, React 19.3.0, Preact 11.0.1, Vue 3.5.43, seed 20261013, three warmups, nine samples per context, and three paired repeats. All 72 list and 48 component correctness preflight contexts passed.
+
+Median milliseconds for 2,000 keyed rows:
+
+| Scenario | ZUI | React | Preact | Vue |
+|---|---:|---:|---:|---:|
+| Mount | 2.90 | 1.20 | 1.40 | 1.10 |
+| No-op | 0.30 | 0.40 | 0.70 | 0.40 |
+| Text update | 0.60 | 0.60 | 0.90 | 0.70 |
+| Append/remove | 0.40 | 0.50 | 0.70 | 0.50 |
+| Rotate | 0.30 | 0.50 | 0.80 | 0.50 |
+| Reverse | 1.10 | 6.90 | 6.90 | 0.90 |
+
+At 1,000 components, parent updates with unchanged props rendered 1,000 child functions in ZUI, React, and Preact, and zero in Vue; local state updates rendered exactly one child in every framework. ZUI parent-update median was 0.46 ms, versus 0.39 ms in React, 0.60 ms in Preact, and 0.21 ms in Vue. That distinction is part of each runtime's render semantics, not equivalent work.
+
+The separate [CPU and memory report](../benchmarks/results/2026-10-23-cpu-memory-post-fix.json) used three sizes, five update workloads, 20 updates per measured window, three warmups, and three paired repeats. At 2,000 rows, ZUI retained about 863–864 KB for the mounted tree and reported zero DOM nodes or listeners after unmount for every workload. Main-thread CPU for the 20-update window ranged from 5.8 ms for no-op to 295.9 ms for reverse; the CPU window forces style/layout after every update, so those totals are not directly comparable to the keyed-list wall-clock medians above. Heap residuals are one-cycle measurements, not proof of leaks.
+
+The current sampled 2,000-row profile ranks `createNode`, `getNode`, and `validateFrom` among visible mount functions. Reverse ranks native `insertBefore`, `validateMoveMany`, and `moveChildren` highest. It is a hotspot ranking only; it does not provide exact self-time attribution.
 
 ## Historical list-only comparison (2026-10-13)
 
@@ -38,7 +59,7 @@ At 2,000 rows, ZUI matches or leads React, Preact, and Vue across 5 of the 6 ope
 - **Keyed reverse**: 1.0 ms (~6.4× faster than React 6.4 ms and Preact 6.5 ms, within 0.2 ms of Vue 0.8 ms).
 - **Mount**: 2.0 ms (down from 3.1 ms; React 1.1 ms, Preact 1.4 ms, Vue 1.0 ms).
 
-## What the measurements say
+## What the historical 2026-10-13 measurements say
 
 The optimizations applied to the runtime:
 - **Zero-allocation transaction tracking**: Replaced `Set<NodeId>` tracking in `PatchTransaction` with monotonic `startNodeId` integer range comparison (`nodeId >= startNodeId`), eliminating thousands of `Set.add()` and `Set.has()` operations during large mounts.
@@ -47,7 +68,7 @@ The optimizations applied to the runtime:
 - **Fast-path `insertCreatedRange` & `linkCreatedChild`**: Direct `appendChild`/`insertBefore` for freshly created nodes without C++/Blink boundary crossings (`parentNode`, `instanceof Element`, `CharacterData`), combined with streamlined linking that prunes descendant cycle walks.
 - **Single-pass child record reuse in `reconcileOrderedChildren`**: Replaced two-pass iteration with single-pass `matchedRecords` caching and indexed array iteration, avoiding thousands of duplicate registry lookups and `.at(-1)` prototype dispatches.
 - **Top-level closure-free array flattening**: Moved array flattening to a static `flattenChild` routine with raw indexed loops, eliminating closure allocations and `Array.prototype.forEach` call frames.
-- **Single-pass fresh-tree commit (`commitCreatedOnly`)**: Fuses structural validation, registry linking, and DOM appending into a single linear pass for newly created subtrees, bypassing two-pass validation overhead and eliminating temporary `Set` allocations.
+- **Specialized fresh-tree commit (`commitCreatedOnly`)**: After the complete operation list has been validated, a specialized linear pass links and appends newly created subtrees without allocating per-operation undo closures. The validation pass remains separate.
 - **Multi-slot MRU locality caching in `NodeRegistry`**: 4-slot node cache and 2-slot owner cache with unrolled MRU updates, turning sequential sibling and parent lookups into direct variable hits and avoiding Map hash overhead.
 - **Zero-DOM SVG namespace resolution**: Caches an `isSvg` flag on `FlatNode` during root and element creation, completely eliminating cross-boundary `node.domStart.namespaceURI` DOM property reads.
 - **Pure JavaScript text diffing**: Compares directly against cached JS string `node.value`, removing native Blink `CharacterData.data` reads during reconciliation and `commitTextOnly`.

@@ -80,7 +80,7 @@ function StaticChild() {
   return (
     <section class="lab-card" id="static-child">
       <h2>Unsubscribed child</h2>
-      <p class="lab-muted">A parent render walks through this child in the current compatibility runtime.</p>
+      <p class="lab-muted">A parent update reruns this child; local and selector updates stay within their owners.</p>
       <div class="lab-pill">StaticChild render #{renders}</div>
     </section>
   );
@@ -100,7 +100,7 @@ function App() {
 
       <section class="lab-card" style={{ marginBottom: "16px" }} id="root-panel">
         <h2>App-owned state</h2>
-        <p class="lab-muted">This control updates the root component. In the compatibility runtime, its descendants are reconciled and their functions run again.</p>
+        <p class="lab-muted">This control updates the root component and reruns each matched child, even when child props stay equal.</p>
         <div class="lab-value"><strong id="root-updates">{rootUpdates}</strong><span>root updates · App render #{renders}</span></div>
         <div class="lab-actions">
           <button class="lab-button lab-button--primary" id="root-increment" onClick={() => setRootUpdates(value => value + 1)}>

@@ -5506,12 +5506,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="card">
         <div class="card-header">
           <div class="card-dot emerald"></div>
-          <h3>Before DOM writes</h3>
+          <h3>Before commit writes</h3>
         </div>
         <ul>
-          <li>&bull; Validation checks roots, anchors, and cycles before browser writes</li>
-          <li>&bull; Same-root nested calls join a savepoint; callback failure discards nested ops and nodes</li>
-          <li>&bull; Cross-root nesting raises ZUI_NESTED_ROOT_TRANSACTION</li>
+          <li>&bull; Validation checks roots, anchors, cycles, and portal targets before transactional DOM writes</li>
+          <li>&bull; Same-root savepoints restore queued ops, created nodes, and cleanup attachments on callback failure</li>
+          <li>&bull; An outer callback failure seals its transaction; cross-root nesting raises ZUI_NESTED_ROOT_TRANSACTION</li>
         </ul>
       </div>
 
@@ -5521,7 +5521,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>After commit</h3>
         </div>
         <ul>
-          <li>&bull; PatchEngine applies DOM and Flat Index writes, then finalizes removed subtrees</li>
+          <li>&bull; PatchEngine applies DOM and Flat Index writes; failed later callbacks restore moved portal ranges</li>
           <li>&bull; Commit telemetry records operation counts and finalization status</li>
         </ul>
       </div>

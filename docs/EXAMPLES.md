@@ -9,6 +9,7 @@ ZUI ships a dashboard showcase for the JSX runtime, an external Zustand store ad
 | `/render-lab.html` | Console-traced comparison of local component state, parent state, and external-store selector updates |
 | `/store-lab.html` | Atomic and shallow Zustand selectors with visible render logs |
 | `/data-lab.html` | Mount-once reactive bindings, keyed list updates, DOM identity, and async resources |
+| `/benchmarks.html` | Live browser comparison of keyed-list cases with rendered DOM previews, timing, node counts, and browser usage signals |
 | [`docs/COMPONENT-LIFECYCLE.md`](COMPONENT-LIFECYCLE.md) | 100 logged lifecycle tests and current ZUI/React/Preact/Vue browser comparison |
 | `zui/ui` | Reusable visual primitives, tokens, and accessible controls |
 | `zui/external-store` | First-class, zero-dependency external stores (`create`, `shallow`, `useShallow`, `useStore`) |
@@ -18,6 +19,8 @@ ZUI ships a dashboard showcase for the JSX runtime, an external Zustand store ad
 | `npm run bench:browser` | Headless Playwright Chromium benchmark comparing keyed lists and component updates in ZUI, React, Preact, and Vue |
 
 Open `/demos.html` for a browser-friendly interactive index.
+
+The [Live Renderer Bench](../benchmarks.html) runs real DOM workloads in the current tab. All six keyed-list cases are visible on the page and can run individually or as a complete suite; set the row count, warmups, and samples to compare ZUI, React, Preact, and Vue. It reports median and P95 time, tree-build and renderer/layout phases, rendered node counts, and available page-level browser usage signals. It checks the resulting row order and text before marking a run passed. Heap is a page-wide Chromium estimate where exposed, not a per-framework allocation measurement.
 
 ## 1. External Store Integration (`zui/external-store`)
 

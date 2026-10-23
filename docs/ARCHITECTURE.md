@@ -33,7 +33,7 @@ flowchart TB
 
 The two public planning surfaces are:
 
-- the JSX component runtime in `src/compat.ts`, which reruns a component for hook state updates;
+- the JSX component runtime in `src/compat.ts`, which reruns compatible component descendants for parent and hook state updates;
 - the explicit reactive DOM surface in `src/dom.ts` (exported as `zui/dom`, with `zui/legacy` as deprecated compatibility alias), which mounts a subtree once and binds reactive text, properties, regions, and list items.
 
 They share the same `NodeRegistry`, `PatchEngine`, DOM operation helpers, and owner host. They are not independent DOM mutation implementations.
@@ -84,12 +84,12 @@ flowchart TB
 
 All browser writes go through `PatchEngine`:
 
-1. A planner creates addressable records and queues operations in a `PatchTransaction`.
+1. A planner creates addressable records and queues operations in a `PatchTransaction`. Portal target placement is queued as a range operation too, so a later planning failure cannot move an already mounted portal.
 2. Specialized fast-path commit pipelines optimize the common transaction classes:
-   - **Fresh-subtree mounts (`commitCreatedOnly`)**: When a transaction contains only newly created nodes and no removals, validation and DOM writes are fused into a single pass. Monotonic ID range tracking (`nodeId >= startNodeId`) identifies newly created nodes with zero `Set` allocations; duplicate insertion checks use native property checks (`node.parentId !== null`); cycle checks are pruned for leaf nodes (`node.firstChild === null`); and DOM insertions route through `insertCreatedRange` and `linkCreatedChild`, bypassing detached checks (`domStart.parentNode`) and duplicate ancestor cycles.
+   - **Fresh-subtree mounts (`commitCreatedOnly`)**: The complete operation list is validated before this commit loop. DOM writes and index linking then share a specialized pass. Monotonic ID range tracking (`nodeId >= startNodeId`) identifies newly created nodes with zero `Set` allocations; duplicate insertion checks use native property checks (`node.parentId !== null`); cycle checks are pruned for leaf nodes (`node.firstChild === null`); and DOM insertions route through `insertCreatedRange` and `linkCreatedChild`, bypassing detached checks (`domStart.parentNode`) and duplicate ancestor cycles.
    - **Text-only updates (`commitTextOnly`)**: Compares directly against cached JavaScript string `node.value` (avoiding native Blink `CharacterData.data` reads) and applies text mutations linearly with inverse rollback recording.
    - **General updates**: Full multi-pass validation checks root membership, node state, parent/anchor validity, cycles, duplicate operations, operation-kind constraints, and unsafe property sinks.
-3. Commit inserts or moves ranges, patches text/properties/events/refs, and updates the Flat Index. Only inert initial `data-*`/`aria-*` attributes on detached native elements may be applied earlier through `PatchEngine`.
+3. Commit inserts, moves, or places ranges (including portal ranges), patches text/properties/events/refs, and updates the Flat Index. Only inert initial `data-*`/`aria-*` attributes on detached native elements may be applied earlier through `PatchEngine`.
 4. Remove operations run after structural/property changes. The engine clears bindings, runs cleanup, and disposes removed records.
 5. Planning failures discard newly created records. Commit failures remove newly inserted ranges where possible and preserve the original exception.
 
@@ -98,7 +98,7 @@ Nested reactive updates join the active transaction for the same root. This is i
 ```mermaid
 sequenceDiagram
     accTitle: Patch transaction lifecycle
-    accDescr: A planner queues indexed operations, validation checks the registry before any browser write, and the patch engine commits and disposes through one boundary.
+    accDescr: A planner queues indexed operations, validation checks the registry before transactional DOM mutations, and the patch engine commits and disposes through one boundary.
 
     participant planner as ⚙️ Planner
     participant transaction as 🔄 PatchTransaction
@@ -220,7 +220,7 @@ The flat addressable DOM engine is decomposed into cohesive, single-responsibili
 - **`src/flat/security.ts`**: Sink protection, URL scheme sanitization (`isUnsafeUrlProperty`), and property safety assertions (`validateProperty`).
 - **`src/flat/focus.ts`**: Active focus and selection preservation across DOM replacements and sibling moves (`captureFocus`, `captureFocusInRecords`, `captureFocusInChildren`, `restoreFocus`).
 - **`src/flat/lis.ts`**: Shared keyed-list diffing algorithms — patience-sorting LIS (`longestIncreasingSubsequencePositions`) and the right-to-left move planner (`planStationaryMoves`) used by both the compat reconciler and the `zui/dom` list renderer.
-- **`src/flat/equality.ts`**: Allocation-free shallow equality over own enumerable keys (`shallowEqual`), shared by the compat props bailout and the external-store adapter.
+- **`src/flat/equality.ts`**: Allocation-free shallow equality over own enumerable keys (`shallowEqual`), used by the external-store adapter.
 
 ## Module structure (`src/dom/`)
 

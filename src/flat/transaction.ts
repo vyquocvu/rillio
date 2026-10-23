@@ -10,6 +10,7 @@ import type {
   NodeId,
   OwnerId,
   PatchOp,
+  PortalAttachment,
   RootId,
   TransactionSavepoint
 } from "./types.js";
@@ -53,8 +54,10 @@ function releaseValidationScratch(engine: PatchEngine, scratch: ValidationScratc
 export class PatchTransaction {
   private readonly operations: PatchOp[] = [];
   private readonly created: NodeId[] = [];
+  private readonly cleanupChanges: Array<{ nodeId: NodeId; previous: Dispose | undefined }> = [];
   private readonly startNodeId: NodeId;
   private committed = false;
+  private lifecycle: "OPEN" | "VALIDATING" | "COMMITTING" | "FINALIZING" | "COMMITTED" | "ABORTED" = "OPEN";
   private onlyTextOperations = true;
   private onlyCreatedOperations = true;
   private hasRemovals = false;
@@ -70,6 +73,15 @@ export class PatchTransaction {
     return this.operations;
   }
 
+  get phase(): "OPEN" | "VALIDATING" | "COMMITTING" | "FINALIZING" | "COMMITTED" | "ABORTED" {
+    return this.lifecycle;
+  }
+
+  /** True once finalization has begun and applied DOM/index writes cannot roll back. */
+  get isIrreversible(): boolean {
+    return this.lifecycle === "FINALIZING" || this.lifecycle === "COMMITTED";
+  }
+
   private isCreated(nodeId: NodeId): boolean {
     return nodeId >= this.startNodeId;
   }
@@ -83,15 +95,13 @@ export class PatchTransaction {
     value?: unknown,
     parentId?: NodeId | null
   ): NodeId {
+    this.assertMutable();
     const ns = this.engine.resolveNamespace(parentId, tag);
     let element: Element;
     if (ns) {
-      element = this.engine.document.createElementNS(ns, tag);
-    } else if (props?.is) {
-      element = this.engine.document.createElement(tag, { is: String(props.is) });
-      element.setAttribute("is", String(props.is));
+      element = this.engine.createElementNS(ns, tag);
     } else {
-      element = this.engine.document.createElement(tag);
+      element = this.engine.createElement(tag, props?.is ? String(props.is) : undefined);
     }
     const id = this.engine.registry.createNode({
       rootId: this.rootId, ownerId, kind: "element", domStart: element, type, key, props, value, isSvg: ns === SVG_NAMESPACE
@@ -101,7 +111,8 @@ export class PatchTransaction {
   }
 
   createText(ownerId: OwnerId, value: string): NodeId {
-    const text = this.engine.document.createTextNode(value);
+    this.assertMutable();
+    const text = this.engine.createTextNode(value);
     const id = this.engine.registry.createNode({
       rootId: this.rootId, ownerId, kind: "text", domStart: text, value
     });
@@ -110,7 +121,8 @@ export class PatchTransaction {
   }
 
   createComment(ownerId: OwnerId, value: string): NodeId {
-    const comment = this.engine.document.createComment(value);
+    this.assertMutable();
+    const comment = this.engine.createComment(value);
     const id = this.engine.registry.createNode({
       rootId: this.rootId, ownerId, kind: "comment", domStart: comment, value
     });
@@ -119,8 +131,9 @@ export class PatchTransaction {
   }
 
   createBoundary(ownerId: OwnerId, startValue = "zui:start", endValue = "zui:end", key?: Key): NodeId {
-    const start = this.engine.document.createComment(startValue);
-    const end = this.engine.document.createComment(endValue);
+    this.assertMutable();
+    const start = this.engine.createComment(startValue);
+    const end = this.engine.createComment(endValue);
     const id = this.engine.registry.createNode({
       rootId: this.rootId, ownerId, kind: "boundary", domStart: start, domEnd: end, key
     });
@@ -144,6 +157,14 @@ export class PatchTransaction {
     this.pushOperation({ kind: "move", nodeId, parentId, beforeId });
   }
 
+  placePortal(nodeId: NodeId, container: Element, attachment: PortalAttachment): void {
+    this.assertMutable();
+    // Portal ranges target external DOM containers, so they cannot use the
+    // created-subtree insertion fast path.
+    this.onlyCreatedOperations = false;
+    this.pushOperation({ kind: "portal", nodeId, container, attachment });
+  }
+
   /**
    * Batched sibling reorder for keyed lists whose children were all reused.
    * Contract: no other structural operation may overlap this batch — no
@@ -159,6 +180,7 @@ export class PatchTransaction {
     movingIds: NodeId[],
     beforeIds: Array<NodeId | null>
   ): void {
+    this.assertMutable();
     if (movingIds.length === 0) return;
     this.onlyTextOperations = false;
     this.onlyCreatedOperations = false;
@@ -194,6 +216,7 @@ export class PatchTransaction {
   }
 
   patchInitialProps(nodeId: NodeId, props: Record<string, any>, cachedRecord?: FlatNode): void {
+    this.assertMutable();
     const record = cachedRecord ?? this.engine.registry.getNode(nodeId);
     const deferredKeys = this.engine.applyInitialAttributes(record, props);
     if (deferredKeys) this.pushOperation({ kind: "props", nodeId, previous: {}, next: props, changedKeys: deferredKeys });
@@ -212,18 +235,25 @@ export class PatchTransaction {
   }
 
   attachCleanup(nodeId: NodeId, cleanup: Dispose): void {
+    this.assertMutable();
+    this.cleanupChanges.push({ nodeId, previous: this.engine.registry.getNode(nodeId).cleanup });
     this.engine.registry.attachCleanup(nodeId, cleanup);
   }
 
   commit(): void {
-    if (this.committed) throw new Error("ZUI_TRANSACTION_REUSED");
+    if (this.lifecycle !== "OPEN") throw new Error("ZUI_TRANSACTION_REUSED");
     if (this.operations.length === 0) {
       // Creating records is already an observable registry mutation. A
       // transaction that never schedules any patch must not leak those nodes.
       this.rollback();
       this.committed = true;
+      this.lifecycle = "COMMITTED";
       return;
     }
+
+    this.lifecycle = "VALIDATING";
+    let validatedOperationCount = this.validate();
+    this.lifecycle = "COMMITTING";
     if (this.onlyTextOperations) {
       this.commitTextOnly();
       return;
@@ -240,7 +270,6 @@ export class PatchTransaction {
         throw error;
       }
     }
-    let validatedOperationCount = this.validate();
     // Fresh records are discarded as a subtree if commit fails, so per-op
     // undo closures are unnecessary when this transaction only touches them.
     let undo: Array<() => void> | undefined =
@@ -281,6 +310,19 @@ export class PatchTransaction {
             operation.movingRecords!,
             operation.beforeRecords!
           );
+          continue;
+        }
+        if (operation.kind === "portal") {
+          const previousContainer = operation.attachment.container;
+          const actualPrevious = this.engine.movePortalRange(
+            operation.nodeId,
+            operation.container,
+            operation.attachment
+          );
+          if (!this.isCreated(operation.nodeId) && undo) {
+            const restoreContainer = actualPrevious ?? previousContainer;
+            undo.push(() => this.engine.movePortalRange(operation.nodeId, restoreContainer, operation.attachment));
+          }
           continue;
         }
         const needsUndo = undo !== undefined && !this.isCreated(operation.nodeId);
@@ -332,6 +374,7 @@ export class PatchTransaction {
           this.engine.registry.updateNode(operation.nodeId, operation.patch);
         }
       }
+      this.lifecycle = "FINALIZING";
       this.committed = true;
       let disposalFailure: unknown;
       if (this.hasRemovals) {
@@ -342,6 +385,7 @@ export class PatchTransaction {
         }
       }
       if (disposalFailure) throw disposalFailure;
+      this.lifecycle = "COMMITTED";
     } catch (error) {
       // Revert completed writes in reverse order. This is best-effort: user
       // refs/setters can themselves throw, and disposal callbacks run only
@@ -354,19 +398,32 @@ export class PatchTransaction {
   }
 
   rollback(): void {
-    if (this.committed) return;
-    for (let index = this.created.length - 1; index >= 0; index--) {
-      const nodeId = this.created[index]!;
-      if (!this.engine.registry.hasNode(nodeId)) continue;
-      const node = this.engine.registry.getNode(nodeId);
-      if (!node.disposed) this.engine.discardSubtree(nodeId);
+    if (this.committed || this.lifecycle === "COMMITTED" || this.lifecycle === "ABORTED") return;
+    const created = new Set(this.created);
+    let failure: unknown;
+    try {
+      for (let index = this.created.length - 1; index >= 0; index--) {
+        const nodeId = this.created[index]!;
+        if (!this.engine.registry.hasNode(nodeId)) continue;
+        const node = this.engine.registry.getNode(nodeId);
+        if (!node.disposed) {
+          try { this.engine.discardSubtree(nodeId); }
+          catch (error) { failure ??= error; }
+        }
+      }
+      const cleanupFailure = this.restoreCleanupChanges(0, created);
+      failure ??= cleanupFailure;
+    } finally {
+      this.lifecycle = "ABORTED";
     }
+    if (failure) throw failure;
   }
 
   savepoint(): TransactionSavepoint {
     return {
       operationsCount: this.operations.length,
       createdCount: this.created.length,
+      cleanupChangesCount: this.cleanupChanges.length,
       onlyTextOperations: this.onlyTextOperations,
       onlyCreatedOperations: this.onlyCreatedOperations,
       hasRemovals: this.hasRemovals
@@ -374,13 +431,20 @@ export class PatchTransaction {
   }
 
   rollbackTo(savepoint: TransactionSavepoint): void {
-    if (this.committed) return;
+    if (this.committed || (this.lifecycle !== "OPEN" && this.lifecycle !== "COMMITTING")) return;
+    const createdSinceSavepoint = new Set(this.created.slice(savepoint.createdCount));
+    let failure: unknown;
     for (let index = this.created.length - 1; index >= savepoint.createdCount; index--) {
       const nodeId = this.created[index]!;
       if (!this.engine.registry.hasNode(nodeId)) continue;
       const node = this.engine.registry.getNode(nodeId);
-      if (!node.disposed) this.engine.discardSubtree(nodeId);
+      if (!node.disposed) {
+        try { this.engine.discardSubtree(nodeId); }
+        catch (error) { failure ??= error; }
+      }
     }
+    const cleanupFailure = this.restoreCleanupChanges(savepoint.cleanupChangesCount, createdSinceSavepoint);
+    failure ??= cleanupFailure;
     this.created.length = savepoint.createdCount;
     this.operations.length = savepoint.operationsCount;
     if (this.moveManyConflicts) this.rebuildMoveManyConflictIndex();
@@ -389,6 +453,22 @@ export class PatchTransaction {
     this.hasRemovals = savepoint.hasRemovals;
     this.lastCreatedId = 0;
     this.lastCreatedNode = undefined;
+    if (failure) throw failure;
+  }
+
+  private restoreCleanupChanges(startIndex: number, disposedNodes: ReadonlySet<NodeId>): unknown {
+    let failure: unknown;
+    for (let index = this.cleanupChanges.length - 1; index >= startIndex; index--) {
+      const change = this.cleanupChanges[index]!;
+      if (disposedNodes.has(change.nodeId) || !this.engine.registry.hasNode(change.nodeId)) continue;
+      const node = this.engine.registry.getNode(change.nodeId);
+      if (!node.disposed) {
+        try { this.engine.registry.restoreCleanup(change.nodeId, change.previous); }
+        catch (error) { failure ??= error; }
+      }
+    }
+    this.cleanupChanges.length = startIndex;
+    return failure;
   }
 
   private commitTextOnly(): void {
@@ -406,7 +486,9 @@ export class PatchTransaction {
         appliedCount = index + 1;
         this.engine.applyText(operation.nodeId, operation.value, node, previous);
       }
+      this.lifecycle = "FINALIZING";
       this.committed = true;
+      this.lifecycle = "COMMITTED";
     } catch (error) {
       for (let index = appliedCount - 1; index >= 0; index--) {
         const operation = operations[index]!;
@@ -481,10 +563,13 @@ export class PatchTransaction {
         this.engine.registry.updateNode(operation.nodeId, operation.patch);
       }
     }
+    this.lifecycle = "FINALIZING";
     this.committed = true;
+    this.lifecycle = "COMMITTED";
   }
 
   private pushOperation(operation: PatchOp): void {
+    this.assertMutable();
     if (operation.kind !== "text") this.onlyTextOperations = false;
     if (operation.kind === "remove") this.hasRemovals = true;
     if (operation.kind !== "move-many" && !this.isCreated(operation.nodeId)) {
@@ -492,6 +577,12 @@ export class PatchTransaction {
     }
     if (this.moveManyConflicts) this.addMoveManyConflict(operation);
     this.operations.push(operation);
+  }
+
+  private assertMutable(): void {
+    if (this.lifecycle !== "OPEN" && this.lifecycle !== "COMMITTING") {
+      throw new Error("ZUI_TRANSACTION_PHASE");
+    }
   }
 
   private validate(): number {
@@ -526,6 +617,15 @@ export class PatchTransaction {
         }
         const node = this.engine.registry.getNode(operation.nodeId);
         if (node.rootId !== this.rootId || node.disposed) throw new Error("ZUI_TRANSACTION_NODE");
+        if (operation.kind === "portal") {
+          if (
+            node.kind !== "boundary" || node.parentId !== null ||
+            !operation.container || operation.container.nodeType !== 1 ||
+            typeof operation.container.appendChild !== "function" ||
+            !operation.attachment || typeof operation.attachment !== "object"
+          ) throw new Error("ZUI_TRANSACTION_PORTAL");
+          continue;
+        }
         if (operation.kind === "remove") {
           if (removed.has(operation.nodeId)) throw new Error("ZUI_TRANSACTION_DUPLICATE_REMOVE");
           removed.add(operation.nodeId);

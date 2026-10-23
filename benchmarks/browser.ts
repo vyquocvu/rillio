@@ -5,16 +5,20 @@ import { h as preactH, render as preactRender } from "preact";
 import { h as vueH, render as vueRender } from "vue";
 import { createRoot as createZuiRoot, jsx as zuiJsx } from "../src/compat.ts";
 
-type Framework = "zui" | "react" | "preact" | "vue";
-type Scenario = "mount" | "noop" | "text" | "append-remove" | "rotate" | "reverse";
-type Row = { id: number; value: string };
+export type Framework = "zui" | "react" | "preact" | "vue";
+export type Scenario = "mount" | "noop" | "text" | "append-remove" | "rotate" | "reverse";
+export type Row = { id: number; value: string };
 
-interface BenchmarkOptions {
+export interface BenchmarkOptions {
   framework: Framework;
   scenario: Scenario;
   size: number;
   warmup: number;
   samples: number;
+  /** Optional live demo target; automated benchmark runs still default to #app. */
+  container?: HTMLDivElement;
+  /** Include a synchronous style/layout flush in the live demo timings. */
+  flushLayout?: boolean;
 }
 
 declare global {
@@ -35,11 +39,11 @@ declare global {
   }
 }
 
-function makeRows(size: number): Row[] {
+export function makeRows(size: number): Row[] {
   return Array.from({ length: size }, (_, id) => ({ id, value: String(id) }));
 }
 
-function nextRows(rows: Row[], scenario: Scenario, iteration: number, baseSize: number): Row[] {
+export function nextRows(rows: Row[], scenario: Scenario, iteration: number, baseSize: number): Row[] {
   if (scenario === "noop") return rows;
   if (scenario === "text") return rows.map(row => ({ ...row, value: `${row.id}:${iteration}` }));
   if (scenario === "append-remove") {
@@ -51,7 +55,7 @@ function nextRows(rows: Row[], scenario: Scenario, iteration: number, baseSize: 
   return rows.length < 2 ? rows : [...rows.slice(1), rows[0]!];
 }
 
-function makeTree(framework: Framework, rows: Row[]): unknown {
+export function makeTree(framework: Framework, rows: Row[]): unknown {
   if (framework === "react") {
     return createElement("ul", null, rows.map(row => createElement(
       "li",
@@ -89,7 +93,7 @@ function percentile(values: number[], fraction: number): number {
   return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * fraction) - 1)] ?? 0;
 }
 
-function createRenderer(framework: Framework, container: HTMLDivElement) {
+export function createRenderer(framework: Framework, container: HTMLDivElement) {
   if (framework === "react") {
     const root = createReactRoot(container);
     return {
@@ -119,11 +123,18 @@ function createRenderer(framework: Framework, container: HTMLDivElement) {
   };
 }
 
-function measureRender(framework: Framework, renderer: ReturnType<typeof createRenderer>, rows: Row[]) {
+function measureRender(
+  framework: Framework,
+  renderer: ReturnType<typeof createRenderer>,
+  rows: Row[],
+  container: HTMLDivElement,
+  flushLayout: boolean
+) {
   const started = performance.now();
   const tree = makeTree(framework, rows);
   const treeBuilt = performance.now();
   renderer.render(tree);
+  if (flushLayout) void container.offsetHeight;
   const finished = performance.now();
   return {
     totalMs: finished - started,
@@ -132,7 +143,7 @@ function measureRender(framework: Framework, renderer: ReturnType<typeof createR
   };
 }
 
-function assertRows(container: HTMLDivElement, rows: Row[], framework: Framework, scenario: Scenario, size: number): void {
+export function assertRows(container: HTMLDivElement, rows: Row[], framework: Framework, scenario: Scenario, size: number): void {
   const actualRows = container.querySelectorAll("li");
   if (actualRows.length !== rows.length) {
     throw new Error(`Benchmark DOM row-count mismatch: ${framework}/${scenario}/${size}`);
@@ -146,8 +157,9 @@ function assertRows(container: HTMLDivElement, rows: Row[], framework: Framework
   }
 }
 
-window.validateListBenchmark = ({ framework, scenario, size, warmup, samples }) => {
-  const container = document.querySelector<HTMLDivElement>("#app")!;
+window.validateListBenchmark = ({ framework, scenario, size, warmup, samples, container: target, flushLayout = false }) => {
+  const container = target ?? document.querySelector<HTMLDivElement>("#app")!;
+  const flush = () => { if (flushLayout) void container.offsetHeight; };
   let rows = makeRows(size);
 
   if (scenario === "mount") {
@@ -155,6 +167,7 @@ window.validateListBenchmark = ({ framework, scenario, size, warmup, samples }) 
       const renderer = createRenderer(framework, container);
       try {
         renderer.render(makeTree(framework, rows));
+        flush();
         assertRows(container, rows, framework, scenario, size);
       } finally {
         renderer.unmount();
@@ -167,10 +180,12 @@ window.validateListBenchmark = ({ framework, scenario, size, warmup, samples }) 
   const renderer = createRenderer(framework, container);
   try {
     renderer.render(makeTree(framework, rows));
+    flush();
     assertRows(container, rows, framework, scenario, size);
     for (let iteration = 0; iteration < warmup + samples; iteration++) {
       rows = nextRows(rows, scenario, iteration + 1, size);
       renderer.render(makeTree(framework, rows));
+      flush();
       assertRows(container, rows, framework, scenario, size);
     }
   } finally {
@@ -178,8 +193,9 @@ window.validateListBenchmark = ({ framework, scenario, size, warmup, samples }) 
   }
 };
 
-window.runListBenchmark = ({ framework, scenario, size, warmup, samples }) => {
-  const container = document.querySelector<HTMLDivElement>("#app")!;
+window.runListBenchmark = ({ framework, scenario, size, warmup, samples, container: target, flushLayout = false }) => {
+  const container = target ?? document.querySelector<HTMLDivElement>("#app")!;
+  const flush = () => { if (flushLayout) void container.offsetHeight; };
   let rows = makeRows(size);
   if (scenario === "mount") {
     const durations: number[] = [];
@@ -192,6 +208,7 @@ window.runListBenchmark = ({ framework, scenario, size, warmup, samples }) => {
         const tree = makeTree(framework, rows);
         const treeBuilt = performance.now();
         renderer.render(tree);
+        flush();
         const finished = performance.now();
         const elapsed = finished - started;
         if (i === samples - 1) assertRows(container, rows, framework, scenario, size);
@@ -220,38 +237,42 @@ window.runListBenchmark = ({ framework, scenario, size, warmup, samples }) => {
   }
 
   const renderer = createRenderer(framework, container);
-  const render = (next: Row[]) => renderer.render(makeTree(framework, next));
+  try {
+    const render = (next: Row[]) => renderer.render(makeTree(framework, next));
 
-  render(rows);
-  for (let i = 0; i < warmup; i++) {
-    rows = nextRows(rows, scenario, i + 1, size);
     render(rows);
+    flush();
+    for (let i = 0; i < warmup; i++) {
+      rows = nextRows(rows, scenario, i + 1, size);
+      render(rows);
+      flush();
+    }
+
+    const durations: number[] = [];
+    const treeDurations: number[] = [];
+    const updateDurations: number[] = [];
+    for (let i = 0; i < samples; i++) {
+      rows = nextRows(rows, scenario, warmup + i + 1, size);
+      const timing = measureRender(framework, renderer, rows, container, flushLayout);
+      durations.push(timing.totalMs);
+      treeDurations.push(timing.treeMs);
+      updateDurations.push(timing.updateMs);
+    }
+
+    assertRows(container, rows, framework, scenario, size);
+    return {
+      framework,
+      scenario,
+      size,
+      samples,
+      medianMs: percentile(durations, 0.5),
+      p95Ms: percentile(durations, 0.95),
+      minMs: Math.min(...durations),
+      valuesMs: durations,
+      treeValuesMs: treeDurations,
+      updateValuesMs: updateDurations
+    };
+  } finally {
+    renderer.unmount();
   }
-
-  const durations: number[] = [];
-  const treeDurations: number[] = [];
-  const updateDurations: number[] = [];
-  for (let i = 0; i < samples; i++) {
-    rows = nextRows(rows, scenario, warmup + i + 1, size);
-    const timing = measureRender(framework, renderer, rows);
-    durations.push(timing.totalMs);
-    treeDurations.push(timing.treeMs);
-    updateDurations.push(timing.updateMs);
-  }
-
-  assertRows(container, rows, framework, scenario, size);
-  renderer.unmount();
-
-  return {
-    framework,
-    scenario,
-    size,
-    samples,
-    medianMs: percentile(durations, 0.5),
-    p95Ms: percentile(durations, 0.95),
-    minMs: Math.min(...durations),
-    valuesMs: durations,
-    treeValuesMs: treeDurations,
-    updateValuesMs: updateDurations
-  };
 };

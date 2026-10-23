@@ -1,12 +1,12 @@
 import { createRoot, useState } from "zui";
 import { Button, StyleSheet } from "zui/ui";
 import { useStore as useZustandStore, create as createBoundStore, shallow, useShallow } from "zui/external-store";
-import { createStore as createDomStore, mount as mountDom } from "zui/dom";
-import { createStore, mount } from "zui/legacy";
-import { createEngine } from "zui/reactive";
+import { mount as mountDom } from "zui/dom";
+import { mount } from "zui/legacy";
+import { createEngine, createStore } from "zui/reactive";
 import { inspectRoot, trackTransactions, createInspectorOverlay } from "zui/devtools";
 
-const domStore = createDomStore("dom");
+const domStore = createStore("dom");
 const legacyStore = createStore("legacy");
 const engine = createEngine("graph");
 const reactiveStore = engine.createStore(1);
@@ -45,11 +45,13 @@ const container = document.createElement("div");
 createRoot(container).render(<ConsumerApp />);
 const reactiveContainer = document.createElement("div");
 mount(() => legacyStore.get(), reactiveContainer);
+const domContainer = document.createElement("div");
+mountDom(() => domStore.get(), domContainer);
 const rootSnapshot = inspectRoot(container);
 const tracker = trackTransactions();
 const overlay = createInspectorOverlay();
 overlay.dispose();
 tracker.dispose();
 
-export { container, reactiveContainer, domStore, legacyStore, reactiveStore, ZustandCounter, typedInput, typedSvg, invalidAttribute, invalidHandler, rootSnapshot };
+export { container, reactiveContainer, domContainer, domStore, legacyStore, reactiveStore, ZustandCounter, typedInput, typedSvg, invalidAttribute, invalidHandler, rootSnapshot };
 export { Button, StyleSheet };

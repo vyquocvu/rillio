@@ -1,7 +1,6 @@
 /**
  * Allocation-free shallow equality over own enumerable string-keyed
- * properties. Shared by the compat reconciler's props bailout and the
- * external-store adapter's `shallow` selector equality.
+ * properties. Used by the external-store adapter's `shallow` selector equality.
  */
 export function shallowEqual(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) return true;

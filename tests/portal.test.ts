@@ -176,6 +176,53 @@ describe("createPortal", () => {
     otherContainer.remove();
   });
 
+  it("does not move a portal while a later sibling is still being planned", () => {
+    const otherContainer = document.createElement("div");
+    const root = createRoot(hostContainer);
+    let shouldThrow = false;
+
+    function MaybeBroken() {
+      if (shouldThrow) throw new Error("later sibling failed");
+      return jsx("span", { id: "stable-sibling", children: "Ready" });
+    }
+
+    const render = (target: Element) => root.render(jsx("main", {
+      children: [
+        createPortal(jsx("p", { id: "transactional-portal", children: "Portal" }), target, "portal"),
+        jsx(MaybeBroken, {})
+      ]
+    }));
+
+    render(portalContainer);
+    shouldThrow = true;
+    expect(() => render(otherContainer)).toThrow("later sibling failed");
+
+    expect(portalContainer.querySelector("#transactional-portal")?.textContent).toBe("Portal");
+    expect(otherContainer.querySelector("#transactional-portal")).toBeNull();
+    expect(hostContainer.querySelector("#stable-sibling")?.textContent).toBe("Ready");
+    root.unmount();
+  });
+
+  it("restores a moved portal if a later commit callback throws", () => {
+    const otherContainer = document.createElement("div");
+    const root = createRoot(hostContainer);
+    root.render(jsx("main", {
+      children: createPortal(jsx("p", { id: "rollback-portal", children: "Portal" }), portalContainer)
+    }));
+
+    expect(() => root.render(jsx("main", {
+      children: [
+        createPortal(jsx("p", { id: "rollback-portal", children: "Portal" }), otherContainer),
+        jsx("button", { ref: () => { throw new Error("ref failed after portal move"); } })
+      ]
+    }))).toThrow("ref failed after portal move");
+
+    expect(portalContainer.querySelector("#rollback-portal")?.textContent).toBe("Portal");
+    expect(otherContainer.querySelector("#rollback-portal")).toBeNull();
+    root.unmount();
+    expect(portalContainer.innerHTML).toBe("");
+  });
+
   it("cleans up portal DOM and registry nodes on unmount", () => {
     const diagBefore = nodeRegistry.diagnostics();
     const root = createRoot(hostContainer);

@@ -258,17 +258,28 @@ export class NodeRegistry implements OwnerHost {
   }
 
   disposeOwner(ownerId: OwnerId): void {
-    const owner = this.getOwner(ownerId);
-    if (owner.disposed) return;
-    owner.disposed = true;
-    for (const childId of [...owner.children]) this.disposeOwner(childId);
-    const parent = owner.parentId === null ? undefined : this.getOwner(owner.parentId);
-    parent?.children.delete(ownerId);
-    parent && parent.version++;
-    owner.children.clear();
-    owner.nodeIds.clear();
-    owner.version++;
-    this.rememberOwnerTombstone(ownerId);
+    const stack: Array<{ id: OwnerId; exit: boolean }> = [{ id: ownerId, exit: false }];
+    while (stack.length > 0) {
+      const frame = stack.pop()!;
+      const owner = this.getOwner(frame.id);
+      if (!frame.exit) {
+        if (owner.disposed) continue;
+        owner.disposed = true;
+        stack.push({ id: frame.id, exit: true });
+        const children = [...owner.children];
+        for (let index = children.length - 1; index >= 0; index--) {
+          stack.push({ id: children[index]!, exit: false });
+        }
+        continue;
+      }
+      const parent = owner.parentId === null ? undefined : this.getOwner(owner.parentId);
+      parent?.children.delete(frame.id);
+      if (parent) parent.version++;
+      owner.children.clear();
+      owner.nodeIds.clear();
+      owner.version++;
+      this.rememberOwnerTombstone(frame.id);
+    }
   }
 
   attachCleanup(nodeId: NodeId, cleanup: Dispose): void {
@@ -277,6 +288,12 @@ export class NodeRegistry implements OwnerHost {
     node.cleanup = previous
       ? () => { previous(); cleanup(); }
       : cleanup;
+    node.version++;
+  }
+
+  restoreCleanup(nodeId: NodeId, cleanup: Dispose | undefined): void {
+    const node = this.getNode(nodeId);
+    node.cleanup = cleanup;
     node.version++;
   }
 
@@ -485,24 +502,31 @@ export class NodeRegistry implements OwnerHost {
   }
 
   disposeNode(nodeId: NodeId): void {
-    const node = this.getNode(nodeId);
-    if (node.disposed) return;
-    // Child disposal unlinks from this node, so save the next pointer first
-    // and avoid allocating a child-id snapshot for every subtree node.
-    let childId = node.firstChild;
-    while (childId !== null) {
-      const nextSibling = this.getNode(childId).nextSibling;
-      this.disposeNode(childId);
-      childId = nextSibling;
+    type Frame = { id: NodeId; nextChild: NodeId | null };
+    const initial = this.getNode(nodeId);
+    if (initial.disposed) return;
+    const stack: Frame[] = [{ id: nodeId, nextChild: initial.firstChild }];
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1]!;
+      if (frame.nextChild !== null) {
+        const childId = frame.nextChild;
+        const child = this.getNode(childId);
+        frame.nextChild = child.nextSibling;
+        if (!child.disposed) stack.push({ id: childId, nextChild: child.firstChild });
+        continue;
+      }
+      stack.pop();
+      const node = this.getNode(frame.id);
+      if (node.disposed) continue;
+      this.unlinkChild(frame.id);
+      const owner = this.owners.get(node.ownerId);
+      owner?.nodeIds.delete(frame.id);
+      if (owner) owner.version++;
+      node.disposed = true;
+      node.version++;
+      this.releaseNodeReferences(node);
+      this.rememberNodeTombstone(frame.id);
     }
-    this.unlinkChild(nodeId);
-    const owner = this.owners.get(node.ownerId);
-    owner?.nodeIds.delete(nodeId);
-    if (owner) owner.version++;
-    node.disposed = true;
-    node.version++;
-    this.releaseNodeReferences(node);
-    this.rememberNodeTombstone(nodeId);
   }
 
   disposeRoot(rootId: RootId): void {
@@ -582,21 +606,40 @@ export class NodeRegistry implements OwnerHost {
   assertConsistent(rootId: RootId): void {
     const root = this.getRoot(rootId);
     const seen = new Set<NodeId>();
-    const walk = (nodeId: NodeId, parentId: NodeId | null): void => {
-      const node = this.getNode(nodeId);
-      if (node.disposed || node.rootId !== rootId || node.parentId !== parentId || seen.has(nodeId)) {
-        throw new Error("ZUI_INDEX_CORRUPT");
-      }
-      seen.add(nodeId);
-      let previous: NodeId | null = null;
-      for (const childId of this.children(nodeId)) {
-        const child = this.getNode(childId);
-        if (child.prevSibling !== previous) throw new Error("ZUI_INDEX_CORRUPT");
-        walk(childId, nodeId);
-        previous = childId;
-      }
-      if (node.lastChild !== previous) throw new Error("ZUI_INDEX_CORRUPT");
+    type Frame = {
+      id: NodeId;
+      parentId: NodeId | null;
+      entered: boolean;
+      nextChild: NodeId | null;
+      previousChild: NodeId | null;
     };
-    walk(root.nodeId, null);
+    const stack: Frame[] = [{
+      id: root.nodeId, parentId: null, entered: false, nextChild: null, previousChild: null
+    }];
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1]!;
+      const node = this.getNode(frame.id);
+      if (!frame.entered) {
+        if (node.disposed || node.rootId !== rootId || node.parentId !== frame.parentId || seen.has(frame.id)) {
+          throw new Error("ZUI_INDEX_CORRUPT");
+        }
+        seen.add(frame.id);
+        frame.entered = true;
+        frame.nextChild = node.firstChild;
+      }
+      if (frame.nextChild !== null) {
+        const childId = frame.nextChild;
+        const child = this.getNode(childId);
+        if (child.prevSibling !== frame.previousChild) throw new Error("ZUI_INDEX_CORRUPT");
+        frame.previousChild = childId;
+        frame.nextChild = child.nextSibling;
+        stack.push({
+          id: childId, parentId: frame.id, entered: false, nextChild: null, previousChild: null
+        });
+      } else {
+        if (node.lastChild !== frame.previousChild) throw new Error("ZUI_INDEX_CORRUPT");
+        stack.pop();
+      }
+    }
   }
 }

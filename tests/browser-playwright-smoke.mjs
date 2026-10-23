@@ -136,7 +136,8 @@ try {
 
   await page.evaluate(async () => {
     const { createRoot, jsx, Input, Progress } = await import("/package/index.js");
-    const { createStore, mount } = await import("/package/dom.js");
+    const { createStore } = await import("/package/reactive-api.js");
+    const { mount } = await import("/package/dom.js");
     const sharedContainer = document.createElement("div");
     document.body.append(sharedContainer);
     const value = createStore("reactive root");
@@ -260,9 +261,14 @@ try {
   await page.locator("#root-increment").click();
   await page.waitForFunction(() => document.querySelector("#root-updates")?.textContent === "1");
   const rootUpdateLogs = browserLogs.filter(line => line.startsWith("[render-lab]"));
-  for (const component of ["App", "LocalCounter", "StoreCount", "StoreLabel", "StaticChild"]) {
+  if (!rootUpdateLogs.some(line => line.includes("App render"))) {
+    throw new Error(`Parent update did not re-render App: ${rootUpdateLogs.join(" | ")}`);
+  }
+  // Parent-owned updates rerun all matched child components, while preserving
+  // their existing host DOM nodes.
+  for (const component of ["LocalCounter", "StoreCount", "StoreLabel", "StaticChild"]) {
     if (!rootUpdateLogs.some(line => line.includes(`${component} render`))) {
-      throw new Error(`Parent update did not log ${component}: ${rootUpdateLogs.join(" | ")}`);
+      throw new Error(`Parent update skipped ${component}: ${rootUpdateLogs.join(" | ")}`);
     }
   }
   if (!await page.locator("#static-child").evaluate(node => node === window.__renderLabStaticNode)) {

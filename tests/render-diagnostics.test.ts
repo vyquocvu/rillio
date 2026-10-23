@@ -4,7 +4,7 @@ import { createRoot, jsx, useState } from "../src/compat.js";
 import { create } from "../src/external-store.js";
 
 describe("render diagnostics", () => {
-  it("shows local updates stay in their owner and parent updates skip unchanged descendants", () => {
+  it("shows local updates stay in their owner and parent updates rerun stable descendants", () => {
     const events: string[] = [];
     let updateApp!: (next: number) => void;
     let updateLeaf!: (next: number) => void;
@@ -46,7 +46,7 @@ describe("render diagnostics", () => {
 
     events.length = 0;
     updateApp(1);
-    expect(events).toEqual(["App"]);
+    expect(events).toEqual(["App", "Leaf", "Sibling"]);
     expect(container.querySelector("#leaf")).toBe(leafNode);
     expect(container.querySelector("#sibling")).toBe(siblingNode);
     console.log("[render-check] parent update =>", events.join(" > "));

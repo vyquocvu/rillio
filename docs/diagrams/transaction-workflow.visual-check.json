@@ -7,8 +7,8 @@
   "visualReview": "pending",
   "artifact": {
     "path": "/Users/vyquocvu/Develop/zui/docs/diagrams/transaction-workflow.html",
-    "sha256": "59c6d6830b240d74cb3a8b2765293ccb2951444ab1a79f64b15eca396b5e3fdf",
-    "bytes": 806735
+    "sha256": "a602c15ecfbae72251cf24a5d4598990eab2933021acc661566ec4121b6e739b",
+    "bytes": 806844
   },
   "state": {
     "detail": "read",
@@ -64,8 +64,8 @@
         "overflowX": false,
         "overflowY": false,
         "ok": true,
-        "readerWidth": 1536,
-        "diagramWidth": 1506,
+        "readerWidth": 1532,
+        "diagramWidth": 1502,
         "viewBoxWidth": 1283,
         "minimumProjectedNodeTextPx": 11,
         "minimumProjectedNodeText": "Nested callback",
@@ -194,8 +194,8 @@
         "overflowX": false,
         "overflowY": false,
         "ok": true,
-        "readerWidth": 1536,
-        "diagramWidth": 1506,
+        "readerWidth": 1532,
+        "diagramWidth": 1502,
         "viewBoxWidth": 1283,
         "minimumProjectedNodeTextPx": 11,
         "minimumProjectedNodeText": "Nested callback",
@@ -323,8 +323,8 @@
         "overflowX": false,
         "overflowY": false,
         "ok": true,
-        "readerWidth": 1536,
-        "diagramWidth": 1506,
+        "readerWidth": 1532,
+        "diagramWidth": 1502,
         "viewBoxWidth": 1283,
         "minimumProjectedNodeTextPx": 11,
         "minimumProjectedNodeText": "Nested callback",

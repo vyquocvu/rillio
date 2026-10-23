@@ -90,7 +90,7 @@ function runLifecycleCase(caseName: CaseName, size: number): void {
   } else if (caseName === "parent-state-update") {
     renderLog.length = 0;
     parentSetter!(previous => previous + 1);
-    expect(renderLog).toEqual([]);
+    expect(renderLog).toEqual(Array.from({ length: size }, (_, id) => id));
     for (const [id, node] of initialNodes) {
       expect(container.querySelector(`[data-id="${id}"]`)).toBe(node);
     }

@@ -33,10 +33,30 @@ export class PatchEngine {
     return () => this.commitListeners.delete(listener);
   }
 
+  createElement(tag: string, customizedBuiltIn?: string): HTMLElement {
+    const element = customizedBuiltIn
+      ? this.document.createElement(tag, { is: customizedBuiltIn })
+      : this.document.createElement(tag);
+    if (customizedBuiltIn) this.setAttribute(element, "is", customizedBuiltIn);
+    return element;
+  }
+
+  createElementNS(namespace: string, tag: string): Element {
+    return this.document.createElementNS(namespace, tag);
+  }
+
+  createTextNode(value: string): Text {
+    return this.document.createTextNode(value);
+  }
+
+  createComment(value: string): Comment {
+    return this.document.createComment(value);
+  }
+
   transaction<T>(rootId: RootId, work: (tx: PatchTransaction) => T): T {
     if (this.activeTransaction) {
       if (this.activeTransaction.rootId !== rootId) throw new Error("ZUI_NESTED_ROOT_TRANSACTION");
-      return work(this.activeTransaction);
+      return this.join(this.activeTransaction, work);
     }
     const tx = new PatchTransaction(this, rootId);
     this.activeTransaction = tx;
@@ -44,28 +64,16 @@ export class PatchEngine {
     const start = now();
     try {
       const value = work(tx);
-      const ops = this.commitListeners.size > 0 ? tx.ops.slice() : undefined;
       tx.commit();
       if (this.assertAfterCommit) this.registry.assertConsistent(rootId);
-      if (ops) {
-        const info: TransactionCommitInfo = {
-          rootId,
-          opCount: ops.length,
-          operations: ops,
-          durationMs: now() - start,
-          timestamp: Date.now(),
-        };
-        for (const listener of this.commitListeners) {
-          try {
-            listener(info);
-          } catch {
-            // DevTools observer failure must never crash application transaction
-          }
-        }
-      }
+      this.publishCommit(tx, start, now, "complete");
       return value;
     } catch (error) {
-      tx.rollback();
+      // Finalization happens after the irreversible point. Surface cleanup
+      // failures to the caller, while still reporting the writes that landed.
+      if (tx.isIrreversible) this.publishCommit(tx, start, now, "error");
+      try { tx.rollback(); }
+      catch { /* preserve the original transaction failure */ }
       throw error;
     } finally {
       this.activeTransaction = undefined;
@@ -74,8 +82,51 @@ export class PatchEngine {
 
   update<T>(rootId: RootId, work: (tx: PatchTransaction) => T): T {
     return this.activeTransaction?.rootId === rootId
-      ? work(this.activeTransaction)
+      ? this.join(this.activeTransaction, work)
       : this.transaction(rootId, work);
+  }
+
+  /**
+   * Run `work` against the already-active transaction. A callback that throws
+   * contributes nothing: its enqueued operations and freshly created nodes are
+   * discarded, so a caller may catch and continue on the outer transaction.
+   */
+  private join<T>(tx: PatchTransaction, work: (tx: PatchTransaction) => T): T {
+    const savepoint = tx.savepoint();
+    try {
+      return work(tx);
+    } catch (error) {
+      try { tx.rollbackTo(savepoint); }
+      catch { /* preserve the callback failure */ }
+      throw error;
+    }
+  }
+
+  private publishCommit(
+    tx: PatchTransaction,
+    start: number,
+    now: () => number,
+    finalizationStatus: "complete" | "error"
+  ): void {
+    if (this.commitListeners.size === 0) return;
+    // Ref callbacks can enqueue work during COMMITTING. Snapshot only after
+    // that queue has drained and finalization has reached its irreversible end.
+    const operations = tx.ops.slice();
+    const info: TransactionCommitInfo = {
+      rootId: tx.rootId,
+      opCount: operations.length,
+      operations,
+      finalizationStatus,
+      durationMs: now() - start,
+      timestamp: Date.now(),
+    };
+    for (const listener of this.commitListeners) {
+      try {
+        listener(info);
+      } catch {
+        // DevTools observer failure must never crash application transaction.
+      }
+    }
   }
 
   resolveNamespace(parentId: NodeId | null | undefined, tag: string): string | undefined {
@@ -166,6 +217,44 @@ export class PatchEngine {
     if (node.parentId === parentId) this.registry.moveChildBefore(nodeId, beforeId);
     else this.registry.linkChild(nodeId, parentId, beforeId);
     this.restoreFocus(focus);
+  }
+
+  movePortalRange(
+    nodeId: NodeId,
+    container: Element,
+    attachment: { container: Element }
+  ): Element | null {
+    const node = this.registry.getNode(nodeId);
+    if (node.kind !== "boundary" || node.disposed) throw new Error("ZUI_TRANSACTION_PORTAL");
+    if (!container || container.nodeType !== 1 || typeof container.appendChild !== "function") {
+      throw new Error("ZUI_INVALID_PORTAL_CONTAINER");
+    }
+    const oldParent = node.domStart.parentNode;
+    if (node.domEnd.parentNode !== oldParent || (oldParent && oldParent.nodeType !== 1)) {
+      throw new Error("ZUI_DOM_RANGE_CORRUPT");
+    }
+    if (oldParent === container) {
+      attachment.container = container;
+      return container;
+    }
+
+    const oldContainer = oldParent as Element | null;
+    const focus = oldContainer
+      ? this.captureFocusInRecords(oldContainer, this.registry.childRecords(nodeId))
+      : undefined;
+    const fragment = this.extractRange(node);
+    try {
+      container.appendChild(fragment);
+    } catch (error) {
+      if (oldContainer) {
+        try { oldContainer.appendChild(fragment); }
+        catch { /* preserve the original append error */ }
+      }
+      throw error;
+    }
+    attachment.container = container;
+    this.restoreFocus(focus);
+    return oldContainer;
   }
 
   moveChildren(
@@ -340,27 +429,32 @@ export class PatchEngine {
   }
 
   private disposeSubtree(nodeId: NodeId): void {
-    const node = this.registry.getNode(nodeId);
-    if (node.disposed) return;
     let failure: unknown;
     const capture = (work: () => void): void => {
       try { work(); } catch (error) { failure ??= error; }
     };
-    // Disposal unlinks each child from this parent. Capture the next sibling
-    // before recursing so we can walk the linked list without allocating the
-    // snapshot array returned by registry.children().
-    let childId = node.firstChild;
-    while (childId !== null) {
-      const currentChildId = childId;
-      const nextSibling = this.registry.getNode(currentChildId).nextSibling;
-      capture(() => this.disposeSubtree(currentChildId));
-      childId = nextSibling;
+    type Frame = { id: NodeId; nextChild: NodeId | null };
+    const root = this.registry.getNode(nodeId);
+    if (root.disposed) return;
+    const stack: Frame[] = [{ id: nodeId, nextChild: root.firstChild }];
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1]!;
+      if (frame.nextChild !== null) {
+        const childId = frame.nextChild;
+        const child = this.registry.getNode(childId);
+        frame.nextChild = child.nextSibling;
+        if (!child.disposed) stack.push({ id: childId, nextChild: child.firstChild });
+        continue;
+      }
+      stack.pop();
+      const node = this.registry.getNode(frame.id);
+      if (node.disposed) continue;
+      capture(() => this.clearBindings(node));
+      const cleanup = node.cleanup;
+      node.cleanup = undefined;
+      if (cleanup) capture(cleanup);
+      capture(() => this.registry.disposeNode(frame.id));
     }
-    capture(() => this.clearBindings(node));
-    const cleanup = node.cleanup;
-    node.cleanup = undefined;
-    if (cleanup) capture(cleanup);
-    capture(() => this.registry.disposeNode(nodeId));
     if (failure) throw failure;
   }
 

@@ -743,3 +743,321 @@ describe("addressable DOM foundation", () => {
     expect(d6.totalRoots).toBe(0);
   });
 });
+
+describe("nested transaction isolation", () => {
+  function setup() {
+    const registry = new NodeRegistry();
+    const patches = new PatchEngine(registry, document);
+    const container = document.createElement("div");
+    const root = registry.createRoot(container);
+    const owner = registry.createOwner(root.rootId, root.ownerId);
+    return { registry, patches, container, root, owner };
+  }
+
+  function textOf(patches: PatchEngine, nodeId: number): string {
+    return (patches.registry.getNode(nodeId).domStart as CharacterData).data;
+  }
+
+  function threeTextNodes(patches: PatchEngine, root: ReturnType<NodeRegistry["createRoot"]>, owner: number) {
+    let a!: number, b!: number, c!: number;
+    patches.transaction(root.rootId, tx => {
+      a = tx.createText(owner, "a0");
+      b = tx.createText(owner, "b0");
+      c = tx.createText(owner, "c0");
+      tx.insert(a, root.nodeId);
+      tx.insert(b, root.nodeId);
+      tx.insert(c, root.nodeId);
+    });
+    return { a, b, c };
+  }
+
+  it("discards operations enqueued by a failed nested transaction() when the caller catches", () => {
+    const { patches, container, root } = setup();
+    const { a, b, c } = threeTextNodes(patches, root, root.ownerId);
+
+    patches.transaction(root.rootId, tx => {
+      tx.setText(a, "A");
+      expect(() => patches.transaction(root.rootId, nested => {
+        nested.setText(b, "B");
+        throw new Error("nested failure");
+      })).toThrow("nested failure");
+      tx.setText(c, "C");
+    });
+
+    expect(textOf(patches, a)).toBe("A");
+    expect(textOf(patches, b)).toBe("b0");
+    expect(textOf(patches, c)).toBe("C");
+    expect(container.textContent).toBe("Ab0C");
+  });
+
+  it("discards operations enqueued by a failed nested update() when the caller catches", () => {
+    const { patches, container, root } = setup();
+    const { a, b, c } = threeTextNodes(patches, root, root.ownerId);
+
+    patches.transaction(root.rootId, tx => {
+      tx.setText(a, "A");
+      expect(() => patches.update(root.rootId, nested => {
+        nested.setText(b, "B");
+        throw new Error("nested failure");
+      })).toThrow("nested failure");
+      tx.setText(c, "C");
+    });
+
+    expect(textOf(patches, b)).toBe("b0");
+    expect(container.textContent).toBe("Ab0C");
+  });
+
+  it("does not leak nodes created inside a failed nested transaction into the DOM or registry", () => {
+    const { registry, patches, container, root, owner } = setup();
+    patches.transaction(root.rootId, tx => {
+      const keep = tx.createText(owner, "keep");
+      tx.insert(keep, root.nodeId);
+    });
+
+    let leakedId = 0;
+    patches.transaction(root.rootId, tx => {
+      expect(() => patches.transaction(root.rootId, nested => {
+        leakedId = nested.createElement(owner, "span", "span");
+        const leakedText = nested.createText(owner, "LEAKED");
+        nested.insert(leakedId, root.nodeId);
+        nested.insert(leakedText, leakedId);
+        throw new Error("nested failure");
+      })).toThrow("nested failure");
+    });
+
+    expect(container.innerHTML).toBe("keep");
+    // Rolled-back nodes follow the normal disposal contract: a bounded
+    // tombstone with its element reference released, not a live leak.
+    const leaked = registry.getNode(leakedId);
+    expect(leaked.disposed).toBe(true);
+    expect(leaked.domStart.parentNode).toBeNull();
+    expect(registry.children(root.nodeId)).toHaveLength(1);
+  });
+
+  it("seals a transaction whose outer callback throws, even if the tx escaped", () => {
+    const { patches, container, root, owner } = setup();
+    let escaped: any;
+    let nodeId = 0;
+
+    expect(() => patches.transaction(root.rootId, tx => {
+      escaped = tx;
+      nodeId = tx.createText(owner, "never committed");
+      tx.insert(nodeId, root.nodeId);
+      throw new Error("work failed");
+    })).toThrow("work failed");
+
+    expect(escaped.phase).toBe("ABORTED");
+    expect(container.textContent).toBe("");
+    expect(() => escaped.setText(nodeId, "late write")).toThrow("ZUI_TRANSACTION_PHASE");
+    expect(() => escaped.commit()).toThrow("ZUI_TRANSACTION_REUSED");
+    expect(container.textContent).toBe("");
+  });
+
+  it("restores an existing node cleanup when a nested savepoint rolls back", () => {
+    const { patches, root, owner } = setup();
+    let nodeId!: number;
+    let originalCleanups = 0;
+    let nestedCleanups = 0;
+
+    patches.transaction(root.rootId, tx => {
+      nodeId = tx.createText(owner, "cleanup target");
+      tx.insert(nodeId, root.nodeId);
+      tx.attachCleanup(nodeId, () => { originalCleanups++; });
+    });
+
+    patches.transaction(root.rootId, tx => {
+      expect(() => patches.transaction(root.rootId, nested => {
+        nested.attachCleanup(nodeId, () => { nestedCleanups++; });
+        throw new Error("nested cleanup failure");
+      })).toThrow("nested cleanup failure");
+      tx.remove(nodeId);
+    });
+
+    expect(originalCleanups).toBe(1);
+    expect(nestedCleanups).toBe(0);
+  });
+
+  it("rolls back nested metadata and structural operations while preserving outer work", () => {
+    const { registry, patches, container, root, owner } = setup();
+    let kept!: number;
+    patches.transaction(root.rootId, tx => {
+      kept = tx.createText(owner, "kept");
+      tx.insert(kept, root.nodeId);
+    });
+    const originalKey = registry.getNode(kept).key;
+    let rolledBackId = 0;
+
+    patches.transaction(root.rootId, tx => {
+      tx.setMeta(kept, { key: "outer" });
+      expect(() => patches.transaction(root.rootId, nested => {
+        rolledBackId = nested.createElement(owner, "span", "span");
+        nested.setMeta(kept, { key: "inner" });
+        nested.insert(rolledBackId, root.nodeId);
+        throw new Error("nested failure");
+      })).toThrow("nested failure");
+    });
+
+    expect(container.textContent).toBe("kept");
+    expect(registry.getNode(kept).key).toBe("outer");
+    expect(registry.getNode(rolledBackId).disposed).toBe(true);
+    expect(originalKey).toBeUndefined();
+  });
+
+  it("still commits a nested transaction that succeeds", () => {
+    const { patches, container, root } = setup();
+    const { a, b, c } = threeTextNodes(patches, root, root.ownerId);
+
+    patches.transaction(root.rootId, tx => {
+      tx.setText(a, "A");
+      patches.transaction(root.rootId, nested => nested.setText(b, "B"));
+      tx.setText(c, "C");
+    });
+
+    expect(container.textContent).toBe("ABC");
+  });
+
+  it("restores the outer transaction's commit mode after a failed nested rollback", () => {
+    const { patches, container, root, owner } = setup();
+    const { a } = threeTextNodes(patches, root, root.ownerId);
+
+    patches.transaction(root.rootId, tx => {
+      expect(() => patches.transaction(root.rootId, nested => {
+        // Structural work flips the outer transaction out of text-only mode;
+        // rolling back must restore that mode or the outer commit takes the
+        // wrong fast path.
+        const span = nested.createElement(owner, "span", "span");
+        nested.insert(span, root.nodeId);
+        throw new Error("nested failure");
+      })).toThrow("nested failure");
+      tx.setText(a, "A");
+    });
+
+    expect(container.textContent).toBe("Ab0c0");
+    expect(container.querySelector("span")).toBeNull();
+  });
+
+  it("keeps rejecting a nested transaction against a different root", () => {
+    const { patches, root } = setup();
+    const otherContainer = document.createElement("div");
+    const otherRoot = patches.registry.createRoot(otherContainer);
+
+    patches.transaction(root.rootId, () => {
+      expect(() => patches.transaction(otherRoot.rootId, () => undefined))
+        .toThrow("ZUI_NESTED_ROOT_TRANSACTION");
+    });
+  });
+});
+
+describe("commit telemetry", () => {
+  it("reports operations appended by deferred ref callbacks during commit", () => {
+    const registry = new NodeRegistry();
+    const patches = new PatchEngine(registry, document);
+    const container = document.createElement("div");
+    const root = registry.createRoot(container);
+    const owner = registry.createOwner(root.rootId, root.ownerId);
+
+    const history: Array<{ opCount: number; kinds: readonly string[]; status?: string }> = [];
+    const dispose = patches.onCommit(info => {
+      history.push({
+        opCount: info.opCount,
+        kinds: (info.operations ?? []).map(op => op.kind),
+        status: info.finalizationStatus
+      });
+    });
+
+    let extra!: number;
+    let deferredRefPhase = "";
+    patches.transaction(root.rootId, tx => {
+      extra = tx.createText(owner, "extra0");
+      tx.insert(extra, root.nodeId);
+    });
+    history.length = 0;
+
+    patches.transaction(root.rootId, tx => {
+      const element = tx.createElement(owner, "div", "div");
+      tx.insert(element, root.nodeId);
+      // A ref on a freshly created node runs during commit and may enqueue
+      // more work into this same transaction.
+      tx.patchProps(element, {}, {
+        ref: () => {
+          deferredRefPhase = tx.phase;
+          patches.update(root.rootId, inner => inner.setText(extra, "written-by-ref"));
+        }
+      });
+    });
+
+    expect(container.textContent).toBe("written-by-ref");
+    expect(history).toHaveLength(1);
+    expect(history[0]!.opCount).toBe(3);
+    expect(history[0]!.kinds).toEqual(["insert", "props", "text"]);
+    expect(history[0]!.status).toBe("complete");
+    expect(deferredRefPhase).toBe("COMMITTING");
+
+    dispose();
+  });
+
+  it("rejects cleanup-time enqueues and reports committed operations when cleanup fails", () => {
+    const registry = new NodeRegistry();
+    const patches = new PatchEngine(registry, document);
+    const container = document.createElement("div");
+    const root = registry.createRoot(container);
+    const owner = registry.createOwner(root.rootId, root.ownerId);
+    const history: Array<{ status: string | undefined; kinds: readonly string[] }> = [];
+    const dispose = patches.onCommit(info => history.push({
+      status: info.finalizationStatus,
+      kinds: (info.operations ?? []).map(operation => operation.kind)
+    }));
+    let label!: number;
+    let element!: number;
+    let removalTransaction: { phase: string } | undefined;
+    let cleanupPhase = "";
+    patches.transaction(root.rootId, tx => {
+      label = tx.createText(owner, "still here");
+      element = tx.createElement(owner, "span", "span");
+      tx.insert(label, root.nodeId);
+      tx.insert(element, root.nodeId);
+      tx.attachCleanup(element, () => {
+        cleanupPhase = removalTransaction?.phase ?? "missing";
+        patches.update(root.rootId, inner => {
+          inner.createText(owner, "late");
+          inner.setText(label, "late");
+        });
+      });
+    });
+    history.length = 0;
+
+    expect(() => patches.transaction(root.rootId, tx => {
+      removalTransaction = tx;
+      tx.remove(element);
+    }))
+      .toThrow("ZUI_TRANSACTION_PHASE");
+
+    expect(container.textContent).toBe("still here");
+    expect(registry.getNode(element).disposed).toBe(true);
+    expect(registry.getNode(label).value).toBe("still here");
+    expect(registry.diagnostics().activeNodes).toBe(2);
+    expect(history).toEqual([{ status: "error", kinds: ["remove"] }]);
+    expect(cleanupPhase).toBe("FINALIZING");
+    dispose();
+  });
+
+  it("reports nothing when the commit fails", () => {
+    const registry = new NodeRegistry();
+    const patches = new PatchEngine(registry, document);
+    const container = document.createElement("div");
+    const root = registry.createRoot(container);
+    const owner = registry.createOwner(root.rootId, root.ownerId);
+
+    const history: number[] = [];
+    const dispose = patches.onCommit(info => history.push(info.opCount));
+
+    expect(() => patches.transaction(root.rootId, tx => {
+      const orphan = tx.createText(owner, "orphan");
+      // Inserting an unknown parent fails validation, so nothing may be reported.
+      tx.insert(orphan, 999999);
+    })).toThrow();
+
+    expect(history).toEqual([]);
+    dispose();
+  });
+});

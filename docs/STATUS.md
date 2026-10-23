@@ -1,6 +1,6 @@
 # ZUI Status — Flat Index / UI library work
 
-Updated: 2026-10-21. The v0.1.0 clean-checkout verification record is for `ba338f8`. The source snapshot reviewed includes post-release work recorded under `[Unreleased]` in the changelog.
+Updated: 2026-10-23. Verification below was run on the working tree based on `1eaf640` with the uncommitted changes present. The earlier v0.1.0 baseline is superseded and remains in git history.
 
 ## Implemented
 
@@ -13,42 +13,43 @@ Updated: 2026-10-21. The v0.1.0 clean-checkout verification record is for `ba338
 - The optional `zui/ui` layer includes composable primitives, a responsive admin showcase, modal focus handling, and Input/Progress accessibility defaults.
 - Production and development JSX entry points have baseline typed HTML/SVG attributes, common typed event targets, and consumer fixtures that assert invalid attributes fail compilation.
 - ESM/declaration exports and strict external consumer tests cover package subpaths and both JSX modes.
-- Expand the DOM contract for SVG namespaces (`createElementNS`), presentation attributes, and XML namespaces (`xlink:href`, `xml:space`); form properties (`selected`, `indeterminate`, `readOnly`, `required`, `multiple`, `autoFocus`, `formNoValidate`, `htmlFor`) and controlled input drift restoration; custom elements with `is` attribute and property assignment; and accessibility-oriented ARIA boolean/token normalization.
+- The DOM contract covers SVG namespaces (`createElementNS`), presentation attributes, XML namespaces (`xlink:href`, `xml:space`), form properties and controlled input drift restoration, customized built-in elements, and accessibility-oriented ARIA normalization.
 - `nodeRegistry.diagnostics()` reports real-time diagnostic counts of active/tombstoned nodes, owners, and roots to verify memory boundedness and leak prevention.
 - First-class, zero-dependency external store integration in `zui/external-store` with `create`, `createStore`, `useStore`, `shallow`, and `useShallow` (Zustand-compatible API).
 - Canonical `zui/dom` subpath established for the explicit reactive DOM API, retaining `zui/legacy` as a deprecated compatibility alias.
 - Post-release additions include `createPortal`, `ErrorBoundary`, asynchronous resources, the `zui/devtools` inspector, and the TaskFlow application showcase.
-- The JSX runtime skips child reconciliation when a parent update supplies shallow-equal child props.
+- Parent updates rerun every matched component descendant. Component-local state and external-store selector updates remain scoped to the component that owns the state or selected slice.
+- Portal mount and target changes are queued as transaction operations and applied through `PatchEngine`; a later commit failure restores an existing portal range.
+- Same-root nested transaction callbacks join behind savepoints. Failed callbacks discard queued work and created nodes and restore cleanup attachments; an outer callback failure seals the transaction against reuse.
 
-## v0.1.0 release verification
+## Verification run — 2026-10-23
 
-The results below are the recorded clean-checkout release baseline at `ba338f8`; they are not a new verification run for this documentation update.
-
-Environment: macOS arm64; Node v26.5.0; npm 12.0.2; TypeScript 5.9.3; Vitest 5.0.3; Vite 6.4.4; headless Chromium 156.0.8078.4.
+Environment: macOS arm64 (Apple M1 Pro); Node v26.5.0; npm 12.0.2; TypeScript 5.9.3; Vitest 5.0.3; Vite 6.4.4; Playwright 1.64.0; headless Chromium 156.0.8078.4.
 
 - `npm run typecheck`: **PASS**
-- `npm test`: **PASS — 11 files, 113 tests**
-- `npm run build:release`: **PASS — Vite showcase/admin/demos (3 HTML entries) and package declarations**
+- `npm test`: **PASS — 23 files, 290 tests**
+- `npm run build:release`: **PASS — Vite showcase/admin/demos entries and package declarations**
 - `npm run test:smoke`: **PASS — 16/16**
 - `npm run test:oracle`: **PASS — 2,400 updates**
-- `npm run bench:all`: **PASS — reactive, compatibility/keyed, and flat-index suites**
-- `npm run test:consumer`: **PASS — strict external package; production/dev JSX, UI, reactive subpaths; expected type failures**
-- `npm pack --dry-run`: **PASS — 52 publishable files, 81.7 kB tarball estimate**
-- `npm run test:browser`: **PASS — dashboard flows, Modal keyboard/focus, root isolation, sink guards, and accessibility checks**
-- `npm run bench:browser`: **PASS — 36 framework/scenario/size groups; three paired repeats, three warmups and nine samples per fresh context; balanced framework order; 36-context untimed DOM preflight**
-- `npm run profile:browser`: **PASS — Playwright CPU sample ranking for mount/text/no-op; diagnostic only, not timing data**
+- `npm run test:consumer`: **PASS — strict external package; production/dev JSX, UI, reactive, dom and legacy subpaths; expected type failures**
+- `npm pack --dry-run`: **PASS — 203 files, 3.31 MB tarball, 7.10 MB unpacked, including package declarations and current docs**
+- `npm run test:browser`: **PASS — dashboard, render scopes, store selectors, keyed data, async resources, UI primitives, DevTools, and TaskFlow ErrorBoundary recovery**
+- `npm run bench:all`: **PASS — reactive scan/graph, compatibility render, flat-index, and keyed reorder workloads**
+- `npm run bench:patch-planning`: **PASS — 20 planner/workload combinations at 128 nodes, 25 iterations each**
+- `npm run bench:browser`: **PASS — production comparison across ZUI/React/Preact/Vue; `suite=all`, 3 warmups, 9 samples per context, 3 paired repeats; 72 list + 48 component correctness preflights and 360 measured fresh contexts. Raw report: [browser benchmark](../benchmarks/results/2026-10-23-browser-benchmark-post-fix.json).**
+- `npm run bench:cpu-memory`: **PASS — 60 correctness preflights and 180 measured runs; default sizes, workloads, warmup, and repeats. Raw report: [CPU and memory benchmark](../benchmarks/results/2026-10-23-cpu-memory-post-fix.json).**
+- `npm run profile:browser`: **PASS — sampled mount, text, no-op, and reverse profiles at 2,000 rows; diagnostic only, not timing data**
 - React/Preact behavioral parity: **NOT CLAIMED**
 
-The unreleased feature work and its added test coverage are listed in [`CHANGELOG.md`](../CHANGELOG.md). The recorded 113-test count above applies to the v0.1.0 release baseline.
-
-The browser medians and methodology are in [PERFORMANCE.md](PERFORMANCE.md). They are local diagnostics, not a general ranking.
+The browser medians and methodology are in [PERFORMANCE.md](PERFORMANCE.md). They are local diagnostics, not a general ranking. The transaction workflow diagram was regenerated from its JSON source and passed 9/9 showcase checks plus automated containment at 1440×900, 1600×1000, 1920×1080, and 2048×1320; light and dark screenshots passed at 1440×900 and 2048×1320.
 
 ## Known limitations and future work
 
-- Transaction rollback cannot undo arbitrary ref callbacks or cleanup side effects; cleanup failures may occur after commit.
+- Parent-driven component rendering visits every matched descendant. This preserves render/error-boundary semantics but makes large parent updates more expensive; keep high-frequency state close to its owner or subscribe at the leaf.
+- Transaction rollback cannot undo arbitrary ref callbacks or cleanup side effects; cleanup failures may occur after commit. Savepoints restore cleanup attachment state, while effects already performed by user callbacks remain best-effort.
 - Deep V8 heap allocation profiling snapshots remain future work. The `zui/devtools` package provides live Flat Index inspection and transaction telemetry.
-- Cold mount remains slower than React and Vue in the recorded local comparison. See [the performance notes](PERFORMANCE.md) for measurements and limitations.
-- CI/CD remains intentionally unconfigured per the repository's existing policy.
+- Cold mount remains slower than React and Vue in the current local comparison. See [the performance notes](PERFORMANCE.md) for measurements and limitations.
+- CI/CD remains intentionally unconfigured per the repository's existing policy. Because gates are run by hand, a commit can land with a red gate; the two harness breakages fixed alongside this run (`createStore` moving to `zui/reactive` without updating the consumer fixture or the Playwright smoke harness) both reached `main` that way.
 - SSR/hydration/streaming, Suspense, server components, an ahead-of-time compiler, and router/data-layer integrations remain out of scope.
 - React/Preact behavioral, scheduling, synthetic-event, and ecosystem compatibility are not promised.
 

@@ -49,7 +49,7 @@ npm run bench:all
 npm run bench:browser
 ```
 
-Open `/demos.html` for the example catalog. Full application showcases are available at `/admin.html` (ZUI Studio dashboard) and `/realworld.html` (TaskFlow project management workspace); benchmark commands and package examples are documented in [the examples guide](docs/EXAMPLES.md), with the Playwright React comparison in [the performance guide](docs/PERFORMANCE.md). A static docs page is available at `/docs.html`, summarizing all of these guides alongside the demo catalog.
+Open `/demos.html` for the example catalog and `/benchmarks.html` to run keyed-list cases in the current browser with live render timings and DOM counts. Full application showcases are available at `/admin.html` (ZUI Studio dashboard) and `/realworld.html` (TaskFlow project management workspace); benchmark commands and package examples are documented in [the examples guide](docs/EXAMPLES.md), with the Playwright React comparison in [the performance guide](docs/PERFORMANCE.md). A static docs page is available at `/docs.html`, summarizing all of these guides alongside the demo catalog.
 
 ## JSX runtime
 

@@ -60,6 +60,11 @@ export interface OwnerHost {
   disposeOwner(ownerId: OwnerId): void;
 }
 
+/** Mutable target metadata updated only when a portal operation commits. */
+export interface PortalAttachment {
+  container: Element;
+}
+
 export type NodeInit = {
   rootId: RootId;
   ownerId: OwnerId;
@@ -93,6 +98,7 @@ export interface RegistryDiagnostics {
 export type PatchOp =
   | { kind: "insert"; nodeId: NodeId; parentId: NodeId; beforeId: NodeId | null; cachedNode?: FlatNode; cachedParent?: FlatNode }
   | { kind: "move"; nodeId: NodeId; parentId: NodeId; beforeId: NodeId | null }
+  | { kind: "portal"; nodeId: NodeId; container: Element; attachment: PortalAttachment }
   | {
       kind: "move-many";
       parentId: NodeId;
@@ -125,15 +131,23 @@ export interface FocusState {
 export interface TransactionSavepoint {
   readonly operationsCount: number;
   readonly createdCount: number;
+  readonly cleanupChangesCount: number;
   readonly onlyTextOperations: boolean;
   readonly onlyCreatedOperations: boolean;
   readonly hasRemovals: boolean;
 }
 
+/**
+ * Reports operations that crossed the irreversible commit point. The
+ * finalization status distinguishes complete disposal from cleanup failure.
+ * `operations` and `opCount` include operations appended by deferred refs.
+ */
 export interface TransactionCommitInfo {
   readonly rootId: RootId;
   readonly opCount: number;
   readonly operations?: readonly PatchOp[];
+  /** Whether post-commit disposal completed without callback failures. */
+  readonly finalizationStatus?: "complete" | "error";
   readonly durationMs: number;
   readonly timestamp: number;
 }

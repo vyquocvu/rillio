@@ -18,7 +18,7 @@ All notable changes to ZUI are documented here.
 - Added dedicated test suites for portals, error boundaries, Flat Index and reactive DOM submodules, resources, and devtools. Later coverage added the component lifecycle matrix and render diagnostics suites; browser Playwright integration exercises the TaskFlow workspace lifecycle.
 
 ### Changed
-- Extracted the keyed-list LIS (`longestIncreasingSubsequencePositions`) and move planner (`planStationaryMoves`) into shared `src/flat/lis.ts`, and shallow equality into `src/flat/equality.ts` (`shallowEqual`), replacing duplicated implementations in the compat reconciler, the `zui/dom` list renderer, and the external-store adapter. Public exports are preserved: `zui/compat` still re-exports the LIS and `zui/dom` keeps `longestIncreasingIds` as an adapter. `shallowEqual` now ignores inherited enumerable properties, so the parent-driven render bailout also fires for prop objects carrying prototype-inherited keys.
+- Extracted the keyed-list LIS (`longestIncreasingSubsequencePositions`) and move planner (`planStationaryMoves`) into shared `src/flat/lis.ts`, and shallow equality into `src/flat/equality.ts` (`shallowEqual`). Public exports are preserved: `zui/compat` still re-exports the LIS and `zui/dom` keeps `longestIncreasingIds` as an adapter. `shallowEqual` ignores inherited enumerable properties and is used by the external-store adapter.
 
 ### Performance
 - `PatchEngine.transaction` no longer snapshots the operation list unless commit listeners are attached.
@@ -27,6 +27,12 @@ All notable changes to ZUI are documented here.
 
 ### Fixed
 - `PatchTransaction.commit` now consumes operations enqueued by ref callbacks during a commit that also contains removals (the previous filtered snapshot silently dropped them).
+- `PatchEngine.transaction` and `PatchEngine.update` now isolate a failed nested callback on the same root behind a transaction savepoint. Operations enqueued and nodes created before the throw are rolled back, so a caller that catches the error can continue on the outer transaction; previously that work leaked into the outer commit and the created nodes stayed live in both the DOM and the registry. `ZUI_NESTED_ROOT_TRANSACTION` is still raised for a nested call against a different root.
+- `PatchEngine.onCommit` telemetry now reports the committed operation list. The snapshot was taken before `commit()`, so operations appended by deferred ref callbacks during the commit were omitted and `opCount` under-reported what actually ran.
+- Aligned the consumer fixture and the Playwright browser harness with the documented subpath split: `createStore` is imported from `zui/reactive`, while `zui/dom` and the deprecated `zui/legacy` alias are exercised through `mount`. Both still imported `createStore` from `zui/dom` after that export moved, so `npm run test:consumer` and `npm run test:browser` failed on a clean checkout.
+- Removed the implicit shallow-equal component bailout. Parent updates now rerun matched descendants, allowing `ErrorBoundary` to catch errors raised during those renders; local state and external-store selector updates remain scoped to their owning components. The render-lab and browser smoke test now check render counts separately from DOM identity.
+- Routed portal placement and target changes through validated `PatchTransaction` operations, with inverse moves when a later commit callback fails. A failed planning pass no longer moves a live portal before commit.
+- Sealed transactions after an outer callback fails, preventing an escaped `PatchTransaction` from being reused, and journaled cleanup attachment changes so nested savepoint rollback restores cleanup state on existing nodes.
 
 ## [0.1.0] - 2026-10-13
 

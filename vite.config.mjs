@@ -28,6 +28,7 @@ export default {
         renderLab: page("render-lab.html"),
         storeLab: page("store-lab.html"),
         dataLab: page("data-lab.html"),
+        benchmarks: page("benchmarks.html"),
         pokemon: page("pokemon.html"),
         docs: page("docs.html")
       }

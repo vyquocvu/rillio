@@ -277,6 +277,15 @@ async function exercise(options: Options, validate: boolean): Promise<Result | {
         if (harness.appRenders !== appBefore || harness.childRenders.reduce((sum, count) => sum + count, 0) !== 1) {
           throw new Error(`Local state escaped its component: ${framework}/${scenario}/${size}`);
         }
+      } else if (scenario === "parent-update") {
+        const expectedChildRenders = framework === "vue" ? 0 : size;
+        const actualChildRenders = harness.childRenders.reduce((sum, count) => sum + count, 0);
+        if (actualChildRenders !== expectedChildRenders || harness.appRenders - appBefore !== 1) {
+          throw new Error(
+            `Parent update render scope mismatch: ${framework}/${scenario}/${size}; ` +
+            `expected ${expectedChildRenders} child renders, got ${actualChildRenders}`
+          );
+        }
       } else if (scenario === "prop-fanout") {
         const rows = Array.from(container.querySelectorAll("button[data-id]"));
         if (rows.some(row => !row.textContent?.endsWith(`:${warmup + 1}`))) {
