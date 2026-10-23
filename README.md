@@ -1,13 +1,54 @@
 # ZUI
 
-ZUI is an experimental addressable-DOM runtime. It preserves familiar JSX authoring, while DOM identity, structure, ownership, and lifecycle are owned by a Flat Index rather than by a Virtual DOM tree.
+ZUI is an experimental addressable-DOM runtime for client-side apps. JSX and explicit reactive views share one Flat Index and one transactional `PatchEngine`.
 
 <p align="center">
-  <img src="docs/assets/zui-studio-dashboard.png" alt="ZUI Studio workspace dashboard, rendered with ZUI" width="100%" />
+  <img src="docs/assets/zui-studio-dashboard.png" alt="ZUI Studio workspace dashboard rendered with ZUI" width="100%" />
 </p>
-<p align="center"><em>ZUI Studio — a full workspace dashboard built with the ZUI runtime.</em></p>
+<p align="center"><em>ZUI Studio dashboard built with the ZUI runtime.</em></p>
 
-The production DOM write path is one transactional `PatchEngine`:
+## 🚀 Quick start
+
+Clone the repository and run the examples locally:
+
+```sh
+git clone https://github.com/vyquocvu/zui.git
+cd zui
+npm install
+npm run dev
+```
+
+Open `http://127.0.0.1:5173/` and choose a page from the example catalog.
+
+## ⚛️ JSX runtime
+
+```tsx
+import { createRoot, useState } from "zui";
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount(value => value + 1)}>{count}</button>;
+}
+
+createRoot(document.getElementById("app")!).render(<Counter />);
+```
+
+Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "zui"`.
+
+## 🧰 API surfaces
+
+| Import | Use |
+|---|---|
+| `zui` | JSX runtime, `createRoot`, and component hooks |
+| `zui/ui` | Accessible UI primitives such as `Button`, `Card`, `Input`, and `Modal` |
+| `zui/external-store` | External store hooks and selectors: `create`, `useStore`, `shallow`, and `useShallow` |
+| `zui/reactive` + `zui/dom` | Reactive stores and mount-once DOM bindings such as `select`, `Show`, and `For` |
+
+See the [API contract](docs/API.md) for usage and behavior details.
+
+## 🧭 Architecture
+
+Both planners turn JSX or reactive updates into addressable operations. A shared transaction validates and applies them through the Flat Index and `PatchEngine`.
 
 ```mermaid
 flowchart LR
@@ -37,108 +78,40 @@ flowchart LR
     patch_engine --> browser_dom
 ```
 
-The React-like spelling is syntax inspiration only. ZUI does not promise React or Preact behavioral compatibility. Both planners share the same indexed identity and DOM mutation boundary.
+- `NodeRegistry` is the source of truth for node identity, ownership, and parent/sibling structure.
+- `PatchEngine` is the only module that writes to the browser DOM.
+- Transactions validate operations, commit changes, then dispose removed subtrees.
 
-## Run
+Read the [architecture guide](docs/ARCHITECTURE.md) and [architecture diagrams](docs/diagrams/README.md) for the full design.
+
+## 🧪 Examples
+
+Run `npm run dev`, then open:
+
+| Page | What it shows |
+|---|---|
+| `/admin.html` | ZUI Studio dashboard |
+| `/realworld.html` | TaskFlow workspace with a Kanban board and issue views |
+| `/demos.html` | Interactive demo catalog |
+| `/benchmarks.html` | Keyed-list benchmarks in the current browser |
+| `/docs.html` | Browser-friendly documentation index |
+
+The [examples guide](docs/EXAMPLES.md) covers the labs and benchmark commands.
+
+## 🛠️ Development
 
 ```sh
-npm install
-npm run dev
 npm run typecheck
 npm test
-npm run build
-npm run build:package
+npm run build:release
 npm run test:consumer
 npm run test:browser
 npm run bench:all
 npm run bench:browser
 ```
 
-Open `/demos.html` for the example catalog and `/benchmarks.html` to run keyed-list cases in the current browser with live render timings and DOM counts. Full application showcases are available at `/admin.html` (ZUI Studio dashboard) and `/realworld.html` (TaskFlow project management workspace); benchmark commands and package examples are documented in [the examples guide](docs/EXAMPLES.md), with the Playwright React comparison in [the performance guide](docs/PERFORMANCE.md). A static docs page is available at `/docs.html`, summarizing all of these guides alongside the demo catalog.
+Documentation: [performance](docs/PERFORMANCE.md) · [testing](docs/TESTING.md) · [status](docs/STATUS.md) · [roadmap](ROADMAP.md).
 
-## JSX runtime
+## ⚠️ Scope
 
-```tsx
-import { createRoot, useEffect, useState } from "zui";
-
-function Counter() {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    document.title = String(count);
-  }, [count]);
-
-  return <button onClick={() => setCount(n => n + 1)}>{count}</button>;
-}
-
-createRoot(document.getElementById("app")!).render(<Counter />);
-```
-
-Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "zui"`. Function components, ordinary conditional expressions, fragments, and keyed `.map()` output are supported.
-
-## UI primitives
-
-The optional `zui/ui` surface provides a small, dependency-free visual layer for product work. It keeps rendering inside ZUI while offering accessible defaults, shared tokens, and composable controls:
-
-```tsx
-import { Button, Card, Input, StyleSheet } from "zui/ui";
-
-function SignIn() {
-  return <>
-    <StyleSheet />
-    <Card title="Welcome back" description="Sign in to your workspace.">
-      <Input label="Work email" type="email" placeholder="you@company.com" />
-      <Button type="submit">Continue</Button>
-    </Card>
-  </>;
-}
-```
-
-Available primitives include `Button`, `IconButton`, `Badge`, `Avatar`, `Card`, `Field`, `Input`, `Progress`, `Modal`, `Stack`, `Inline`, and `EmptyState`. `tokens`, `cx`, and `uiStyles` are exported for teams that want to extend the visual language.
-
-## External store
-
-Use [`zui/external-store`](docs/API.md#external-store-integration) for first-class, zero-dependency Zustand-compatible external stores in ZUI components. It exports `create`, `createStore`, `useStore`, `shallow`, and `useShallow`:
-
-```tsx
-import { create, useShallow } from "zui/external-store";
-
-const useCounter = create(set => ({
-  count: 0,
-  inc: () => set(s => ({ count: s.count + 1 }))
-}));
-
-function Counter() {
-  const count = useCounter(s => s.count);
-  return <button onClick={() => useCounter.getState().inc()}>{count}</button>;
-}
-```
-
-## Explicit reactive DOM API
-
-```tsx
-import { createStore } from "zui/reactive";
-import { select, mount } from "zui/dom";
-
-const count = createStore(0);
-mount(() => <button onClick={() => count.set(n => n + 1)}>
-  {select(count, value => value)}
-</button>, document.getElementById("app")!);
-```
-
-`zui/dom` is the canonical subpath for the mount-once explicit reactive DOM surface (`zui/legacy` remains as a deprecated compatibility alias). It uses the same `NodeRegistry` and `PatchEngine`; it is not an independent DOM renderer.
-
-## Architecture guarantees
-
-- `NodeRegistry` assigns monotonic `NodeId`, `RootId`, and `OwnerId` values and tracks parent/sibling structure plus versions.
-- `PatchEngine` is the only module that creates, inserts, moves, patches, removes, or disposes browser DOM nodes.
-- Reconciliation and reactive regions address nodes through the Flat Index; they do not retain a second authoritative child tree.
-- A transaction validates operations, commits structural/property changes, then disposes removed subtrees.
-- `useState`, `useEffect`, `Show`, `For`, keyed identity, refs, controlled values, focus, and caret behavior remain covered by tests.
-
-## Scope
-
-ZUI currently targets small client-side browser applications. SSR/hydration, complete SVG/property normalization, exhaustive DOM typings, and a dedicated compiler are future work rather than compatibility promises.
-
-See [the roadmap](ROADMAP.md), [the API contract](docs/API.md), [the architecture](docs/ARCHITECTURE.md), [the architecture diagrams](docs/diagrams/README.md), [testing](docs/TESTING.md), and [verification status](docs/STATUS.md).
-
-No CI/CD is configured by design.
+ZUI targets small client-side browser apps. JSX syntax is familiar, but React and Preact behavioral, scheduling, event, and ecosystem compatibility are not promised. SSR and hydration are out of scope. See the [API contract](docs/API.md) and [current status](docs/STATUS.md) for limitations.
