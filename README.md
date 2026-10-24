@@ -18,7 +18,7 @@ npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/` and choose a page from the example catalog.
+Open `http://127.0.0.1:5173/` for the ZUI landing page, then follow its links to the showcases and docs.
 
 ## ⚛️ JSX runtime
 
@@ -90,6 +90,7 @@ Run `npm run dev`, then open:
 
 | Page | What it shows |
 |---|---|
+| `/` | ZUI landing page with an interactive code sample and counter |
 | `/admin.html` | ZUI Studio dashboard |
 | `/realworld.html` | TaskFlow workspace with a Kanban board and issue views |
 | `/demos.html` | Interactive demo catalog |

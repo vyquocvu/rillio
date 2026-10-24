@@ -33,7 +33,7 @@ button { cursor: pointer; }
 .bench-field select, .bench-field input { width: 100%; min-height: 41px; padding: 0 11px; border: 1px solid #dce3ee; border-radius: 9px; outline: none; color: #22304b; background: #fbfcfe; font-size: 12px; font-weight: 700; }
 .bench-field select:focus, .bench-field input:focus { border-color: #8d86e7; box-shadow: 0 0 0 3px rgba(111,93,214,.11); }
 .bench-field small { min-height: 14px; color: #8d98aa; font-size: 9px; }
-.bench-run-button { display: flex; min-height: 41px; align-items: center; justify-content: center; gap: 9px; padding: 0 16px; border: 0; border-radius: 9px; color: #fff; background: linear-gradient(100deg, #6454ce, #5479e9); box-shadow: 0 6px 14px rgba(81, 89, 202, .22); font-size: 12px; font-weight: 800; transition: transform .15s ease, filter .15s ease; }
+.bench-run-button { margin-bottom: 20px; display: flex; min-height: 41px; align-items: center; justify-content: center; gap: 9px; padding: 0 16px; border: 0; border-radius: 9px; color: #fff; background: linear-gradient(100deg, #6454ce, #5479e9); box-shadow: 0 6px 14px rgba(81, 89, 202, .22); font-size: 12px; font-weight: 800; transition: transform .15s ease, filter .15s ease; }
 .bench-run-button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); }.bench-run-button:disabled { cursor: wait; opacity: .78; }
 .bench-protocol { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 18px; margin-top: 16px; padding-top: 13px; border-top: 1px solid #edf0f5; color: #77849a; font-size: 10px; line-height: 1.5; }
 .bench-dev-note { color: #a56931; font-weight: 800; }
