@@ -7,7 +7,7 @@ Rillio is a small addressable-DOM runtime. JSX is the authoring syntax; the Flat
 - Release baseline: `v0.1.0` (2026-10-13); later work remains unreleased until a new version is tagged.
 - Stability target: dependable small browser applications.
 - Breaking changes are allowed before `v1.0.0`, but must be documented.
-- `rillio/dom` is established as the canonical explicit reactive DOM subpath; `rillio/legacy` remains as a deprecated compatibility alias.
+- `rillio/dom` is the explicit reactive DOM subpath.
 - There is one production DOM mutation path: `PatchEngine`.
 
 ## v0.1 scope

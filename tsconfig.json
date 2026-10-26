@@ -12,9 +12,7 @@
       "rillio": ["src/index.ts"],
       "rillio/jsx-runtime": ["src/jsx-runtime.ts"],
       "rillio/jsx-dev-runtime": ["src/jsx-dev-runtime.ts"],
-      "rillio/external-store": ["src/external-store.ts"],
       "rillio/dom": ["src/dom.ts"],
-      "rillio/legacy": ["src/dom.ts"],
       "rillio/reactive": ["src/reactive-api.ts"],
       "rillio/flat": ["src/flat.ts"],
       "rillio/devtools": ["src/devtools.ts"]

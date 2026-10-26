@@ -1,5 +1,5 @@
 import type { Store } from "../reactive.js";
-import { nodeRegistry, patchEngine } from "../compat.js";
+import { nodeRegistry, patchEngine } from "../compat/state.js";
 import { engine } from "../reactive-api.js";
 import { BINDING, type Binding, type Child } from "./types.js";
 

@@ -4,7 +4,7 @@ These diagrams describe the current checkout for repo contributors. Each standal
 
 ## Runtime and updates
 
-- [Runtime architecture](architecture.html) · [source](architecture.json) — public JSX, explicit DOM, reactive, and external-store surfaces flowing through their planners to the shared Flat Index, transaction, patch engine, and browser DOM.
+- [Runtime architecture](architecture.html) · [source](architecture.json) — public JSX, explicit DOM, and reactive surfaces flowing through their planners to the shared Flat Index, transaction, patch engine, and browser DOM.
 - [Reactive data flow](reactive-dataflow.html) · [source](reactive-dataflow.json) — state writes and selectors triggering component planning or DOM effects, then addressable operations and DOM commits.
 - [Transaction workflow](transaction-workflow.html) · [source](transaction-workflow.json) — validation, portal range placement, commit/finalization telemetry, savepoint rollback, outer transaction sealing, and cross-root rejection.
 - [Node and owner lifecycle](node-owner-lifecycle.html) · [source](node-owner-lifecycle.json) — allocation through disposal, stable identity during updates and moves, iterative subtree cleanup, and bounded diagnostic tombstones.

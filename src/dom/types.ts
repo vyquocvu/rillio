@@ -1,5 +1,5 @@
 import type { Store } from "../reactive.js";
-import type { Key, NodeId, OwnerId } from "../flat.js";
+import type { Key, NodeId, OwnerId } from "../flat/types.js";
 
 export const BINDING = Symbol("rillio.binding");
 

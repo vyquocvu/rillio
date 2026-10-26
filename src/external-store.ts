@@ -6,8 +6,8 @@
  * Zustand middleware and actions without wrapping the store in another state
  * layer.
  */
-import { shallowEqual } from "./flat.js";
-import { useEffect, useRef, useState } from "./compat.js";
+import { shallowEqual } from "./flat/equality.js";
+import { useEffect, useRef, useState } from "./compat/hooks.js";
 
 export interface ZustandStore<State> {
   getState(): State;

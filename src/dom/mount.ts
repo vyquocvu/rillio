@@ -1,6 +1,7 @@
 import type { Dispose, Store } from "../reactive.js";
-import { longestIncreasingSubsequencePositions, planStationaryMoves } from "../flat.js";
-import type { Key, NodeId, OwnerId, PatchTransaction, RootHandle } from "../flat.js";
+import { longestIncreasingSubsequencePositions, planStationaryMoves } from "../flat/lis.js";
+import type { Key, NodeId, OwnerId, RootHandle } from "../flat/types.js";
+import type { PatchTransaction } from "../flat/transaction.js";
 import type { Scope, Child, Conditional, Repetition, VNode, Binding } from "./types.js";
 import { createStore } from "../reactive-api.js";
 import {

@@ -44,67 +44,22 @@ Hook ordering is checked. State writes during component evaluation throw `RILLIO
 
 Rillio does not claim React hook scheduling, batching, synthetic event, Context, Suspense, or ecosystem compatibility.
 
-## External store integration
+## Flat Index and diagnostics
 
-`rillio/external-store` provides first-class, zero-dependency Zustand-compatible external store integration without importing React. It exports `create`, `createStore`, `useStore`, `shallow`, and `useShallow`:
-
-```tsx
-import { create, useShallow } from "rillio/external-store";
-
-interface CounterState {
-  count: number;
-  multiplier: number;
-  increment: () => void;
-}
-
-// Create a bound store hook with full getState, setState, and subscribe API
-const useCounter = create<CounterState>(set => ({
-  count: 0,
-  multiplier: 2,
-  increment: () => set(state => ({ count: state.count + 1 }))
-}));
-
-function Counter() {
-  // 1. Primitive selection (atomic re-renders):
-  const count = useCounter(state => state.count);
-
-  // 2. Object selection with shallow comparison:
-  const { total } = useCounter(
-    useShallow(state => ({ total: state.count * state.multiplier }))
-  );
-
-  return (
-    <button onClick={() => useCounter.getState().increment()}>
-      Count: {count} (Total: {total})
-    </button>
-  );
-}
-```
-
-The adapter also accepts standalone vanilla stores via `create(existingStore)` or `useStore(store, selector, equalityFn)`. When selecting objects or arrays, use `useShallow(selector)` or pass `shallow` as the equality function to prevent redundant re-renders. Do not import `create` or `useStore` from `"zustand"` in Rillio components, as Zustand's default React entry point expects React's `useSyncExternalStore`. The old `rillio/zustand` compatibility path has been removed; import from `rillio/external-store`.
-
-## Addressable DOM API
-
-The root export includes:
+The `rillio` root entry is reserved for the JSX runtime API. Import Flat Index constructors from `rillio/flat`, and shared runtime diagnostics from `rillio/devtools`:
 
 ```ts
-import {
-  NodeRegistry,
-  PatchEngine,
-  nodeRegistry,
-  patchEngine
-} from "rillio";
+import { NodeRegistry, PatchEngine } from "rillio/flat";
+import { nodeRegistry, patchEngine, assertAddressableRoot } from "rillio/devtools";
 ```
 
 `NodeRegistry` exposes stable `NodeId`, `RootId`, and `OwnerId` records, linked parent/sibling structure, ownership, and versions. Disposed records are stripped of DOM/component references and retained as lightweight diagnostics up to `maxTombstones` (default 1,000); older ids become unknown. `nodeRegistry.diagnostics()` returns a `RegistryDiagnostics` snapshot with live counts (`activeNodes`, `tombstoneNodes`, `totalNodes`, `activeOwners`, `tombstoneOwners`, `totalOwners`, `totalRoots`, `maxTombstones`) for continuous leak and lifecycle verification. `PatchEngine` exposes transactional operations for renderer authors. Application code normally uses the JSX or explicit reactive planner rather than calling low-level patch methods.
 
-Full-root consistency verification is opt-in after each transaction to avoid a tree-wide walk in the production update path. Advanced/debug callers can enable it with `new PatchEngine(registry, document, { assertAfterCommit: true })`; `assertAddressableRoot(container)` remains available for an explicit check.
-
-The low-level implementation is also available from `rillio/flat`.
+Full-root consistency verification is opt-in after each transaction to avoid a tree-wide walk in the production update path. Advanced/debug callers can enable it with `new PatchEngine(registry, document, { assertAfterCommit: true })`; `assertAddressableRoot(container)` is available from `rillio/devtools` for an explicit check. `getAddressableRoot(container)` is also available there when callers need the root handle.
 
 ## Explicit reactive DOM API
 
-The canonical subpath for the mount-once explicit reactive DOM surface is `rillio/dom` (`rillio/legacy` remains as a deprecated compatibility alias):
+The subpath for the mount-once explicit reactive DOM surface is `rillio/dom`:
 
 ```tsx
 import { createStore } from "rillio/reactive";

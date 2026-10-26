@@ -2,7 +2,7 @@
  * Application root mounting, lifecycle management, and addressable root inspection.
  */
 
-import type { RootHandle } from "../flat.js";
+import type { RootHandle } from "../flat/types.js";
 import type { Child, FlatRoot, Root, RootController } from "./types.js";
 import {
   nodeRegistry,

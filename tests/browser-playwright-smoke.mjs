@@ -24,7 +24,7 @@ try {
   page.on("console", message => {
     if (message.type() === "log") browserLogs.push(message.text());
   });
-  const response = await page.goto(`http://127.0.0.1:${address.port}/index.html?e2e`, { waitUntil: "load" });
+  const response = await page.goto(`http://127.0.0.1:${address.port}/admin.html?e2e`, { waitUntil: "load" });
   if (!response?.ok()) throw new Error(`Dashboard returned HTTP ${response?.status() ?? "no response"}`);
 
   await page.waitForFunction(() => document.body.dataset.e2eStatus, undefined, { timeout: 15_000 });
@@ -37,44 +37,8 @@ try {
   if (runtimeErrors.length) throw new Error(`Uncaught browser errors: ${runtimeErrors.join(" | ")}`);
 
   await page.evaluate(async () => {
-    const { createRoot, jsx } = await import("/package/index.js");
-    const { useStore } = await import("/package/external-store.js");
-    let state = { count: 0 };
-    const listeners = new Set();
-    const store = {
-      getState: () => state,
-      subscribe(listener) {
-        listeners.add(listener);
-        return () => listeners.delete(listener);
-      }
-    };
-    const increment = () => {
-      const previous = state;
-      state = { count: state.count + 1 };
-      for (const listener of listeners) listener(state, previous);
-    };
-    const container = document.createElement("div");
-    document.body.append(container);
-
-    function Counter() {
-      const count = useStore(store, snapshot => snapshot.count);
-      return jsx("button", { type: "button", onClick: increment, children: count });
-    }
-
-    const root = createRoot(container);
-    root.render(jsx(Counter, {}));
-    const button = container.querySelector("button");
-    if (button?.textContent !== "0") throw new Error("Zustand adapter did not read the initial store snapshot");
-    button.click();
-    if (button.textContent !== "1") throw new Error("Zustand adapter did not render a selected store update");
-    root.unmount();
-    increment();
-    if (listeners.size !== 0) throw new Error("Zustand adapter did not unsubscribe after unmount");
-    container.remove();
-  });
-
-  await page.evaluate(async () => {
-    const { createRoot, jsx } = await import("/package/index.js");
+    const { createRoot } = await import("/package/index.js");
+    const { jsx } = await import("/package/jsx-runtime.js");
     const { createStore } = await import("/package/reactive-api.js");
     const { mount } = await import("/package/dom.js");
     const sharedContainer = document.createElement("div");
@@ -127,7 +91,8 @@ try {
   });
 
   await page.evaluate(async () => {
-    const { createRoot, jsx } = await import("/package/index.js");
+    const { createRoot } = await import("/package/index.js");
+    const { jsx } = await import("/package/jsx-runtime.js");
     const { inspectRoot, createInspectorOverlay, highlightNode } = await import("/package/devtools.js");
     const dtContainer = document.createElement("div");
     document.body.append(dtContainer);
@@ -334,7 +299,7 @@ try {
   await devToolsBtn.click(); // Close
 
   if (runtimeErrors.length) throw new Error(`Uncaught browser errors: ${runtimeErrors.join(" | ")}`);
-  console.log(`browser: PASS — dashboard (${result.checks}); render scopes and console traces; atomic/shallow store selectors; keyed data DOM identity; async resource refetch; Zustand store lifecycle; root ownership; HTML/URL/event sink guards; DevTools Flat Index inspector; TaskFlow real-world app`);
+  console.log(`browser: PASS — dashboard (${result.checks}); render scopes and console traces; atomic/shallow store selectors; keyed data DOM identity; async resource refetch; root ownership; HTML/URL/event sink guards; DevTools Flat Index inspector; TaskFlow real-world app`);
 } finally {
   await browser?.close();
   if (server) await new Promise(resolveClose => server.httpServer.close(resolveClose));

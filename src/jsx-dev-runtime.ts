@@ -1,7 +1,7 @@
-export { jsxDEV, Fragment } from "./compat.js";
+export { jsxDEV, Fragment } from "./compat/types.js";
 import type { JSXIntrinsicElements } from "./jsx-types.js";
 export namespace JSX {
-  export type Element = import("./compat.js").VNode;
+  export type Element = import("./compat/types.js").VNode;
   export type ElementType = keyof IntrinsicElements | ((props: any) => any);
   export interface IntrinsicAttributes { key?: string | number; }
   export interface ElementChildrenAttribute { children: {}; }

@@ -7,12 +7,12 @@ import type {
   NodeId,
   OwnerId,
   RootHandle,
-  PatchTransaction,
   RegistryDiagnostics,
   TransactionSavepoint
-} from "../flat.js";
+} from "../flat/types.js";
+import type { PatchTransaction } from "../flat/transaction.js";
 
-export type { Key, NodeId, OwnerId, RegistryDiagnostics, TransactionSavepoint } from "../flat.js";
+export type { Key, NodeId, OwnerId, RegistryDiagnostics, TransactionSavepoint } from "../flat/types.js";
 
 export type Child = VNode | string | number | boolean | null | undefined | Child[];
 export type Component<P = any> = (props: P) => Child;

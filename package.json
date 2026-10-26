@@ -14,9 +14,7 @@
     "jsx",
     "dom",
     "typescript",
-    "reactive",
-    "zustand",
-    "external-store"
+    "reactive"
   ],
   "private": false,
   "type": "module",
@@ -78,17 +76,7 @@
       "import": "./dist/package/jsx-dev-runtime.js",
       "default": "./dist/package/jsx-dev-runtime.js"
     },
-    "./external-store": {
-      "types": "./dist/package/external-store.d.ts",
-      "import": "./dist/package/external-store.js",
-      "default": "./dist/package/external-store.js"
-    },
     "./dom": {
-      "types": "./dist/package/dom.d.ts",
-      "import": "./dist/package/dom.js",
-      "default": "./dist/package/dom.js"
-    },
-    "./legacy": {
       "types": "./dist/package/dom.d.ts",
       "import": "./dist/package/dom.js",
       "default": "./dist/package/dom.js"

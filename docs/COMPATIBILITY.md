@@ -19,7 +19,7 @@ Rillio supports the standard automatic JSX transform shape (`jsx`, `jsxs`, `jsxD
 - Effects are flushed after the root transaction; there is no React post-paint or concurrent scheduler contract.
 - Events are native listeners, not a React synthetic event system.
 - `NodeRegistry` and `PatchEngine` own identity and DOM lifecycle; there is no React Virtual DOM compatibility layer.
-- The explicit reactive API under `rillio/dom` (with `rillio/legacy` as deprecated compatibility alias) is a separate authoring surface but shares the same DOM mutation engine.
+- The explicit reactive API under `rillio/dom` is a separate authoring surface but shares the same DOM mutation engine.
 
 ## Not promised
 

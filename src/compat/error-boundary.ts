@@ -3,7 +3,7 @@
  */
 
 import type { Child, Component, ErrorBoundaryProps, ComponentState } from "./types.js";
-import type { NodeId } from "../flat.js";
+import type { NodeId } from "../flat/types.js";
 import { nodeRegistry } from "./state.js";
 
 export const ErrorBoundary: Component<ErrorBoundaryProps> = props => props.children ?? null;

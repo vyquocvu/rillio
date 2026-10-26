@@ -1,7 +1,7 @@
 /** Public reactive API shared by the DOM planner and application stores. */
 export * from "./reactive.js";
 
-import { nodeRegistry } from "./compat.js";
+import { nodeRegistry } from "./compat/state.js";
 import { createEngine } from "./reactive.js";
 
 /**

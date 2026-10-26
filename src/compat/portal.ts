@@ -3,7 +3,7 @@
  */
 
 import type { Child, Component, VNode, PortalState } from "./types.js";
-import type { Key } from "../flat.js";
+import type { Key } from "../flat/types.js";
 import { nodeRegistry, patchEngine } from "./state.js";
 
 export const PORTAL_TYPE: Component<{ children?: Child; container: Element }> = () => null;

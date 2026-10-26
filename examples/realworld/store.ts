@@ -1,4 +1,4 @@
-import { create } from "rillio/external-store";
+import { create } from "../../src/external-store.ts";
 import type { ActivityLog, FilterState, Issue, ToastMessage, ViewMode } from "./types.js";
 
 export interface AppState {

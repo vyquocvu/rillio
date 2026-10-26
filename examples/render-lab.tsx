@@ -1,5 +1,5 @@
 import { createRoot, useRef, useState } from "rillio";
-import { create } from "rillio/external-store";
+import { create } from "../src/external-store.ts";
 
 interface LabStore {
   count: number;

@@ -1,24 +1,12 @@
 import { createRoot, useState } from "rillio";
-import { useStore as useZustandStore, create as createBoundStore, shallow, useShallow } from "rillio/external-store";
-import { mount as mountDom } from "rillio/dom";
-import { mount } from "rillio/legacy";
+import { mount } from "rillio/dom";
 import { createEngine, createStore } from "rillio/reactive";
 import { inspectRoot, trackTransactions, createInspectorOverlay } from "rillio/devtools";
 
 const domStore = createStore("dom");
-const legacyStore = createStore("legacy");
+const explicitStore = createStore("explicit");
 const engine = createEngine("graph");
 const reactiveStore = engine.createStore(1);
-const externalStore = {
-  getState: () => ({ count: 7 }),
-  subscribe: (_listener: (state: { count: number }, previous: { count: number }) => void) => () => undefined
-};
-
-function ZustandCounter() {
-  const count = useZustandStore(externalStore, state => state.count);
-  return <output>{count}</output>;
-}
-
 function ConsumerApp() {
   const [count, setCount] = useState(0);
   return <button type="button" aria-label="Increase count" data-kind="counter" onClick={event => {
@@ -43,13 +31,13 @@ const invalidHandler = <img onError="alert(1)" />;
 const container = document.createElement("div");
 createRoot(container).render(<ConsumerApp />);
 const reactiveContainer = document.createElement("div");
-mount(() => legacyStore.get(), reactiveContainer);
+mount(() => explicitStore.get(), reactiveContainer);
 const domContainer = document.createElement("div");
-mountDom(() => domStore.get(), domContainer);
+mount(() => domStore.get(), domContainer);
 const rootSnapshot = inspectRoot(container);
 const tracker = trackTransactions();
 const overlay = createInspectorOverlay();
 overlay.dispose();
 tracker.dispose();
 
-export { container, reactiveContainer, domContainer, domStore, legacyStore, reactiveStore, ZustandCounter, typedInput, typedSvg, invalidAttribute, invalidHandler, rootSnapshot };
+export { container, reactiveContainer, domContainer, domStore, explicitStore, reactiveStore, typedInput, typedSvg, invalidAttribute, invalidHandler, rootSnapshot };

@@ -40,7 +40,6 @@ Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "rillio"`.
 | Import | Use |
 |---|---|
 | `rillio` | JSX runtime, `createRoot`, and component hooks |
-| `rillio/external-store` | External store hooks and selectors: `create`, `useStore`, `shallow`, and `useShallow` |
 | `rillio/reactive` + `rillio/dom` | Reactive stores and mount-once DOM bindings such as `select`, `Show`, and `For` |
 
 See the [API contract](docs/API.md) for usage and behavior details.

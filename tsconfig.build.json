@@ -5,10 +5,18 @@
     "allowImportingTsExtensions": false,
     "types": [],
     "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+    "declarationMap": false,
+    "sourceMap": false,
     "outDir": "dist/package",
     "rootDir": "src"
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/index.ts",
+    "src/jsx-runtime.ts",
+    "src/jsx-dev-runtime.ts",
+    "src/dom.ts",
+    "src/reactive-api.ts",
+    "src/flat.ts",
+    "src/devtools.ts"
+  ]
 }

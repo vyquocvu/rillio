@@ -1,4 +1,4 @@
-import type { Key } from "../flat.js";
+import type { Key } from "../flat/types.js";
 import type { Store } from "../reactive.js";
 import type { Binding, Child, Conditional, Repetition, VNode } from "./types.js";
 

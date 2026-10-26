@@ -10,7 +10,9 @@ async function main() {
   globalThis.HTMLElement = dom.window.HTMLElement;
   globalThis.Comment = dom.window.Comment;
 
-  const { createRoot, jsx, nodeRegistry, getAddressableRoot } = await import("../dist/package/index.js");
+  const { createRoot } = await import("../dist/package/index.js");
+  const { jsx } = await import("../dist/package/jsx-runtime.js");
+  const { nodeRegistry, getAddressableRoot } = await import("../dist/package/devtools.js");
 
   function list(items) {
     return jsx("ul", {

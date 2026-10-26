@@ -61,7 +61,7 @@ describe("src/dom submodules isolated tests", () => {
       expect(stringify(42)).toBe("42");
 
       expect(evaluate(name)).toBe("Rillio");
-      expect(evaluate(bound)).toBe("Rillio");
+      expect(evaluate(bound)).toBe("RILLIO");
       expect(evaluate(100)).toBe(100);
 
       expect(resolveChild("static")).toBe("static");

@@ -2,12 +2,10 @@
  * Execution context and shared state for the compat runtime.
  */
 
-import {
-  NodeRegistry,
-  PatchEngine,
-  type PatchTransaction,
-  type NodeId
-} from "../flat.js";
+import { NodeRegistry } from "../flat/registry.js";
+import { PatchEngine } from "../flat/engine.js";
+import type { PatchTransaction } from "../flat/transaction.js";
+import type { NodeId } from "../flat/types.js";
 import type {
   ComponentState,
   ComponentSnapshot,

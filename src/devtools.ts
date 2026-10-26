@@ -5,7 +5,9 @@
  * addressable nodes, and PatchEngine transaction telemetry.
  */
 
-import { nodeRegistry, patchEngine } from "./compat.js";
+import { nodeRegistry, patchEngine } from "./compat/state.js";
+export { nodeRegistry, patchEngine } from "./compat/state.js";
+export { assertAddressableRoot, getAddressableRoot } from "./compat/root.js";
 import type {
   Key,
   NodeId,

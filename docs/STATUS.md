@@ -15,10 +15,9 @@ Updated: 2026-10-23. Verification below was run on the working tree based on `1e
 - ESM/declaration exports and strict external consumer tests cover package subpaths and both JSX modes.
 - The DOM contract covers SVG namespaces (`createElementNS`), presentation attributes, XML namespaces (`xlink:href`, `xml:space`), form properties and controlled input drift restoration, customized built-in elements, and accessibility-oriented ARIA normalization.
 - `nodeRegistry.diagnostics()` reports real-time diagnostic counts of active/tombstoned nodes, owners, and roots to verify memory boundedness and leak prevention.
-- First-class, zero-dependency external store integration in `rillio/external-store` with `create`, `createStore`, `useStore`, `shallow`, and `useShallow` (Zustand-compatible API).
-- Canonical `rillio/dom` subpath established for the explicit reactive DOM API, retaining `rillio/legacy` as a deprecated compatibility alias.
+- `rillio/dom` provides the explicit reactive DOM API.
 - Post-release additions include `createPortal`, `ErrorBoundary`, asynchronous resources, the `rillio/devtools` inspector, and the TaskFlow application showcase.
-- Parent updates rerun every matched component descendant. Component-local state and external-store selector updates remain scoped to the component that owns the state or selected slice.
+- Parent updates rerun every matched component descendant. Component-local state updates remain scoped to the component that owns the state.
 - Portal mount and target changes are queued as transaction operations and applied through `PatchEngine`; a later commit failure restores an existing portal range.
 - Same-root nested transaction callbacks join behind savepoints. Failed callbacks discard queued work and created nodes and restore cleanup attachments; an outer callback failure seals the transaction against reuse.
 
@@ -33,7 +32,7 @@ Environment: macOS arm64 (Apple M1 Pro); Node v26.5.0; npm 12.0.2; TypeScript 5.
 - `npm run build:release`: **PASS — Vite showcase/admin/demos entries and package declarations**
 - `npm run test:smoke`: **PASS — 16/16**
 - `npm run test:oracle`: **PASS — 2,400 updates**
-- `npm run test:consumer`: **PASS — strict external package; production/dev JSX, UI, reactive, dom and legacy subpaths; expected type failures**
+- `npm run test:consumer`: **PASS — strict external package; production/dev JSX, UI, reactive and dom subpaths; expected type failures**
 - `npm pack --dry-run`: **PASS — 203 files, 3.31 MB tarball, 7.10 MB unpacked, including package declarations and current docs**
 - `npm run test:browser`: **PASS — dashboard, render scopes, store selectors, keyed data, async resources, DevTools, and TaskFlow ErrorBoundary recovery** (historical run included the then-existing UI package)
 - `npm run bench:all`: **PASS — reactive scan/graph, compatibility render, flat-index, and keyed reorder workloads**

@@ -4,7 +4,7 @@
  * Graph tracks dependencies and schedules only affected effects.
  * Effects observe settled computed values, never intermediary diamond values.
  */
-import type { OwnerHost, OwnerId, RootId } from "./flat.js";
+import type { OwnerHost, OwnerId, RootId } from "./flat/types.js";
 
 export type Dispose = () => void;
 export type Mode = "scan" | "graph";

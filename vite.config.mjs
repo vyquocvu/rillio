@@ -8,9 +8,7 @@ export default {
     alias: {
       "rillio/jsx-runtime": source("jsx-runtime.ts"),
       "rillio/jsx-dev-runtime": source("jsx-dev-runtime.ts"),
-      "rillio/external-store": source("external-store.ts"),
       "rillio/dom": source("dom.ts"),
-      "rillio/legacy": source("dom.ts"),
       "rillio/flat": source("flat.ts"),
       "rillio/reactive": source("reactive-api.ts"),
       "rillio/devtools": source("devtools.ts"),

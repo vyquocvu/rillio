@@ -2,15 +2,9 @@
  * Reconciler and virtual tree planner for addressable flat DOM.
  */
 
-import {
-  longestIncreasingSubsequencePositions,
-  planStationaryMoves,
-  type FlatNode,
-  type Key,
-  type NodeId,
-  type OwnerId,
-  type PatchTransaction
-} from "../flat.js";
+import { longestIncreasingSubsequencePositions, planStationaryMoves } from "../flat/lis.js";
+import type { FlatNode, Key, NodeId, OwnerId } from "../flat/types.js";
+import type { PatchTransaction } from "../flat/transaction.js";
 import type {
   Child,
   ComponentState,
@@ -653,7 +647,7 @@ function reconcileReversedChildren(
 }
 
 // Public surface compat: the shared implementation lives in flat/lis.ts.
-export { longestIncreasingSubsequencePositions } from "../flat.js";
+export { longestIncreasingSubsequencePositions } from "../flat/lis.js";
 
 export function updateComponent(nodeId: NodeId): void {
   const record = nodeRegistry.getNode(nodeId);
