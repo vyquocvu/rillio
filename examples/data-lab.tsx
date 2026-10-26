@@ -1,5 +1,5 @@
-import { createStore } from "rillio/reactive";
-import { For, Show, derive, mount, resource, select } from "rillio/dom";
+import { createStore } from "@vyquocvu/rillio/reactive";
+import { For, Show, derive, mount, resource, select } from "@vyquocvu/rillio/dom";
 import { installSourceViewer } from "./source-viewer.js";
 
 interface Task {
@@ -43,7 +43,7 @@ function App() {
       <div class="lab-topline"><a href="/demos.html">Rillio examples</a><span>/</span><span>Reactive data</span></div>
       <header class="lab-hero">
         <h1>Reactive data lab</h1>
-        <p>This page uses the mount-once <code>rillio/dom</code> API. Store changes patch bound text and keyed rows without calling the root function again.</p>
+        <p>This page uses the mount-once <code>@vyquocvu/rillio/dom</code> API. Store changes patch bound text and keyed rows without calling the root function again.</p>
         <div class="lab-callout">Logs use <code>[data-lab]</code>. Add, edit, reorder, or remove tasks, then refetch the async resource. Row mount logs show when a keyed row is actually created.</div>
       </header>
 

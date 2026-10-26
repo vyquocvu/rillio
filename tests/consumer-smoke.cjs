@@ -11,7 +11,9 @@ try {
   fs.cpSync(fixtureRoot, temporaryRoot, { recursive: true });
   const modulesRoot = path.join(temporaryRoot, "node_modules");
   fs.mkdirSync(modulesRoot);
-  fs.symlinkSync(repoRoot, path.join(modulesRoot, "rillio"), "dir");
+  const scopeRoot = path.join(modulesRoot, "@vyquocvu");
+  fs.mkdirSync(scopeRoot);
+  fs.symlinkSync(repoRoot, path.join(scopeRoot, "rillio"), "dir");
 
   const tsc = path.join(repoRoot, "node_modules", "typescript", "bin", "tsc");
   for (const config of ["tsconfig.json", "tsconfig.dev.json"]) {

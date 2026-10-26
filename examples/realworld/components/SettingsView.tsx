@@ -1,4 +1,4 @@
-import { useState, ErrorBoundary } from "rillio";
+import { useState, ErrorBoundary } from "@vyquocvu/rillio";
 import { api } from "../api.js";
 import { useAppStore } from "../store.js";
 import { AlertIcon, CheckIcon, MoonIcon, SunIcon } from "./Icons.js";

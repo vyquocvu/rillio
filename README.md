@@ -1,5 +1,7 @@
 # Rillio
 
+[![npm version](https://img.shields.io/npm/v/%40vyquocvu%2Frillio)](https://www.npmjs.com/package/@vyquocvu/rillio)
+
 Rillio is an experimental addressable-DOM runtime for client-side apps. JSX and explicit reactive views share one Flat Index and one transactional `PatchEngine`.
 
 <p align="center">
@@ -12,8 +14,11 @@ Rillio is an experimental addressable-DOM runtime for client-side apps. JSX and 
 Install the published package in an existing app:
 
 ```sh
-npm install rillio
+npm install @vyquocvu/rillio
 ```
+
+See the [package on npm](https://www.npmjs.com/package/@vyquocvu/rillio) for
+published versions and package details.
 
 Or clone the repository to run the examples locally:
 
@@ -29,7 +34,7 @@ Open `http://127.0.0.1:5173/` for the Rillio landing page, then follow its links
 ## ⚛️ JSX runtime
 
 ```tsx
-import { createRoot, useState } from "rillio";
+import { createRoot, useState } from "@vyquocvu/rillio";
 
 function Counter() {
   const [count, setCount] = useState(0);
@@ -39,14 +44,14 @@ function Counter() {
 createRoot(document.getElementById("app")!).render(<Counter />);
 ```
 
-Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "rillio"`.
+Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "@vyquocvu/rillio"`.
 
 ## 🧰 API surfaces
 
 | Import | Use |
 |---|---|
-| `rillio` | JSX runtime, `createRoot`, and component hooks |
-| `rillio/reactive` + `rillio/dom` | Reactive stores and mount-once DOM bindings such as `select`, `Show`, and `For` |
+| `@vyquocvu/rillio` | JSX runtime, `createRoot`, and component hooks |
+| `@vyquocvu/rillio/reactive` + `@vyquocvu/rillio/dom` | Reactive stores and mount-once DOM bindings such as `select`, `Show`, and `For` |
 
 See the [API contract](docs/API.md) for usage and behavior details.
 

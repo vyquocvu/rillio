@@ -1,4 +1,4 @@
-import { createRoot, useState } from "rillio";
+import { createRoot, useState } from "@vyquocvu/rillio";
 import { installSourceViewer } from "./source-viewer.js";
 
 type CodeMode = "jsx" | "reactive";
@@ -6,7 +6,7 @@ type CodeMode = "jsx" | "reactive";
 const codeExamples: Record<CodeMode, { label: string; code: string }> = {
   jsx: {
     label: "JSX runtime",
-    code: `import { createRoot, useState } from "rillio";
+    code: `import { createRoot, useState } from "@vyquocvu/rillio";
 
 function Counter() {
   const [count, setCount] = useState(0);
@@ -20,8 +20,8 @@ function Counter() {
   },
   reactive: {
     label: "Reactive DOM",
-    code: `import { createStore } from "rillio/reactive";
-import { select, mount } from "rillio/dom";
+    code: `import { createStore } from "@vyquocvu/rillio/reactive";
+import { select, mount } from "@vyquocvu/rillio/dom";
 
 const count = createStore(0);
 

@@ -1,5 +1,5 @@
 {
-  "name": "rillio",
+  "name": "@vyquocvu/rillio",
   "version": "0.1.0",
   "private": false,
   "description": "Experimental addressable-DOM UI runtime.",

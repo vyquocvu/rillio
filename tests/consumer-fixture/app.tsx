@@ -1,7 +1,7 @@
-import { createRoot, useState } from "rillio";
-import { mount } from "rillio/dom";
-import { createEngine, createStore } from "rillio/reactive";
-import { inspectRoot, trackTransactions, createInspectorOverlay } from "rillio/devtools";
+import { createRoot, useState } from "@vyquocvu/rillio";
+import { mount } from "@vyquocvu/rillio/dom";
+import { createEngine, createStore } from "@vyquocvu/rillio/reactive";
+import { inspectRoot, trackTransactions, createInspectorOverlay } from "@vyquocvu/rillio/devtools";
 
 const domStore = createStore("dom");
 const explicitStore = createStore("explicit");

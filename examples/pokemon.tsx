@@ -1,5 +1,5 @@
-import { createStore } from "rillio/reactive";
-import { For, Show, mount, select } from "rillio/dom";
+import { createStore } from "@vyquocvu/rillio/reactive";
+import { For, Show, mount, select } from "@vyquocvu/rillio/dom";
 import { installSourceViewer } from "./source-viewer.js";
 
 const API = "https://pokeapi.co/api/v2";

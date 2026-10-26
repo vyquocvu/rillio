@@ -1,5 +1,5 @@
-import { createRoot, useEffect, useState, ErrorBoundary } from "rillio";
-import { createInspectorOverlay, type InspectorOverlayHandle } from "rillio/devtools";
+import { createRoot, useEffect, useState, ErrorBoundary } from "@vyquocvu/rillio";
+import { createInspectorOverlay, type InspectorOverlayHandle } from "@vyquocvu/rillio/devtools";
 import { installSourceViewer } from "../source-viewer.js";
 import { api } from "./api.js";
 import { AnalyticsView } from "./components/AnalyticsView.js";

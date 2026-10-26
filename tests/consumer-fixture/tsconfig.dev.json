@@ -7,7 +7,7 @@
     "noEmit": true,
     "skipLibCheck": true,
     "jsx": "react-jsxdev",
-    "jsxImportSource": "rillio",
+    "jsxImportSource": "@vyquocvu/rillio",
     "lib": ["ES2022", "DOM"]
   },
   "include": ["app.tsx"]

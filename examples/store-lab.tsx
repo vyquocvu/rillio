@@ -1,4 +1,4 @@
-import { createRoot, useRef } from "rillio";
+import { createRoot, useRef } from "@vyquocvu/rillio";
 import { create, shallow } from "../src/external-store.ts";
 import { installSourceViewer } from "./source-viewer.js";
 

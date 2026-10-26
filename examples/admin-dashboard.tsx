@@ -6,7 +6,7 @@
  * forms, keyed tables, focusable dialogs, responsive layout and live state.
  */
 
-import { createRoot, useEffect, useMemo, useState } from "rillio";
+import { createRoot, useEffect, useMemo, useState } from "@vyquocvu/rillio";
 import { installSourceViewer } from "./source-viewer.js";
 
 type TabId = "overview" | "users" | "settings";

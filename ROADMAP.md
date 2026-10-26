@@ -7,7 +7,7 @@ Rillio is a small addressable-DOM runtime. JSX is the authoring syntax; the Flat
 - Release baseline: `v0.1.0` (2026-10-13); later work remains unreleased until a new version is tagged.
 - Stability target: dependable small browser applications.
 - Breaking changes are allowed before `v1.0.0`, but must be documented.
-- `rillio/dom` is the explicit reactive DOM subpath.
+- `@vyquocvu/rillio/dom` is the explicit reactive DOM subpath.
 - There is one production DOM mutation path: `PatchEngine`.
 
 ## v0.1 scope
@@ -27,7 +27,7 @@ Rillio is a small addressable-DOM runtime. JSX is the authoring syntax; the Flat
 - React API parity, synthetic events, React scheduling semantics, and ecosystem drop-in compatibility.
 - SSR/hydration/streaming, Suspense, and server components.
 - Complete SVG/property normalization, an ahead-of-time compiler, and router/data-layer integrations.
-- React/Preact ecosystem devtools integration. Rillio's own `rillio/devtools` package was added after the v0.1.0 baseline.
+- React/Preact ecosystem devtools integration. Rillio's own `@vyquocvu/rillio/devtools` package was added after the v0.1.0 baseline.
 
 ## Work plan
 
@@ -77,7 +77,7 @@ flowchart LR
 - [x] Add renderer hook snapshots and best-effort inverse operations for failed DOM commits; document non-atomic user callback/cleanup behavior.
 - [x] Expand the DOM contract for SVG namespaces, form properties, custom elements, and accessibility-oriented properties.
 - [x] Replace catch-all JSX `any` props with checked common HTML/SVG attributes and tag-aware common event targets; both production and development runtimes are consumer-compiled. Full DOM/SVG coverage remains future work.
-- [x] Bound retained tombstones and release disposed DOM/component references; registry diagnostics implemented (`nodeRegistry.diagnostics()`). Deep V8 heap allocation profiling snapshots remain future work; `rillio/devtools` provides live Flat Index and transaction inspection.
+- [x] Bound retained tombstones and release disposed DOM/component references; registry diagnostics implemented (`nodeRegistry.diagnostics()`). Deep V8 heap allocation profiling snapshots remain future work; `@vyquocvu/rillio/devtools` provides live Flat Index and transaction inspection.
 - [x] Run all gates from a clean checkout and record the exact code revision.
 
 ## Post-v0.1 additions and remaining options
@@ -85,7 +85,7 @@ flowchart LR
 - [x] Portal support through addressable mount targets (`createPortal`).
 - [x] Explicit error boundary primitive (`ErrorBoundary`) with fallback UI and recovery.
 - [x] Async resource and fine-grained loading primitive (`resource()`, `createResource()`) integrated with `<Show>`.
-- [x] Live Flat Index inspector, transaction telemetry tracker, and diagnostic HUD (`rillio/devtools`).
+- [x] Live Flat Index inspector, transaction telemetry tracker, and diagnostic HUD (`@vyquocvu/rillio/devtools`).
 - SSR/hydration if a server-rendered use case is confirmed.
 - Ahead-of-time compiler exploration for template extraction.
 

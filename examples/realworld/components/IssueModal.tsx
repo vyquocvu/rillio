@@ -1,4 +1,4 @@
-import { createPortal, useEffect, useState } from "rillio";
+import { createPortal, useEffect, useState } from "@vyquocvu/rillio";
 import { api } from "../api.js";
 import { useAppStore } from "../store.js";
 import type { Issue, IssueLabel, IssuePriority, IssueStatus, Project, TeamMember } from "../types.js";

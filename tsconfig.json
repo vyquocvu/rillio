@@ -9,13 +9,13 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "rillio": ["src/index.ts"],
-      "rillio/jsx-runtime": ["src/jsx-runtime.ts"],
-      "rillio/jsx-dev-runtime": ["src/jsx-dev-runtime.ts"],
-      "rillio/dom": ["src/dom.ts"],
-      "rillio/reactive": ["src/reactive-api.ts"],
-      "rillio/flat": ["src/flat.ts"],
-      "rillio/devtools": ["src/devtools.ts"]
+      "@vyquocvu/rillio": ["src/index.ts"],
+      "@vyquocvu/rillio/jsx-runtime": ["src/jsx-runtime.ts"],
+      "@vyquocvu/rillio/jsx-dev-runtime": ["src/jsx-dev-runtime.ts"],
+      "@vyquocvu/rillio/dom": ["src/dom.ts"],
+      "@vyquocvu/rillio/reactive": ["src/reactive-api.ts"],
+      "@vyquocvu/rillio/flat": ["src/flat.ts"],
+      "@vyquocvu/rillio/devtools": ["src/devtools.ts"]
     },
     "lib": [
       "ES2022",
@@ -26,7 +26,7 @@
       "vitest/globals"
     ],
     "jsx": "react-jsx",
-    "jsxImportSource": "rillio"
+    "jsxImportSource": "@vyquocvu/rillio"
   },
   "include": [
     "src/**/*.ts",

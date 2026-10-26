@@ -1,6 +1,6 @@
 /** Compile with jsxImportSource pointed to the project's src directory. */
-import { createStore } from "rillio/reactive";
-import { select, mount, Show, For } from "rillio/dom";
+import { createStore } from "@vyquocvu/rillio/reactive";
+import { select, mount, Show, For } from "@vyquocvu/rillio/dom";
 
 const store = createStore({ count: 0, show: true, items: [{ id: 1, text: "First" }] });
 let renderCount = 0;

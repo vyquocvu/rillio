@@ -1,11 +1,33 @@
 # Rillio API — experimental v0.1
 
-Rillio uses standard JSX syntax through `jsxImportSource: "rillio"`, but its runtime semantics are Rillio-owned. The Flat Index and Patch Engine are the implementation contract behind both public rendering surfaces.
+Rillio uses standard JSX syntax through `jsxImportSource: "@vyquocvu/rillio"`, but its runtime semantics are Rillio-owned. The Flat Index and Patch Engine are the implementation contract behind both public rendering surfaces.
+
+## Install and configure
+
+Install the package in an application:
+
+```sh
+npm install @vyquocvu/rillio
+```
+
+For TypeScript with the automatic JSX runtime, configure `jsx` and `jsxImportSource`:
+
+```json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@vyquocvu/rillio"
+  }
+}
+```
+
+The published package and version history are available on
+[npm](https://www.npmjs.com/package/@vyquocvu/rillio).
 
 ## JSX runtime
 
 ```tsx
-import { createRoot, useState, useEffect } from "rillio";
+import { createRoot, useState, useEffect } from "@vyquocvu/rillio";
 
 function Counter() {
   const [count, setCount] = useState(0);
@@ -46,24 +68,24 @@ Rillio does not claim React hook scheduling, batching, synthetic event, Context,
 
 ## Flat Index and diagnostics
 
-The `rillio` root entry is reserved for the JSX runtime API. Import Flat Index constructors from `rillio/flat`, and shared runtime diagnostics from `rillio/devtools`:
+The `@vyquocvu/rillio` root entry is reserved for the JSX runtime API. Import Flat Index constructors from `@vyquocvu/rillio/flat`, and shared runtime diagnostics from `@vyquocvu/rillio/devtools`:
 
 ```ts
-import { NodeRegistry, PatchEngine } from "rillio/flat";
-import { nodeRegistry, patchEngine, assertAddressableRoot } from "rillio/devtools";
+import { NodeRegistry, PatchEngine } from "@vyquocvu/rillio/flat";
+import { nodeRegistry, patchEngine, assertAddressableRoot } from "@vyquocvu/rillio/devtools";
 ```
 
 `NodeRegistry` exposes stable `NodeId`, `RootId`, and `OwnerId` records, linked parent/sibling structure, ownership, and versions. Disposed records are stripped of DOM/component references and retained as lightweight diagnostics up to `maxTombstones` (default 1,000); older ids become unknown. `nodeRegistry.diagnostics()` returns a `RegistryDiagnostics` snapshot with live counts (`activeNodes`, `tombstoneNodes`, `totalNodes`, `activeOwners`, `tombstoneOwners`, `totalOwners`, `totalRoots`, `maxTombstones`) for continuous leak and lifecycle verification. `PatchEngine` exposes transactional operations for renderer authors. Application code normally uses the JSX or explicit reactive planner rather than calling low-level patch methods.
 
-Full-root consistency verification is opt-in after each transaction to avoid a tree-wide walk in the production update path. Advanced/debug callers can enable it with `new PatchEngine(registry, document, { assertAfterCommit: true })`; `assertAddressableRoot(container)` is available from `rillio/devtools` for an explicit check. `getAddressableRoot(container)` is also available there when callers need the root handle.
+Full-root consistency verification is opt-in after each transaction to avoid a tree-wide walk in the production update path. Advanced/debug callers can enable it with `new PatchEngine(registry, document, { assertAfterCommit: true })`; `assertAddressableRoot(container)` is available from `@vyquocvu/rillio/devtools` for an explicit check. `getAddressableRoot(container)` is also available there when callers need the root handle.
 
 ## Explicit reactive DOM API
 
-The subpath for the mount-once explicit reactive DOM surface is `rillio/dom`:
+The subpath for the mount-once explicit reactive DOM surface is `@vyquocvu/rillio/dom`:
 
 ```tsx
-import { createStore } from "rillio/reactive";
-import { select, mount } from "rillio/dom";
+import { createStore } from "@vyquocvu/rillio/reactive";
+import { select, mount } from "@vyquocvu/rillio/dom";
 
 const count = createStore(0);
 mount(() => <button onClick={() => count.set(n => n + 1)}>
@@ -71,14 +93,14 @@ mount(() => <button onClick={() => count.set(n => n + 1)}>
 </button>, document.getElementById("app")!);
 ```
 
-`rillio/reactive` exports the shared reactive engine and store primitives, including `createStore`, `computed`, `batch`, and `untrack`. `rillio/dom` exports:
+`@vyquocvu/rillio/reactive` exports the shared reactive engine and store primitives, including `createStore`, `computed`, `batch`, and `untrack`. `@vyquocvu/rillio/dom` exports:
 
 - `select(store, selector)` — deferred binding descriptor;
 - `derive(read)` — deferred binding descriptor;
 - `resource(fetcher, options)` — asynchronous resource store (`.loading`, `.data`, `.error`, `.status`, `.mutate()`, `.refetch()`);
 - `mount`, `Show`, and `For`.
 
-The same reactive engine backs both subpaths, so stores created through `rillio/reactive` can be consumed by bindings in `rillio/dom`. The DOM subpath intentionally owns rendering and bindings, while the reactive subpath owns store creation and computation APIs.
+The same reactive engine backs both subpaths, so stores created through `@vyquocvu/rillio/reactive` can be consumed by bindings in `@vyquocvu/rillio/dom`. The DOM subpath intentionally owns rendering and bindings, while the reactive subpath owns store creation and computation APIs.
 
 `Show` owns a conditional boundary. `For` requires stable unique keys and preserves the boundary `NodeId` for an item while its position or current value changes.
 
@@ -96,10 +118,10 @@ Ordinary `store.get()` reads during mount are snapshots. Use a binding or a reac
 
 ## DevTools and Flat Index inspection
 
-`rillio/devtools` exposes real-time inspection, node range highlighting, transaction tracking, and an in-browser HUD overlay:
+`@vyquocvu/rillio/devtools` exposes real-time inspection, node range highlighting, transaction tracking, and an in-browser HUD overlay:
 
 ```ts
-import { inspectRoot, highlightNode, trackTransactions, createInspectorOverlay } from "rillio/devtools";
+import { inspectRoot, highlightNode, trackTransactions, createInspectorOverlay } from "@vyquocvu/rillio/devtools";
 
 // Inspect serialized node hierarchy
 const snapshot = inspectRoot(document.getElementById("app")!);
@@ -113,10 +135,10 @@ const overlay = createInspectorOverlay({ targetRoot: document.getElementById("ap
 
 ## Reactive engine
 
-`rillio/reactive` exposes the standalone `ReactiveEngine` used by the explicit runtime:
+`@vyquocvu/rillio/reactive` exposes the standalone `ReactiveEngine` used by the explicit runtime:
 
 ```ts
-import { createEngine } from "rillio/reactive";
+import { createEngine } from "@vyquocvu/rillio/reactive";
 
 const engine = createEngine("graph");
 const state = engine.createStore(0);

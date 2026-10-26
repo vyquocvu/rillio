@@ -11,7 +11,7 @@ import { nodeRegistry, patchEngine } from "../src/compat.js";
 import { createStore } from "../src/reactive-api.js";
 import { mount, jsx, Show } from "../src/dom/index.js";
 
-describe("rillio/devtools: Live Flat Index Inspector", () => {
+describe("@vyquocvu/rillio/devtools: Live Flat Index Inspector", () => {
   it("inspects an active root and serializes the Flat Index tree accurately", () => {
     const container = document.createElement("div");
     const count = createStore(42);

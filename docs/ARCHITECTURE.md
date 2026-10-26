@@ -34,7 +34,7 @@ flowchart TB
 The two public planning surfaces are:
 
 - the JSX component runtime in `src/compat.ts`, which reruns compatible component descendants for parent and hook state updates;
-- the explicit reactive DOM surface in `src/dom.ts` (exported as `rillio/dom`), which mounts a subtree once and binds reactive text, properties, regions, and list items.
+- the explicit reactive DOM surface in `src/dom.ts` (exported as `@vyquocvu/rillio/dom`), which mounts a subtree once and binds reactive text, properties, regions, and list items.
 
 They share the same `NodeRegistry`, `PatchEngine`, DOM operation helpers, and owner host. They are not independent DOM mutation implementations.
 
@@ -210,7 +210,7 @@ The flat addressable DOM engine is decomposed into cohesive, single-responsibili
 - **`src/flat/properties.ts`**: Normalized property applicators (`setProperty`, `setHtmlProperty`, `setSvgProperty`, `setCustomElementProperty`), inline style diffing (`applyStyle`), attribute reflection (`setAttribute`), and XML/SVG namespace constants.
 - **`src/flat/security.ts`**: Sink protection, URL scheme sanitization (`isUnsafeUrlProperty`), and property safety assertions (`validateProperty`).
 - **`src/flat/focus.ts`**: Active focus and selection preservation across DOM replacements and sibling moves (`captureFocus`, `captureFocusInRecords`, `captureFocusInChildren`, `restoreFocus`).
-- **`src/flat/lis.ts`**: Shared keyed-list diffing algorithms — patience-sorting LIS (`longestIncreasingSubsequencePositions`) and the right-to-left move planner (`planStationaryMoves`) used by both the compat reconciler and the `rillio/dom` list renderer.
+- **`src/flat/lis.ts`**: Shared keyed-list diffing algorithms — patience-sorting LIS (`longestIncreasingSubsequencePositions`) and the right-to-left move planner (`planStationaryMoves`) used by both the compat reconciler and the `@vyquocvu/rillio/dom` list renderer.
 - **`src/flat/equality.ts`**: Allocation-free shallow equality over own enumerable keys (`shallowEqual`), used by the external-store adapter.
 
 ## Module structure (`src/dom/`)

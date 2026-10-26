@@ -1,4 +1,4 @@
-import { useState } from "rillio";
+import { useState } from "@vyquocvu/rillio";
 import { api } from "../api.js";
 import { useAppStore } from "../store.js";
 import type { Issue, IssueLabel, IssuePriority, IssueStatus, TeamMember } from "../types.js";
