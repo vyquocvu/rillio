@@ -10,9 +10,9 @@ import {
   ref as vueRef,
   render as vueRender
 } from "vue";
-import { createRoot as createZuiRoot, jsx as zuiH, useState as useZuiState } from "../src/compat.ts";
+import { createRoot as createRillioRoot, jsx as rillioH, useState as useRillioState } from "../src/compat.ts";
 
-type Framework = "zui" | "react" | "preact" | "vue";
+type Framework = "rillio" | "react" | "preact" | "vue";
 type Scenario = "mount" | "local-update" | "parent-update" | "prop-fanout";
 
 interface Options {
@@ -153,25 +153,25 @@ function makeHarness(framework: Framework, scenario: Scenario, size: number, con
   }
 
   function Child({ id, revision }: { id: number; revision: number }) {
-    const [value, setValue] = useZuiState(0);
+    const [value, setValue] = useRillioState(0);
     localSetters[id] = setValue;
     childRenders[id]++;
-    return zuiH("button", { "data-id": String(id), children: `${id}:${value}:${revision}` });
+    return rillioH("button", { "data-id": String(id), children: `${id}:${value}:${revision}` });
   }
   function App({ fanout }: { fanout: boolean }) {
-    const [version, setVersion] = useZuiState(0);
+    const [version, setVersion] = useRillioState(0);
     parentSetter = setVersion;
     appRenders++;
-    return zuiH("main", {
-      children: Array.from({ length: size }, (_, id) => zuiH(Child, {
+    return rillioH("main", {
+      children: Array.from({ length: size }, (_, id) => rillioH(Child, {
         id,
         revision: fanout ? version : 0
       }, id))
     });
   }
-  const root = createZuiRoot(container);
+  const root = createRillioRoot(container);
   return {
-    render: () => root.render(zuiH(App, { fanout: scenario === "prop-fanout" })),
+    render: () => root.render(rillioH(App, { fanout: scenario === "prop-fanout" })),
     updateLocal: next => localSetters[targetId]!(next),
     updateParent: () => parentSetter(previous => previous + 1),
     unmount: () => root.unmount(),

@@ -9,7 +9,7 @@ import {
   type Scenario
 } from "./browser.ts";
 
-const frameworks: Framework[] = ["zui", "react", "preact", "vue"];
+const frameworks: Framework[] = ["rillio", "react", "preact", "vue"];
 const scenarios: Array<{ id: Scenario; title: string; detail: string }> = [
   { id: "mount", title: "Fresh mount", detail: "Create a new keyed list and attach every row." },
   { id: "noop", title: "No-op update", detail: "Render the same row data again and retain the current order." },
@@ -51,12 +51,12 @@ if (!root) throw new Error("Benchmark app root is missing");
 
 root.innerHTML = `
   <main class="bench-shell">
-    <div class="bench-topline"><a href="/demos.html">ZUI Studio</a><span>/</span><span>Live browser benchmarks</span></div>
+    <div class="bench-topline"><a href="/demos.html">Rillio Studio</a><span>/</span><span>Live browser benchmarks</span></div>
     <header class="bench-hero">
       <div class="bench-hero-copy">
         <span class="bench-eyebrow">Real DOM · Local browser · Repeatable cases</span>
         <h1>Renderer Bench</h1>
-        <p>Run each keyed-list workload in ZUI, React, Preact, and Vue. Every case is visible below, and each one renders live in this page.</p>
+        <p>Run each keyed-list workload in Rillio, React, Preact, and Vue. Every case is visible below, and each one renders live in this page.</p>
       </div>
       <div class="bench-hero-mark" aria-hidden="true"><span>μs</span><i></i><i></i><i></i><i></i><i></i><i></i></div>
     </header>
@@ -110,7 +110,7 @@ root.innerHTML = `
       <div id="preview-grid" class="bench-preview-grid"></div>
     </section>
 
-    <footer class="bench-footer"><span>Local measurements vary with browser, hardware, extensions, and background load.</span><a href="https://github.com/vyquocvu/zui/blob/main/docs/PERFORMANCE.md">Read the benchmark protocol ↗</a></footer>
+    <footer class="bench-footer"><span>Local measurements vary with browser, hardware, extensions, and background load.</span><a href="https://github.com/vyquocvu/rillio/blob/main/docs/PERFORMANCE.md">Read the benchmark protocol ↗</a></footer>
   </main>
 `;
 
@@ -123,7 +123,7 @@ const resultsBody = root.querySelector<HTMLTableSectionElement>("#results")!;
 const previewGrid = root.querySelector<HTMLDivElement>("#preview-grid")!;
 const correctness = root.querySelector<HTMLSpanElement>("#correctness")!;
 const modeNote = root.querySelector<HTMLSpanElement>("#mode-note")!;
-const rendererNames: Record<Framework, string> = { zui: "ZUI", react: "React", preact: "Preact", vue: "Vue" };
+const rendererNames: Record<Framework, string> = { rillio: "Rillio", react: "React", preact: "Preact", vue: "Vue" };
 const previews = new Map<Framework, { stage: HTMLDivElement; unmount: () => void }>();
 const measurements = new Map<Scenario, CaseMeasurement[]>();
 let isRunning = false;

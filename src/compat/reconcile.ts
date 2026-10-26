@@ -96,12 +96,12 @@ function mountPortal(
 ): NodeId {
   const container = value.props.container as Element;
   if (!container || typeof container !== "object" || (container as any).nodeType !== 1) {
-    throw new Error("ZUI_INVALID_PORTAL_CONTAINER");
+    throw new Error("RILLIO_INVALID_PORTAL_CONTAINER");
   }
 
-  const placeholderId = tx.createBoundary(ownerId, "zui:portal-placeholder", "/zui:portal-placeholder", value.key);
+  const placeholderId = tx.createBoundary(ownerId, "rillio:portal-placeholder", "/rillio:portal-placeholder", value.key);
   const portalOwner = nodeRegistry.createOwner(root.rootId, ownerId);
-  const portalBoundaryId = tx.createBoundary(portalOwner, "zui:portal", "/zui:portal", value.key);
+  const portalBoundaryId = tx.createBoundary(portalOwner, "rillio:portal", "/rillio:portal", value.key);
   const portalRecord = nodeRegistry.getNode(portalBoundaryId);
 
   const state: PortalState = {
@@ -142,7 +142,7 @@ function reconcilePortal(
 
   const nextContainer = value.props.container as Element;
   if (!nextContainer || typeof nextContainer !== "object" || (nextContainer as any).nodeType !== 1) {
-    throw new Error("ZUI_INVALID_PORTAL_CONTAINER");
+    throw new Error("RILLIO_INVALID_PORTAL_CONTAINER");
   }
 
   const portalBoundary = nodeRegistry.getNode(state.portalBoundaryId);
@@ -260,7 +260,7 @@ export function mountValue(
       rendering: false,
       disposed: false
     };
-    const nodeId = tx.createBoundary(componentOwner, "zui:component", "/zui:component", value.key);
+    const nodeId = tx.createBoundary(componentOwner, "rillio:component", "/rillio:component", value.key);
     state.nodeId = nodeId;
     nodeRegistry.updateNode(nodeId, { type: value.type, key: value.key, props: value.props, value, payload: state });
     tx.attachCleanup(nodeId, () => disposeComponent(state));
@@ -293,8 +293,8 @@ export function mountValue(
 export function renderComponent(nodeId: NodeId, props: Record<string, any>, tx: PatchTransaction): void {
   const record = nodeRegistry.getNode(nodeId);
   const state = record.payload;
-  if (!isComponentState(state)) throw new Error("ZUI_COMPONENT_STATE");
-  if (state.rendering) throw new Error("ZUI_RENDER_PHASE_UPDATE");
+  if (!isComponentState(state)) throw new Error("RILLIO_COMPONENT_STATE");
+  if (state.rendering) throw new Error("RILLIO_RENDER_PHASE_UPDATE");
 
   if (state.type === ErrorBoundary) {
     renderErrorBoundary(nodeId, state, props as ErrorBoundaryProps, tx, record);
@@ -312,7 +312,7 @@ export function renderComponent(nodeId: NodeId, props: Record<string, any>, tx: 
   try {
     result = state.type(props);
     if (state.hookCount === undefined) state.hookCount = state.cursor;
-    else if (state.cursor !== state.hookCount) throw new Error("ZUI_HOOK_ORDER");
+    else if (state.cursor !== state.hookCount) throw new Error("RILLIO_HOOK_ORDER");
     if (record.props !== props) tx.setMeta(nodeId, { props });
     reconcileChildren(nodeId, result, state.ownerId, rootForId(state.rootId), tx, record);
   } catch (error) {
@@ -442,7 +442,7 @@ export function reconcileChildren(
     const value = values[index]!;
     const key = isVNode(value) ? value.key : undefined;
     if (key !== undefined) {
-      if (seen.has(key)) throw new Error("ZUI_DUPLICATE_KEY");
+      if (seen.has(key)) throw new Error("RILLIO_DUPLICATE_KEY");
       seen.add(key);
     }
     const oldIndex = key === undefined ? unkeyed[unkeyedCursor++] ?? -1 : keyed.get(key) ?? -1;
@@ -486,7 +486,7 @@ function reconcileOrderedChildren(
       const value = values[index]!;
       if (isVNode(value) && value.key !== undefined) {
         (seenKeys ??= new Set<Key>());
-        if (seenKeys.has(value.key)) throw new Error("ZUI_DUPLICATE_KEY");
+        if (seenKeys.has(value.key)) throw new Error("RILLIO_DUPLICATE_KEY");
         seenKeys.add(value.key);
       }
       mountValue(value, parentId, ownerId, root, tx, parent);
@@ -514,7 +514,7 @@ function reconcileOrderedChildren(
     for (let index = 0; index < values.length; index++) {
       const value = values[index]!;
       if (!isVNode(value) || value.key === undefined) continue;
-      if (seenKeys.has(value.key)) throw new Error("ZUI_DUPLICATE_KEY");
+      if (seenKeys.has(value.key)) throw new Error("RILLIO_DUPLICATE_KEY");
       seenKeys.add(value.key);
     }
   }

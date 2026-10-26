@@ -4,7 +4,7 @@
  * balanced ordering, confidence intervals, heap, or JIT/GC controls yet.
  */
 const { performance } = require("node:perf_hooks");
-const { createEngine } = require("../.zui-test/reactive.js");
+const { createEngine } = require("../.rillio-test/reactive.js");
 
 function benchmark(mode, subscriptions, affectedPct, iterations = 80) {
   const engine = createEngine(mode);

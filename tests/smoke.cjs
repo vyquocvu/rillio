@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 (async () => {
-  const { createEngine } = await import("../.zui-test/reactive.js");
+  const { createEngine } = await import("../.rillio-test/reactive.js");
   let checks = 0;
   function test(name, run) {
     try { run(); checks++; }
@@ -43,7 +43,7 @@ const assert = require("node:assert/strict");
     const e = createEngine(mode);
     let c;
     c = e.computed(() => c.get() + 1);
-    assert.throws(() => c.get(), /ZUI_REACTIVE_CYCLE/);
+    assert.throws(() => c.get(), /RILLIO_REACTIVE_CYCLE/);
     assert.equal(e.diagnostics().dependencyEdges, 0);
   });
   test(mode + " initial nested write", () => {
@@ -63,7 +63,7 @@ const assert = require("node:assert/strict");
   test(mode + " bounded runaway writes", () => {
     const e = createEngine(mode, { maxRounds: 3 }), s = e.createStore(0);
     const stop = e.effect(() => { const v = s.get(); if (v > 0) s.set(v + 1); });
-    assert.throws(() => s.set(1), /ZUI_MAX_FLUSH_ROUNDS/);
+    assert.throws(() => s.set(1), /RILLIO_MAX_FLUSH_ROUNDS/);
     stop(); e.flush();
   });
   }

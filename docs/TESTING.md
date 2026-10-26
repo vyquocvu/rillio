@@ -21,7 +21,7 @@ The verification order separates static, runtime, package, browser, and measurem
 
 ```mermaid
 flowchart LR
-    accTitle: ZUI verification pipeline
+    accTitle: Rillio verification pipeline
     accDescr: Verification moves from a code revision through static checks, runtime tests, package and browser checks, and measured benchmarks before status evidence is recorded.
 
     code_revision([🏁 Code revision]) --> static_checks[🔍 Typecheck]
@@ -33,7 +33,7 @@ flowchart LR
     measured_benchmarks --> status_evidence
 ```
 
-`npm run dev` serves the product showcase at `/` and `/admin.html`. `npm run test:browser` builds the app and package, starts Vite preview, and runs dashboard and UI smokes in headless Playwright Chromium. Install the browser once with `npx playwright install chromium`. The checks cover metrics, navigation, the controlled member form, table update, runtime errors, dialog focus/keyboard behavior and focus restoration, cross-API root isolation, rejected HTML/URL/event sinks, and Input/Progress accessibility.
+`npm run dev` serves the product showcase at `/` and `/admin.html`. `npm run test:browser` builds the app and package, starts Vite preview, and runs dashboard and runtime smokes in headless Playwright Chromium. Install the browser once with `npx playwright install chromium`. The checks cover metrics, navigation, the controlled member form, table update, runtime errors, cross-API root isolation, rejected HTML/URL/event sinks, and DevTools behavior.
 
 `npm run bench:reactive`, `npm run bench:compat`, and `npm run bench:flat` are exploratory only. They report measured local behavior for reactive invalidation and addressable keyed DOM reconciliation; none should be used to alter preregistered research thresholds or presented as a cross-framework performance claim.
 
@@ -63,7 +63,6 @@ All gates must be recorded against one commit SHA in `docs/STATUS.md`, with envi
 - Cross-API root collisions are rejected without orphaning DOM or reactive owners (covered by Vitest and Playwright).
 - Failed property commits restore prior DOM/text/refs where inverse operations are possible (covered by Vitest).
 - HTML parsing sinks, executable URL schemes, and string-valued event handlers are rejected before any DOM write (covered by Vitest and Playwright).
-- Input labels and hint/error descriptions remain associated; progressbar ranges and names are valid (covered by Vitest and Playwright).
 - Follow-up: CSS style removal and remaining URL-sensitive attributes; untrusted strings should be rendered as text.
 - SSR and agent UI security cases deferred until those features exist.
 

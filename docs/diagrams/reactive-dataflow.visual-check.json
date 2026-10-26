@@ -6,9 +6,9 @@
   "status": "pass",
   "visualReview": "pending",
   "artifact": {
-    "path": "/Users/vyquocvu/Develop/zui/docs/diagrams/reactive-dataflow.html",
-    "sha256": "adc5b41506bbfa0d328acc9f288360ee372069153d064c779f4ddcba664891ca",
-    "bytes": 801797
+    "path": "docs/diagrams/reactive-dataflow.html",
+    "sha256": "408ca632d73fc39b970835eb8fe2e42da5979b7d85bf538497a88913264b36e7",
+    "bytes": 801806
   },
   "state": {
     "detail": "read",

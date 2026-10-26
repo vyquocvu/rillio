@@ -6,9 +6,9 @@
   "status": "pass",
   "visualReview": "pending",
   "artifact": {
-    "path": "/Users/vyquocvu/Develop/zui/docs/diagrams/transaction-workflow.html",
-    "sha256": "a602c15ecfbae72251cf24a5d4598990eab2933021acc661566ec4121b6e739b",
-    "bytes": 806844
+    "path": "docs/diagrams/transaction-workflow.html",
+    "sha256": "e56450f14a27b948340fcaff75ad67b19752b6f3ee44b4beb37a967988bd19b2",
+    "bytes": 806847
   },
   "state": {
     "detail": "read",

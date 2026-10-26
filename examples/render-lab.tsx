@@ -1,5 +1,5 @@
-import { createRoot, useRef, useState } from "zui";
-import { create } from "zui/external-store";
+import { createRoot, useRef, useState } from "rillio";
+import { create } from "rillio/external-store";
 
 interface LabStore {
   count: number;
@@ -10,9 +10,9 @@ interface LabStore {
 
 const useLabStore = create<LabStore>(set => ({
   count: 0,
-  label: "ZUI observer",
+  label: "Rillio observer",
   increment: () => set(state => ({ count: state.count + 1 })),
-  rename: () => set(state => ({ label: state.label === "ZUI observer" ? "Flat Index" : "ZUI observer" })),
+  rename: () => set(state => ({ label: state.label === "Rillio observer" ? "Flat Index" : "Rillio observer" })),
 }));
 
 function useRenderTrace(name: string): number {
@@ -91,7 +91,7 @@ function App() {
   const renders = useRenderTrace("App");
   return (
     <main class="lab-shell">
-      <div class="lab-topline"><a href="/demos.html">ZUI examples</a><span>/</span><span>Render diagnostics</span></div>
+      <div class="lab-topline"><a href="/demos.html">Rillio examples</a><span>/</span><span>Render diagnostics</span></div>
       <header class="lab-hero">
         <h1>Render scope lab</h1>
         <p>Click each control and inspect the browser console. The <code>[render-lab]</code> lines show which function components execute for local state, selector updates, and a parent-owned update.</p>

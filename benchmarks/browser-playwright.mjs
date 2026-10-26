@@ -10,7 +10,7 @@ import { build } from "vite";
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const benchmarkHtml = resolve(projectRoot, "benchmarks/browser.html");
 const viteConfig = resolve(projectRoot, "vite.config.mjs");
-const frameworks = ["zui", "react", "preact", "vue"];
+const frameworks = ["rillio", "react", "preact", "vue"];
 const scenarios = ["mount", "noop", "text", "append-remove", "rotate", "reverse"];
 const componentScenarios = ["mount", "local-update", "parent-update", "prop-fanout"];
 
@@ -24,22 +24,22 @@ function readInteger(name, fallback, minimum, maximum = Number.MAX_SAFE_INTEGER)
 }
 
 function readSizes() {
-  const raw = process.env.ZUI_BENCH_SIZES ?? "100,1000,2000";
+  const raw = process.env.RILLIO_BENCH_SIZES ?? "100,1000,2000";
   const values = raw.split(",").map(value => Number(value.trim()));
   if (!values.length || values.some(value => !Number.isSafeInteger(value) || value < 1)) {
-    throw new Error(`ZUI_BENCH_SIZES must be a comma-separated list of positive integers; received ${raw}`);
+    throw new Error(`RILLIO_BENCH_SIZES must be a comma-separated list of positive integers; received ${raw}`);
   }
-  if (new Set(values).size !== values.length) throw new Error("ZUI_BENCH_SIZES must not contain duplicates");
+  if (new Set(values).size !== values.length) throw new Error("RILLIO_BENCH_SIZES must not contain duplicates");
   return values;
 }
 
 function readComponentSizes() {
-  const raw = process.env.ZUI_COMPONENT_SIZES ?? "10,100,1000";
+  const raw = process.env.RILLIO_COMPONENT_SIZES ?? "10,100,1000";
   const values = raw.split(",").map(value => Number(value.trim()));
   if (!values.length || values.some(value => !Number.isSafeInteger(value) || value < 1)) {
-    throw new Error(`ZUI_COMPONENT_SIZES must be a comma-separated list of positive integers; received ${raw}`);
+    throw new Error(`RILLIO_COMPONENT_SIZES must be a comma-separated list of positive integers; received ${raw}`);
   }
-  if (new Set(values).size !== values.length) throw new Error("ZUI_COMPONENT_SIZES must not contain duplicates");
+  if (new Set(values).size !== values.length) throw new Error("RILLIO_COMPONENT_SIZES must not contain duplicates");
   return values;
 }
 
@@ -75,27 +75,27 @@ function medianAbsoluteDeviation(values) {
 
 const sizes = readSizes();
 const componentSizes = readComponentSizes();
-const suite = process.env.ZUI_BENCH_SUITE ?? "all";
+const suite = process.env.RILLIO_BENCH_SUITE ?? "all";
 if (!["all", "list", "components"].includes(suite)) {
-  throw new Error(`ZUI_BENCH_SUITE must be all, list, or components; received ${suite}`);
+  throw new Error(`RILLIO_BENCH_SUITE must be all, list, or components; received ${suite}`);
 }
-const warmup = readInteger("ZUI_BENCH_WARMUP", 3, 0);
-const samples = readInteger("ZUI_BENCH_SAMPLES", 9, 3);
-const repeats = readInteger("ZUI_BENCH_REPEATS", 3, 2);
-const seed = readInteger("ZUI_BENCH_SEED", 20261013, 0, 0xFFFFFFFF);
+const warmup = readInteger("RILLIO_BENCH_WARMUP", 3, 0);
+const samples = readInteger("RILLIO_BENCH_SAMPLES", 9, 3);
+const repeats = readInteger("RILLIO_BENCH_REPEATS", 3, 2);
+const seed = readInteger("RILLIO_BENCH_SEED", 20261013, 0, 0xFFFFFFFF);
 const random = makeRandom(seed);
-const jsonOutput = process.env.ZUI_BENCH_JSON === "1";
+const jsonOutput = process.env.RILLIO_BENCH_JSON === "1";
 const projectManifest = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf8"));
 const frameworkVersions = {};
 for (const framework of frameworks) {
-  if (framework === "zui") {
+  if (framework === "rillio") {
     frameworkVersions[framework] = projectManifest.version;
   } else {
     const manifest = JSON.parse(await readFile(join(projectRoot, "node_modules", framework, "package.json"), "utf8"));
     frameworkVersions[framework] = manifest.version;
   }
 }
-const tempRoot = await mkdtemp(join(tmpdir(), "zui-playwright-bench-"));
+const tempRoot = await mkdtemp(join(tmpdir(), "rillio-playwright-bench-"));
 const outputDir = join(tempRoot, "site");
 
 const mimeTypes = new Map([
@@ -381,10 +381,10 @@ try {
       }
       return {
         ...row,
-        zuiVsReact: `${(medians.zui / Math.max(medians.react, 0.001)).toFixed(2)}x`,
-        zuiVsPreact: `${(medians.zui / Math.max(medians.preact, 0.001)).toFixed(2)}x`,
-        zuiVsVue: `${(medians.zui / Math.max(medians.vue, 0.001)).toFixed(2)}x`,
-        samples: findResult(size, scenario, "zui").valuesMs.length
+        rillioVsReact: `${(medians.rillio / Math.max(medians.react, 0.001)).toFixed(2)}x`,
+        rillioVsPreact: `${(medians.rillio / Math.max(medians.preact, 0.001)).toFixed(2)}x`,
+        rillioVsVue: `${(medians.rillio / Math.max(medians.vue, 0.001)).toFixed(2)}x`,
+        samples: findResult(size, scenario, "rillio").valuesMs.length
       };
     })));
     if (suite !== "list") console.table(componentSizes.flatMap(size => componentScenarios.map(scenario => {
@@ -402,12 +402,12 @@ try {
       }
       return {
         ...row,
-        zuiVsReact: `${(medians.zui / Math.max(medians.react, 0.001)).toFixed(2)}x`,
-        zuiVsPreact: `${(medians.zui / Math.max(medians.preact, 0.001)).toFixed(2)}x`,
-        zuiVsVue: `${(medians.zui / Math.max(medians.vue, 0.001)).toFixed(2)}x`,
+        rillioVsReact: `${(medians.rillio / Math.max(medians.react, 0.001)).toFixed(2)}x`,
+        rillioVsPreact: `${(medians.rillio / Math.max(medians.preact, 0.001)).toFixed(2)}x`,
+        rillioVsVue: `${(medians.rillio / Math.max(medians.vue, 0.001)).toFixed(2)}x`,
         childRenders: JSON.stringify(childRenders),
         appRenders: JSON.stringify(appRenders),
-        samples: findComponentResult(size, scenario, "zui").valuesMs.length
+        samples: findComponentResult(size, scenario, "rillio").valuesMs.length
       };
     })));
   }

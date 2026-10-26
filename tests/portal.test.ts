@@ -29,10 +29,10 @@ describe("createPortal", () => {
   });
 
   it("throws if container is null, undefined, or not a DOM element", () => {
-    expect(() => createPortal("hello", null as any)).toThrow("ZUI_INVALID_PORTAL_CONTAINER");
-    expect(() => createPortal("hello", undefined as any)).toThrow("ZUI_INVALID_PORTAL_CONTAINER");
-    expect(() => createPortal("hello", {} as any)).toThrow("ZUI_INVALID_PORTAL_CONTAINER");
-    expect(() => createPortal("hello", document.createTextNode("text") as any)).toThrow("ZUI_INVALID_PORTAL_CONTAINER");
+    expect(() => createPortal("hello", null as any)).toThrow("RILLIO_INVALID_PORTAL_CONTAINER");
+    expect(() => createPortal("hello", undefined as any)).toThrow("RILLIO_INVALID_PORTAL_CONTAINER");
+    expect(() => createPortal("hello", {} as any)).toThrow("RILLIO_INVALID_PORTAL_CONTAINER");
+    expect(() => createPortal("hello", document.createTextNode("text") as any)).toThrow("RILLIO_INVALID_PORTAL_CONTAINER");
   });
 
   it("renders children into the portal target container, not the host container", () => {

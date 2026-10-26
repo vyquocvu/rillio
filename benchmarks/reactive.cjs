@@ -1,7 +1,7 @@
 const { performance } = require("node:perf_hooks");
 
 async function main() {
-  const { createEngine } = await import("../.zui-test/reactive.js");
+  const { createEngine } = await import("../.rillio-test/reactive.js");
 
   function benchmark(mode, subscriptions, iterations = 200) {
     const engine = createEngine(mode);

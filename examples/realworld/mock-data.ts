@@ -3,8 +3,8 @@ import type { ActivityLog, Issue, Project, TeamMember } from "./types.js";
 export const initialProjects: Project[] = [
   {
     id: "proj-1",
-    name: "ZUI Next Runtime",
-    key: "ZUI",
+    name: "Rillio Next Runtime",
+    key: "Rillio",
     description: "Addressable DOM core, fine-grained store reactivity, and compiler pipeline.",
     color: "#6366f1",
     leadId: "usr-1",

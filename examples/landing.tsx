@@ -1,12 +1,11 @@
-import { createRoot, useState } from "zui";
-import { Badge, Button, StyleSheet } from "zui/ui";
+import { createRoot, useState } from "rillio";
 
 type CodeMode = "jsx" | "reactive";
 
 const codeExamples: Record<CodeMode, { label: string; code: string }> = {
   jsx: {
     label: "JSX runtime",
-    code: `import { createRoot, useState } from "zui";
+    code: `import { createRoot, useState } from "rillio";
 
 function Counter() {
   const [count, setCount] = useState(0);
@@ -20,8 +19,8 @@ function Counter() {
   },
   reactive: {
     label: "Reactive DOM",
-    code: `import { createStore } from "zui/reactive";
-import { select, mount } from "zui/dom";
+    code: `import { createStore } from "rillio/reactive";
+import { select, mount } from "rillio/dom";
 
 const count = createStore(0);
 
@@ -61,7 +60,7 @@ const features = [
 const showcases = [
   {
     tag: "DASHBOARD",
-    title: "ZUI Studio",
+    title: "Rillio Studio",
     detail: "A responsive workspace with analytics, team views, and editable members.",
     href: "/admin.html",
     className: "showcase-card--studio"
@@ -107,35 +106,30 @@ function CounterPreview() {
   return <div class="counter-preview">
     <div class="counter-preview__copy">
       <span class="counter-preview__eyebrow">LIVE PREVIEW</span>
-      <strong>Rendered with ZUI</strong>
+      <strong>Rendered with Rillio</strong>
       <span class="counter-preview__hint">Click to update this component.</span>
     </div>
     <div class="counter-preview__control">
       <output aria-live="polite" class="counter-preview__value">{count}</output>
-      <Button
-        className="counter-preview__button"
-        size="sm"
-        onClick={() => setCount(value => value + 1)}
-      >Increment</Button>
+      <button class="counter-preview__button" onClick={() => setCount(value => value + 1)}>Increment</button>
     </div>
   </div>;
 }
 
 function LandingPage() {
   return <>
-    <StyleSheet />
     <div class="landing-page">
       <header class="site-header shell">
-        <a class="brand" href="/" aria-label="ZUI home">
-          <span class="brand__mark">z</span>
-          <span class="brand__name">zui<span>.</span></span>
+        <a class="brand" href="/" aria-label="Rillio home">
+          <span class="brand__mark">r</span>
+          <span class="brand__name">rillio<span>.</span></span>
         </a>
         <nav class="site-nav" aria-label="Main navigation">
           <a href="#runtime">Runtime</a>
           <a href="#examples">Examples</a>
-          <a href="https://github.com/vyquocvu/zui/tree/main/docs" target="_blank" rel="noreferrer">Docs</a>
+          <a href="https://github.com/vyquocvu/rillio/tree/main/docs" target="_blank" rel="noreferrer">Docs</a>
         </nav>
-        <a class="header-link" href="https://github.com/vyquocvu/zui" target="_blank" rel="noreferrer">
+        <a class="header-link" href="https://github.com/vyquocvu/rillio" target="_blank" rel="noreferrer">
           GitHub <span aria-hidden="true">↗</span>
         </a>
       </header>
@@ -143,12 +137,12 @@ function LandingPage() {
       <main>
         <section class="hero shell" aria-labelledby="hero-title">
           <div class="hero__copy">
-            <Badge className="hero__badge" tone="primary">An experimental UI runtime</Badge>
+            <span class="hero__badge">An experimental UI runtime</span>
             <h1 id="hero-title">A direct path<br />from <span>UI to DOM.</span></h1>
-            <p class="hero__description">Compose with JSX or reactive bindings. ZUI tracks rendered nodes in a Flat Index and applies updates through one transactional patch engine.</p>
+            <p class="hero__description">Compose with JSX or reactive bindings. Rillio tracks rendered nodes in a Flat Index and applies updates through one transactional patch engine.</p>
             <div class="hero__actions">
               <a class="action-link action-link--primary" href="#examples">Explore examples <span aria-hidden="true">→</span></a>
-              <a class="action-link action-link--secondary" href="https://github.com/vyquocvu/zui/blob/main/docs/API.md" target="_blank" rel="noreferrer">Read the API</a>
+              <a class="action-link action-link--secondary" href="https://github.com/vyquocvu/rillio/blob/main/docs/API.md" target="_blank" rel="noreferrer">Read the API</a>
             </div>
             <div class="hero__notes" aria-label="Runtime highlights">
               <span><i aria-hidden="true" /> Addressable DOM</span>
@@ -159,11 +153,11 @@ function LandingPage() {
 
           <div class="hero__visual">
             <div class="visual-glow" aria-hidden="true" />
-            <section class="runtime-window" aria-label="Interactive ZUI code preview">
+            <section class="runtime-window" aria-label="Interactive Rillio code preview">
               <div class="runtime-window__bar">
                 <div class="window-dots" aria-hidden="true"><i /><i /><i /></div>
                 <span class="runtime-window__file">counter.tsx</span>
-                <span class="runtime-window__runtime">ZUI RUNTIME</span>
+                <span class="runtime-window__runtime">Rillio RUNTIME</span>
               </div>
               <CodeExample />
               <CounterPreview />
@@ -182,7 +176,7 @@ function LandingPage() {
               <p>Both APIs converge on the same indexed identity and DOM mutation boundary.</p>
             </div>
 
-            <ol class="runtime-flow" aria-label="ZUI rendering flow">
+            <ol class="runtime-flow" aria-label="Rillio rendering flow">
               {runtimeStages.map(stage => <li class="runtime-flow__step" key={stage.number}>
                 <span class="runtime-flow__number">{stage.number}</span>
                 <strong>{stage.title}</strong>
@@ -203,7 +197,7 @@ function LandingPage() {
         <section class="showcase-section shell" id="examples" aria-labelledby="showcase-title">
           <div class="section-heading section-heading--showcase">
             <div>
-              <span class="section-kicker">MADE WITH ZUI</span>
+              <span class="section-kicker">MADE WITH Rillio</span>
               <h2 id="showcase-title">See the runtime<br /><span>in a real interface.</span></h2>
             </div>
             <a class="text-link" href="/demos.html">Browse all demos <span aria-hidden="true">→</span></a>
@@ -225,20 +219,20 @@ function LandingPage() {
               <h2 id="closing-title">Build it. Inspect it.<br />Understand every update.</h2>
             </div>
             <div class="closing-card__actions">
-              <a class="action-link action-link--light" href="https://github.com/vyquocvu/zui/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noreferrer">Read the architecture guide <span aria-hidden="true">→</span></a>
-              <a class="closing-card__github" href="https://github.com/vyquocvu/zui" target="_blank" rel="noreferrer">View source on GitHub ↗</a>
+              <a class="action-link action-link--light" href="https://github.com/vyquocvu/rillio/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noreferrer">Read the architecture guide <span aria-hidden="true">→</span></a>
+              <a class="closing-card__github" href="https://github.com/vyquocvu/rillio" target="_blank" rel="noreferrer">View source on GitHub ↗</a>
             </div>
           </div>
         </section>
       </main>
 
       <footer class="site-footer shell">
-        <a class="brand brand--footer" href="/" aria-label="ZUI home"><span class="brand__mark">z</span><span class="brand__name">zui<span>.</span></span></a>
-        <p>Experimental software. JSX syntax is familiar; runtime semantics are ZUI-owned.</p>
+        <a class="brand brand--footer" href="/" aria-label="Rillio home"><span class="brand__mark">r</span><span class="brand__name">rillio<span>.</span></span></a>
+        <p>Experimental software. JSX syntax is familiar; runtime semantics are Rillio-owned.</p>
         <nav aria-label="Footer navigation">
-          <a href="https://github.com/vyquocvu/zui/tree/main/docs" target="_blank" rel="noreferrer">Docs</a>
+          <a href="https://github.com/vyquocvu/rillio/tree/main/docs" target="_blank" rel="noreferrer">Docs</a>
           <a href="/demos.html">Demos</a>
-          <a href="https://github.com/vyquocvu/zui/blob/main/docs/STATUS.md" target="_blank" rel="noreferrer">Status</a>
+          <a href="https://github.com/vyquocvu/rillio/blob/main/docs/STATUS.md" target="_blank" rel="noreferrer">Status</a>
         </nav>
       </footer>
     </div>

@@ -10,7 +10,7 @@ import { build } from "vite";
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const benchmarkHtml = resolve(projectRoot, "benchmarks/browser.html");
 const viteConfig = resolve(projectRoot, "vite.config.mjs");
-const knownFrameworks = ["zui", "react", "preact", "vue"];
+const knownFrameworks = ["rillio", "react", "preact", "vue"];
 const knownScenarios = ["noop", "text", "append-remove", "rotate", "reverse"];
 
 // Chromium reports these as cumulative seconds; deltas across a measured window are CPU time.
@@ -100,23 +100,23 @@ function medianAbsoluteDeviation(values) {
   return percentile(values.map(value => Math.abs(value - median)), 0.5);
 }
 
-const frameworks = readList("ZUI_CPU_MEM_FRAMEWORKS", knownFrameworks.join(","), knownFrameworks);
-const scenarios = readList("ZUI_CPU_MEM_SCENARIOS", knownScenarios.join(","), knownScenarios);
-const sizes = readSizes("ZUI_CPU_MEM_SIZES", "100,1000,2000");
-const updates = readInteger("ZUI_CPU_MEM_UPDATES", 20, 1);
-const warmupCycles = readInteger("ZUI_CPU_MEM_WARMUP", 3, 0, 50);
-const warmupUpdates = readInteger("ZUI_CPU_MEM_WARMUP_UPDATES", 5, 1);
-const repeats = readInteger("ZUI_CPU_MEM_REPEATS", 3, 1);
-const seed = readInteger("ZUI_CPU_MEM_SEED", 20261023, 0, 0xFFFFFFFF);
-const calibrationRuns = readInteger("ZUI_CPU_MEM_CALIBRATION", 9, 0);
-const jsonOutput = process.env.ZUI_CPU_MEM_JSON === "1";
-const outputFile = process.env.ZUI_CPU_MEM_OUT;
+const frameworks = readList("RILLIO_CPU_MEM_FRAMEWORKS", knownFrameworks.join(","), knownFrameworks);
+const scenarios = readList("RILLIO_CPU_MEM_SCENARIOS", knownScenarios.join(","), knownScenarios);
+const sizes = readSizes("RILLIO_CPU_MEM_SIZES", "100,1000,2000");
+const updates = readInteger("RILLIO_CPU_MEM_UPDATES", 20, 1);
+const warmupCycles = readInteger("RILLIO_CPU_MEM_WARMUP", 3, 0, 50);
+const warmupUpdates = readInteger("RILLIO_CPU_MEM_WARMUP_UPDATES", 5, 1);
+const repeats = readInteger("RILLIO_CPU_MEM_REPEATS", 3, 1);
+const seed = readInteger("RILLIO_CPU_MEM_SEED", 20261023, 0, 0xFFFFFFFF);
+const calibrationRuns = readInteger("RILLIO_CPU_MEM_CALIBRATION", 9, 0);
+const jsonOutput = process.env.RILLIO_CPU_MEM_JSON === "1";
+const outputFile = process.env.RILLIO_CPU_MEM_OUT;
 const random = makeRandom(seed);
 
 const projectManifest = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf8"));
 const frameworkVersions = {};
 for (const framework of frameworks) {
-  if (framework === "zui") {
+  if (framework === "rillio") {
     frameworkVersions[framework] = projectManifest.version;
   } else {
     const manifest = JSON.parse(await readFile(join(projectRoot, "node_modules", framework, "package.json"), "utf8"));
@@ -132,7 +132,7 @@ const mimeTypes = new Map([
   [".json", "application/json; charset=utf-8"]
 ]);
 
-const tempRoot = await mkdtemp(join(tmpdir(), "zui-cpu-memory-bench-"));
+const tempRoot = await mkdtemp(join(tmpdir(), "rillio-cpu-memory-bench-"));
 const outputDir = join(tempRoot, "site");
 let server;
 let browser;
@@ -533,9 +533,9 @@ try {
           row[`${framework}Style`] = result[`${phase}CpuStyleMsMedian`].toFixed(3);
           row[`${framework}Layout`] = result[`${phase}CpuLayoutMsMedian`].toFixed(3);
         }
-        if (thread.zui !== undefined) {
-          for (const other of frameworks.filter(framework => framework !== "zui")) {
-            row[`zui/${other}`] = ratio(thread.zui, thread[other]);
+        if (thread.rillio !== undefined) {
+          for (const other of frameworks.filter(framework => framework !== "rillio")) {
+            row[`rillio/${other}`] = ratio(thread.rillio, thread[other]);
           }
         }
         return row;
@@ -555,9 +555,9 @@ try {
         row[`${framework}AllocKb`] = kb(result.allocatedBytesMedian);
         row[`${framework}Nodes`] = result.nodesMountedMedian;
       }
-      if (retained.zui !== undefined) {
-        for (const other of frameworks.filter(framework => framework !== "zui")) {
-          row[`zui/${other}`] = ratio(retained.zui, retained[other]);
+      if (retained.rillio !== undefined) {
+        for (const other of frameworks.filter(framework => framework !== "rillio")) {
+          row[`rillio/${other}`] = ratio(retained.rillio, retained[other]);
         }
       }
       return row;
@@ -577,7 +577,7 @@ try {
     })));
     console.log(`Worst case across all rows: framework residual ${kb(worstResidual.maxFrameworkResidualBytes)} KB, page residual ${kb(worstResidual.maxPageResidualBytes)} KB, nodes after unmount ${worstResidual.maxNodesAfterUnmount}, listeners after unmount ${worstResidual.maxListenersAfterUnmount}.`);
     console.log("Nodes and listeners after unmount are exact counters, unlike the heap figures: nonzero means DOM or listeners genuinely survived teardown.");
-    console.log("Set ZUI_CPU_MEM_JSON=1 for the full report including p95, MAD, per-window CPU counters and raw runs.");
+    console.log("Set RILLIO_CPU_MEM_JSON=1 for the full report including p95, MAD, per-window CPU counters and raw runs.");
   }
 } finally {
   await browser?.close();

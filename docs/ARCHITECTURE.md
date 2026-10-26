@@ -2,7 +2,7 @@
 
 Explore the [interactive architecture, data-flow, transaction, lifecycle, and performance diagrams](diagrams/README.md).
 
-![ZUI runtime architecture diagram](diagrams/architecture.visual-check.1440x900.light.png)
+![Rillio runtime architecture diagram](diagrams/architecture.visual-check.1440x900.light.png)
 
 ## Core invariant
 
@@ -34,7 +34,7 @@ flowchart TB
 The two public planning surfaces are:
 
 - the JSX component runtime in `src/compat.ts`, which reruns compatible component descendants for parent and hook state updates;
-- the explicit reactive DOM surface in `src/dom.ts` (exported as `zui/dom`, with `zui/legacy` as deprecated compatibility alias), which mounts a subtree once and binds reactive text, properties, regions, and list items.
+- the explicit reactive DOM surface in `src/dom.ts` (exported as `rillio/dom`, with `rillio/legacy` as deprecated compatibility alias), which mounts a subtree once and binds reactive text, properties, regions, and list items.
 
 They share the same `NodeRegistry`, `PatchEngine`, DOM operation helpers, and owner host. They are not independent DOM mutation implementations.
 
@@ -162,11 +162,11 @@ flowchart TB
 
 Hooks are attached to component payloads stored on component records. A state setter addresses the owning component by `NodeId`; it cannot update a disposed record or write during render. Effects are flushed after the root transaction.
 
-## External store integration (`zui/external-store`)
+## External store integration (`rillio/external-store`)
 
-ZUI applications can manage global state outside the component tree through external stores. Rather than relying on a React-like Context tree (which causes cascade re-renders across consumers), `zui/external-store` connects directly to external store APIs using structural typing (`getState`, `subscribe`):
+Rillio applications can manage global state outside the component tree through external stores. Rather than relying on a React-like Context tree (which causes cascade re-renders across consumers), `rillio/external-store` connects directly to external store APIs using structural typing (`getState`, `subscribe`):
 
-1. **Bound hooks via `create()`**: `create` generates a component hook bound to either a state creator function or an existing vanilla store. It matches the standard Zustand API while invoking ZUI's `useStore` internally.
+1. **Bound hooks via `create()`**: `create` generates a component hook bound to either a state creator function or an existing vanilla store. It matches the standard Zustand API while invoking Rillio's `useStore` internally.
 2. **Fine-grained selector caching**: Components subscribe only to their selected slice. When the store updates, the listener recomputes `selector(nextState)`. If the result passes `equalityFn` (`Object.is` by default, or `shallow`), the component skips reconciliation completely.
 3. **Reference stability with `useShallow()`**: For multi-field selections returning objects or arrays, `useShallow` caches the previous reference across calls, preventing reference churn from triggering unnecessary component updates.
 4. **Subscription safety**: `useStore` maintains `selectorRef` and `equalityRef` so inline arrow selectors do not trigger re-subscriptions. Upon subscribing, a synchronous check runs immediately to prevent race conditions or stale snapshots between render and effect. When a component boundary unmounts, the subscription unregisters cleanly with PatchEngine disposal.
@@ -219,7 +219,7 @@ The flat addressable DOM engine is decomposed into cohesive, single-responsibili
 - **`src/flat/properties.ts`**: Normalized property applicators (`setProperty`, `setHtmlProperty`, `setSvgProperty`, `setCustomElementProperty`), inline style diffing (`applyStyle`), attribute reflection (`setAttribute`), and XML/SVG namespace constants.
 - **`src/flat/security.ts`**: Sink protection, URL scheme sanitization (`isUnsafeUrlProperty`), and property safety assertions (`validateProperty`).
 - **`src/flat/focus.ts`**: Active focus and selection preservation across DOM replacements and sibling moves (`captureFocus`, `captureFocusInRecords`, `captureFocusInChildren`, `restoreFocus`).
-- **`src/flat/lis.ts`**: Shared keyed-list diffing algorithms — patience-sorting LIS (`longestIncreasingSubsequencePositions`) and the right-to-left move planner (`planStationaryMoves`) used by both the compat reconciler and the `zui/dom` list renderer.
+- **`src/flat/lis.ts`**: Shared keyed-list diffing algorithms — patience-sorting LIS (`longestIncreasingSubsequencePositions`) and the right-to-left move planner (`planStationaryMoves`) used by both the compat reconciler and the `rillio/dom` list renderer.
 - **`src/flat/equality.ts`**: Allocation-free shallow equality over own enumerable keys (`shallowEqual`), used by the external-store adapter.
 
 ## Module structure (`src/dom/`)
@@ -242,7 +242,7 @@ The JSX component runtime and reconciliation engine is decomposed into cohesive 
 - **`src/compat/index.ts`**: Public export barrel for the JSX compatibility runtime.
 - **`src/compat/types.ts`**: Types for component records, hook states, reconciliation contexts, and portals.
 - **`src/compat/state.ts`**: Global singletons (`nodeRegistry`, `patchEngine`, `componentState`, `cleanupState`).
-- **`src/compat/hooks.ts`**: Component hooks currently implemented by ZUI (`useState`, `useEffect`, `useRef`, `useMemo`, and `useCallback`).
+- **`src/compat/hooks.ts`**: Component hooks currently implemented by Rillio (`useState`, `useEffect`, `useRef`, `useMemo`, and `useCallback`).
 - **`src/compat/portal.ts`**: `createPortal` implementation integrating out-of-band target roots into the Flat Index.
 - **`src/compat/error-boundary.ts`**: `ErrorBoundary` component with transactional savepoints (`savepoint()`, `rollbackTo()`).
 - **`src/compat/reconcile.ts`**: Fine-grained component subtree reconciliation and diffing.

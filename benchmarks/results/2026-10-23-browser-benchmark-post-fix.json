@@ -6,7 +6,7 @@
     "cpu": "Apple M1 Pro",
     "node": "v26.5.0",
     "frameworkVersions": {
-      "zui": "0.1.0",
+      "rillio": "0.1.0",
       "react": "19.3.0",
       "preact": "11.0.1",
       "vue": "3.5.43"
@@ -43,7 +43,7 @@
       "pairedRepeats": 3
     },
     "orderPositionCounts": {
-      "zui": [
+      "rillio": [
         12,
         13,
         14,
@@ -70,7 +70,7 @@
     },
     "preflightContexts": 72,
     "componentOrderPositionCounts": {
-      "zui": [
+      "rillio": [
         10,
         12,
         8,
@@ -409,7 +409,7 @@
       "updateMedianMs": 0.09999999403953552
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "mount",
       "size": 100,
       "valuesMs": [
@@ -821,7 +821,7 @@
       "updateMedianMs": 0
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 100,
       "valuesMs": [
@@ -1233,7 +1233,7 @@
       "updateMedianMs": 0.09999999403953552
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 100,
       "valuesMs": [
@@ -1645,7 +1645,7 @@
       "updateMedianMs": 0
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 100,
       "valuesMs": [
@@ -2057,7 +2057,7 @@
       "updateMedianMs": 0.09999999403953552
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 100,
       "valuesMs": [
@@ -2469,7 +2469,7 @@
       "updateMedianMs": 0.09999999403953552
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 100,
       "valuesMs": [
@@ -2881,7 +2881,7 @@
       "updateMedianMs": 0.5
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "mount",
       "size": 1000,
       "valuesMs": [
@@ -3293,7 +3293,7 @@
       "updateMedianMs": 0.19999998807907104
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 1000,
       "valuesMs": [
@@ -3705,7 +3705,7 @@
       "updateMedianMs": 0.30000001192092896
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 1000,
       "valuesMs": [
@@ -4117,7 +4117,7 @@
       "updateMedianMs": 0.10000002384185791
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 1000,
       "valuesMs": [
@@ -4529,7 +4529,7 @@
       "updateMedianMs": 0.19999998807907104
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 1000,
       "valuesMs": [
@@ -4941,7 +4941,7 @@
       "updateMedianMs": 0.4000000059604645
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 1000,
       "valuesMs": [
@@ -5353,7 +5353,7 @@
       "updateMedianMs": 0.9000000059604645
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "mount",
       "size": 2000,
       "valuesMs": [
@@ -5765,7 +5765,7 @@
       "updateMedianMs": 0.20000001788139343
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 2000,
       "valuesMs": [
@@ -6177,7 +6177,7 @@
       "updateMedianMs": 0.5999999940395355
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 2000,
       "valuesMs": [
@@ -6589,7 +6589,7 @@
       "updateMedianMs": 0.20000001788139343
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 2000,
       "valuesMs": [
@@ -7001,7 +7001,7 @@
       "updateMedianMs": 0.30000001192092896
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 2000,
       "valuesMs": [
@@ -7413,7 +7413,7 @@
       "updateMedianMs": 0.7000000178813934
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 2000,
       "valuesMs": [
@@ -7683,7 +7683,7 @@
       "childRendersPerUpdateMedian": 10
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "mount",
       "size": 10,
       "valuesMs": [
@@ -7903,7 +7903,7 @@
       "childRendersPerUpdateMedian": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "local-update",
       "size": 10,
       "valuesMs": [
@@ -8123,7 +8123,7 @@
       "childRendersPerUpdateMedian": 0
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "parent-update",
       "size": 10,
       "valuesMs": [
@@ -8343,7 +8343,7 @@
       "childRendersPerUpdateMedian": 10
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "prop-fanout",
       "size": 10,
       "valuesMs": [
@@ -8563,7 +8563,7 @@
       "childRendersPerUpdateMedian": 100
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "mount",
       "size": 100,
       "valuesMs": [
@@ -8783,7 +8783,7 @@
       "childRendersPerUpdateMedian": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "local-update",
       "size": 100,
       "valuesMs": [
@@ -9003,7 +9003,7 @@
       "childRendersPerUpdateMedian": 0
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "parent-update",
       "size": 100,
       "valuesMs": [
@@ -9223,7 +9223,7 @@
       "childRendersPerUpdateMedian": 100
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "prop-fanout",
       "size": 100,
       "valuesMs": [
@@ -9443,7 +9443,7 @@
       "childRendersPerUpdateMedian": 1000
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "mount",
       "size": 1000,
       "valuesMs": [
@@ -9663,7 +9663,7 @@
       "childRendersPerUpdateMedian": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "local-update",
       "size": 1000,
       "valuesMs": [
@@ -9883,7 +9883,7 @@
       "childRendersPerUpdateMedian": 0
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "parent-update",
       "size": 1000,
       "valuesMs": [
@@ -10103,7 +10103,7 @@
       "childRendersPerUpdateMedian": 1000
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "prop-fanout",
       "size": 1000,
       "valuesMs": [

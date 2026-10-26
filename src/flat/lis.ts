@@ -3,7 +3,7 @@
  *
  * `oldIndexByNextIndex` encodes, for each position in the next child order,
  * the previous position of that child plus one; `0` marks a child that was
- * not previously present. Both the compat reconciler and the zui/dom list
+ * not previously present. Both the compat reconciler and the rillio/dom list
  * renderer share one LIS implementation and one move planner through this
  * module.
  */

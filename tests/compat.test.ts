@@ -249,12 +249,12 @@ describe("React-style compatibility runtime", () => {
       connectedCallback() { events.push(`connected:${this.getAttribute("data-state")}`); }
       attributeChangedCallback() { events.push(`attribute:${this.isConnected}`); }
     }
-    customElements.define("zui-mount-probe", MountProbe);
+    customElements.define("rillio-mount-probe", MountProbe);
 
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
-    root.render(jsx("zui-mount-probe", { "data-state": "ready" }));
+    root.render(jsx("rillio-mount-probe", { "data-state": "ready" }));
 
     expect(events).toEqual(["connected:null", "attribute:true"]);
     root.unmount();
@@ -303,7 +303,7 @@ describe("React-style compatibility runtime", () => {
     }
     const root = createRoot(container);
     root.render(jsx(ConditionalHooks, {}));
-    expect(() => setEnabled(true)).toThrow("ZUI_HOOK_ORDER");
+    expect(() => setEnabled(true)).toThrow("RILLIO_HOOK_ORDER");
     root.unmount();
 
     function WritesDuringRender() {
@@ -312,7 +312,7 @@ describe("React-style compatibility runtime", () => {
       return jsx("span", { children: value });
     }
     expect(() => createRoot(document.createElement("div")).render(jsx(WritesDuringRender, {})))
-      .toThrow("ZUI_RENDER_PHASE_UPDATE");
+      .toThrow("RILLIO_RENDER_PHASE_UPDATE");
   });
 
   it("removes partially mounted nodes when rendering throws", () => {
@@ -321,7 +321,7 @@ describe("React-style compatibility runtime", () => {
     function Broken() {
       return [jsx("span", { children: "one" }, "same"), jsx("span", { children: "two" }, "same")];
     }
-    expect(() => root.render(jsx(Broken, {}))).toThrow("ZUI_DUPLICATE_KEY");
+    expect(() => root.render(jsx(Broken, {}))).toThrow("RILLIO_DUPLICATE_KEY");
     expect(container.childNodes).toHaveLength(0);
     root.unmount();
   });
@@ -374,7 +374,7 @@ describe("React-style compatibility runtime", () => {
     const original = container.firstChild;
 
     expect(() => root.render(jsx("div", { innerHTML: "<img src=x onerror=alert(1)>" })))
-      .toThrow("ZUI_UNSAFE_HTML_PROP");
+      .toThrow("RILLIO_UNSAFE_HTML_PROP");
     expect(container.firstChild).toBe(original);
     expect(container.textContent).toBe("safe text");
     root.unmount();
@@ -387,7 +387,7 @@ describe("React-style compatibility runtime", () => {
     function Icon(props: { stroke: number }) {
       return jsx("svg", {
         viewBox: "0 0 24 24",
-        class: "zui-icon",
+        class: "rillio-icon",
         children: jsx("path", {
           d: "M5 12h14",
           strokeWidth: props.stroke,
@@ -402,7 +402,7 @@ describe("React-style compatibility runtime", () => {
 
     expect(svg.namespaceURI).toBe("http://www.w3.org/2000/svg");
     expect(svg.getAttribute("viewBox")).toBe("0 0 24 24");
-    expect(svg.getAttribute("class")).toBe("zui-icon");
+    expect(svg.getAttribute("class")).toBe("rillio-icon");
 
     expect(path.namespaceURI).toBe("http://www.w3.org/2000/svg");
     expect(path.getAttribute("stroke-width")).toBe("2");

@@ -9,16 +9,15 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "zui": ["src/index.ts"],
-      "zui/jsx-runtime": ["src/jsx-runtime.ts"],
-      "zui/jsx-dev-runtime": ["src/jsx-dev-runtime.ts"],
-      "zui/ui": ["src/ui.ts"],
-      "zui/external-store": ["src/external-store.ts"],
-      "zui/dom": ["src/dom.ts"],
-      "zui/legacy": ["src/dom.ts"],
-      "zui/reactive": ["src/reactive-api.ts"],
-      "zui/flat": ["src/flat.ts"],
-      "zui/devtools": ["src/devtools.ts"]
+      "rillio": ["src/index.ts"],
+      "rillio/jsx-runtime": ["src/jsx-runtime.ts"],
+      "rillio/jsx-dev-runtime": ["src/jsx-dev-runtime.ts"],
+      "rillio/external-store": ["src/external-store.ts"],
+      "rillio/dom": ["src/dom.ts"],
+      "rillio/legacy": ["src/dom.ts"],
+      "rillio/reactive": ["src/reactive-api.ts"],
+      "rillio/flat": ["src/flat.ts"],
+      "rillio/devtools": ["src/devtools.ts"]
     },
     "lib": [
       "ES2022",
@@ -29,7 +28,7 @@
       "vitest/globals"
     ],
     "jsx": "react-jsx",
-    "jsxImportSource": "zui"
+    "jsxImportSource": "rillio"
   },
   "include": [
     "src/**/*.ts",

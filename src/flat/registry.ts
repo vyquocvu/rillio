@@ -48,7 +48,7 @@ export class NodeRegistry implements OwnerHost {
   constructor(options: NodeRegistryOptions = {}) {
     const maxTombstones = options.maxTombstones ?? 1_000;
     if (!Number.isInteger(maxTombstones) || maxTombstones < 0) {
-      throw new RangeError("ZUI_INVALID_TOMBSTONE_LIMIT");
+      throw new RangeError("RILLIO_INVALID_TOMBSTONE_LIMIT");
     }
     this.maxTombstones = maxTombstones;
   }
@@ -71,7 +71,7 @@ export class NodeRegistry implements OwnerHost {
   }
 
   createRoot(container: Element): RootHandle {
-    if (this.rootByContainer.has(container)) throw new Error("ZUI_ROOT_OCCUPIED");
+    if (this.rootByContainer.has(container)) throw new Error("RILLIO_ROOT_OCCUPIED");
 
     const rootId = this.nextRootId++;
     const ownerId = this.createOwner(rootId, null);
@@ -92,7 +92,7 @@ export class NodeRegistry implements OwnerHost {
 
   getRoot(rootId: RootId): RootHandle {
     const root = this.roots.get(rootId);
-    if (!root) throw new Error("ZUI_UNKNOWN_ROOT");
+    if (!root) throw new Error("RILLIO_UNKNOWN_ROOT");
     return root;
   }
 
@@ -103,8 +103,8 @@ export class NodeRegistry implements OwnerHost {
 
   createNode(init: NodeInit): NodeId {
     const owner = this.getOwner(init.ownerId);
-    if (owner.disposed) throw new Error("ZUI_OWNER_DISPOSED");
-    if (owner.rootId !== init.rootId) throw new Error("ZUI_OWNER_ROOT_MISMATCH");
+    if (owner.disposed) throw new Error("RILLIO_OWNER_DISPOSED");
+    if (owner.rootId !== init.rootId) throw new Error("RILLIO_OWNER_ROOT_MISMATCH");
     const id = this.nextNodeId++;
     const node: FlatNode = {
       id,
@@ -175,7 +175,7 @@ export class NodeRegistry implements OwnerHost {
       return node;
     }
     const node = this.nodes.get(nodeId);
-    if (!node) throw new Error("ZUI_UNKNOWN_NODE");
+    if (!node) throw new Error("RILLIO_UNKNOWN_NODE");
     this.cacheId3 = this.cacheId2;
     this.cacheNode3 = this.cacheNode2;
     this.cacheId2 = this.cacheId1;
@@ -206,7 +206,7 @@ export class NodeRegistry implements OwnerHost {
       return owner;
     }
     const owner = this.owners.get(ownerId);
-    if (!owner) throw new Error("ZUI_UNKNOWN_OWNER");
+    if (!owner) throw new Error("RILLIO_UNKNOWN_OWNER");
     this.cacheOwnerId1 = this.cacheOwnerId0;
     this.cacheOwner1 = this.cacheOwner0;
     this.cacheOwnerId0 = ownerId;
@@ -221,7 +221,7 @@ export class NodeRegistry implements OwnerHost {
   createOwner(rootId: RootId, parentId: OwnerId | null = null): OwnerId {
     if (parentId !== null) {
       const parent = this.getOwner(parentId);
-      if (parent.rootId !== rootId || parent.disposed) throw new Error("ZUI_OWNER_ROOT_MISMATCH");
+      if (parent.rootId !== rootId || parent.disposed) throw new Error("RILLIO_OWNER_ROOT_MISMATCH");
     }
     const id = this.nextOwnerId++;
     const owner: FlatOwner = {
@@ -303,7 +303,7 @@ export class NodeRegistry implements OwnerHost {
       const oldOwner = this.getOwner(node.ownerId);
       const newOwner = this.getOwner(patch.ownerId);
       if (oldOwner.rootId !== newOwner.rootId || newOwner.disposed) {
-        throw new Error("ZUI_OWNER_ROOT_MISMATCH");
+        throw new Error("RILLIO_OWNER_ROOT_MISMATCH");
       }
       oldOwner.nodeIds.delete(nodeId);
       newOwner.nodeIds.add(nodeId);
@@ -325,12 +325,12 @@ export class NodeRegistry implements OwnerHost {
     let current = parent.firstChild;
     while (current !== null) {
       const child = this.getNode(current);
-      if (child.parentId !== parentId || child.disposed) throw new Error("ZUI_INDEX_CORRUPT");
+      if (child.parentId !== parentId || child.disposed) throw new Error("RILLIO_INDEX_CORRUPT");
       result.push(current);
       current = child.nextSibling;
     }
     const last = result.length === 0 ? null : result[result.length - 1]!;
-    if (last !== parent.lastChild) throw new Error("ZUI_INDEX_CORRUPT");
+    if (last !== parent.lastChild) throw new Error("RILLIO_INDEX_CORRUPT");
     return result;
   }
 
@@ -340,12 +340,12 @@ export class NodeRegistry implements OwnerHost {
     let current = parent.firstChild;
     while (current !== null) {
       const child = this.getNode(current);
-      if (child.parentId !== parentId || child.disposed) throw new Error("ZUI_INDEX_CORRUPT");
+      if (child.parentId !== parentId || child.disposed) throw new Error("RILLIO_INDEX_CORRUPT");
       result.push(child);
       current = child.nextSibling;
     }
     const lastId = result.length === 0 ? null : result[result.length - 1]!.id;
-    if (lastId !== parent.lastChild) throw new Error("ZUI_INDEX_CORRUPT");
+    if (lastId !== parent.lastChild) throw new Error("RILLIO_INDEX_CORRUPT");
     return result;
   }
 
@@ -367,12 +367,12 @@ export class NodeRegistry implements OwnerHost {
   ): void {
     const node = cachedNode ?? this.getNode(nodeId);
     const parent = cachedParent ?? this.getNode(parentId);
-    if (node.disposed || parent.disposed) throw new Error("ZUI_NODE_DISPOSED");
-    if (node.rootId !== parent.rootId) throw new Error("ZUI_ROOT_MISMATCH");
-    if (nodeId === parentId || (node.firstChild !== null && this.isDescendant(nodeId, parentId))) throw new Error("ZUI_INDEX_CYCLE");
+    if (node.disposed || parent.disposed) throw new Error("RILLIO_NODE_DISPOSED");
+    if (node.rootId !== parent.rootId) throw new Error("RILLIO_ROOT_MISMATCH");
+    if (nodeId === parentId || (node.firstChild !== null && this.isDescendant(nodeId, parentId))) throw new Error("RILLIO_INDEX_CYCLE");
     if (beforeId !== null) {
       const before = this.getNode(beforeId);
-      if (before.parentId !== parentId) throw new Error("ZUI_INVALID_ANCHOR");
+      if (before.parentId !== parentId) throw new Error("RILLIO_INVALID_ANCHOR");
     }
     if (node.parentId !== null) this.unlinkChild(nodeId);
     const previous = beforeId === null ? parent.lastChild : this.getNode(beforeId).prevSibling;
@@ -411,13 +411,13 @@ export class NodeRegistry implements OwnerHost {
   moveChildBefore(nodeId: NodeId, beforeId: NodeId | null): void {
     const node = this.getNode(nodeId);
     const parentId = node.parentId;
-    if (parentId === null) throw new Error("ZUI_INVALID_MOVE");
+    if (parentId === null) throw new Error("RILLIO_INVALID_MOVE");
     const parent = this.getNode(parentId);
-    if (node.disposed || parent.disposed) throw new Error("ZUI_NODE_DISPOSED");
-    if (node.rootId !== parent.rootId) throw new Error("ZUI_ROOT_MISMATCH");
+    if (node.disposed || parent.disposed) throw new Error("RILLIO_NODE_DISPOSED");
+    if (node.rootId !== parent.rootId) throw new Error("RILLIO_ROOT_MISMATCH");
     if (beforeId !== null) {
       const before = this.getNode(beforeId);
-      if (before.disposed || before.parentId !== parentId) throw new Error("ZUI_INVALID_ANCHOR");
+      if (before.disposed || before.parentId !== parentId) throw new Error("RILLIO_INVALID_ANCHOR");
     }
     if (beforeId === nodeId || node.nextSibling === beforeId) return;
 
@@ -447,25 +447,25 @@ export class NodeRegistry implements OwnerHost {
     trusted = false
   ): void {
     const parent = this.getNode(parentId);
-    if (finalRecords.length !== originalRecords.length) throw new Error("ZUI_INVALID_CHILD_ORDER");
+    if (finalRecords.length !== originalRecords.length) throw new Error("RILLIO_INVALID_CHILD_ORDER");
 
     if (!trusted) {
       let current = parent.firstChild;
       for (const child of originalRecords) {
         if (child.id !== current || child.parentId !== parentId || child.disposed || child.rootId !== parent.rootId) {
-          throw new Error("ZUI_INDEX_CORRUPT");
+          throw new Error("RILLIO_INDEX_CORRUPT");
         }
         current = child.nextSibling;
       }
-      if (current !== null) throw new Error("ZUI_INDEX_CORRUPT");
+      if (current !== null) throw new Error("RILLIO_INDEX_CORRUPT");
 
       const remaining = new Set(originalRecords);
       for (const child of finalRecords) {
         if (!remaining.delete(child) || child.parentId !== parentId || child.disposed || child.rootId !== parent.rootId) {
-          throw new Error("ZUI_INVALID_CHILD_ORDER");
+          throw new Error("RILLIO_INVALID_CHILD_ORDER");
         }
       }
-      if (remaining.size !== 0) throw new Error("ZUI_INVALID_CHILD_ORDER");
+      if (remaining.size !== 0) throw new Error("RILLIO_INVALID_CHILD_ORDER");
     }
 
     for (let index = 0; index < finalRecords.length; index++) {
@@ -532,7 +532,7 @@ export class NodeRegistry implements OwnerHost {
   disposeRoot(rootId: RootId): void {
     const root = this.roots.get(rootId);
     if (!root) return;
-    if (this.children(root.nodeId).length > 0) throw new Error("ZUI_ROOT_NOT_EMPTY");
+    if (this.children(root.nodeId).length > 0) throw new Error("RILLIO_ROOT_NOT_EMPTY");
     this.disposeNode(root.nodeId);
     this.disposeOwner(root.ownerId);
     this.roots.delete(rootId);
@@ -541,7 +541,7 @@ export class NodeRegistry implements OwnerHost {
 
   private releaseNodeReferences(node: FlatNode): void {
     const ownerDocument = node.domStart.ownerDocument ?? globalThis.document;
-    this.tombstoneAnchor ??= ownerDocument.createComment("zui:disposed");
+    this.tombstoneAnchor ??= ownerDocument.createComment("rillio:disposed");
     node.domStart = this.tombstoneAnchor;
     node.domEnd = this.tombstoneAnchor;
     node.props = {};
@@ -621,7 +621,7 @@ export class NodeRegistry implements OwnerHost {
       const node = this.getNode(frame.id);
       if (!frame.entered) {
         if (node.disposed || node.rootId !== rootId || node.parentId !== frame.parentId || seen.has(frame.id)) {
-          throw new Error("ZUI_INDEX_CORRUPT");
+          throw new Error("RILLIO_INDEX_CORRUPT");
         }
         seen.add(frame.id);
         frame.entered = true;
@@ -630,14 +630,14 @@ export class NodeRegistry implements OwnerHost {
       if (frame.nextChild !== null) {
         const childId = frame.nextChild;
         const child = this.getNode(childId);
-        if (child.prevSibling !== frame.previousChild) throw new Error("ZUI_INDEX_CORRUPT");
+        if (child.prevSibling !== frame.previousChild) throw new Error("RILLIO_INDEX_CORRUPT");
         frame.previousChild = childId;
         frame.nextChild = child.nextSibling;
         stack.push({
           id: childId, parentId: frame.id, entered: false, nextChild: null, previousChild: null
         });
       } else {
-        if (node.lastChild !== frame.previousChild) throw new Error("ZUI_INDEX_CORRUPT");
+        if (node.lastChild !== frame.previousChild) throw new Error("RILLIO_INDEX_CORRUPT");
         stack.pop();
       }
     }

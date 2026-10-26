@@ -1,7 +1,7 @@
 import type { Store } from "../reactive.js";
 import type { Key, NodeId, OwnerId } from "../flat.js";
 
-export const BINDING = Symbol("zui.binding");
+export const BINDING = Symbol("rillio.binding");
 
 export interface Binding<T> {
   readonly [BINDING]: true;

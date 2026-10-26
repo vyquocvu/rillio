@@ -1,5 +1,5 @@
+.rillio-*/
 node_modules/
 dist/
-.zui-*/
 coverage/
 *.tsbuildinfo

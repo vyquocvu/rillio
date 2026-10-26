@@ -6,16 +6,15 @@ const page = file => fileURLToPath(new URL(`./${file}`, import.meta.url));
 export default {
   resolve: {
     alias: {
-      "zui/jsx-runtime": source("jsx-runtime.ts"),
-      "zui/jsx-dev-runtime": source("jsx-dev-runtime.ts"),
-      "zui/ui": source("ui.ts"),
-      "zui/external-store": source("external-store.ts"),
-      "zui/dom": source("dom.ts"),
-      "zui/legacy": source("dom.ts"),
-      "zui/flat": source("flat.ts"),
-      "zui/reactive": source("reactive-api.ts"),
-      "zui/devtools": source("devtools.ts"),
-      zui: source("index.ts")
+      "rillio/jsx-runtime": source("jsx-runtime.ts"),
+      "rillio/jsx-dev-runtime": source("jsx-dev-runtime.ts"),
+      "rillio/external-store": source("external-store.ts"),
+      "rillio/dom": source("dom.ts"),
+      "rillio/legacy": source("dom.ts"),
+      "rillio/flat": source("flat.ts"),
+      "rillio/reactive": source("reactive-api.ts"),
+      "rillio/devtools": source("devtools.ts"),
+      rillio: source("index.ts")
     }
   },
   build: {

@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 (async () => {
-const { createEngine } = await import("../.zui-test/reactive.js");
+const { createEngine } = await import("../.rillio-test/reactive.js");
 
 function random(seed) {
   let state = seed | 0;

@@ -11,7 +11,7 @@ import { nodeRegistry, patchEngine } from "../src/compat.js";
 import { createStore } from "../src/reactive-api.js";
 import { mount, jsx, Show } from "../src/dom/index.js";
 
-describe("zui/devtools: Live Flat Index Inspector", () => {
+describe("rillio/devtools: Live Flat Index Inspector", () => {
   it("inspects an active root and serializes the Flat Index tree accurately", () => {
     const container = document.createElement("div");
     const count = createStore(42);
@@ -55,9 +55,9 @@ describe("zui/devtools: Live Flat Index Inspector", () => {
     dispose();
   });
 
-  it("throws ZUI_ROOT_NOT_FOUND when inspecting an unmounted element", () => {
+  it("throws RILLIO_ROOT_NOT_FOUND when inspecting an unmounted element", () => {
     const emptyDiv = document.createElement("div");
-    expect(() => inspectRoot(emptyDiv)).toThrow("ZUI_ROOT_NOT_FOUND");
+    expect(() => inspectRoot(emptyDiv)).toThrow("RILLIO_ROOT_NOT_FOUND");
   });
 
   it("tracks and logs live PatchOp transaction telemetry", () => {
@@ -127,15 +127,15 @@ describe("zui/devtools: Live Flat Index Inspector", () => {
     });
 
     expect(overlay.element).toBeDefined();
-    expect(overlay.element.getAttribute("data-zui-devtools")).toBe("true");
-    expect(document.querySelector("[data-zui-devtools]")).toBe(overlay.element);
+    expect(overlay.element.getAttribute("data-rillio-devtools")).toBe("true");
+    expect(document.querySelector("[data-rillio-devtools]")).toBe(overlay.element);
 
     // Update triggers fresh diagnostic render
     overlay.update();
 
     // Clean disposal
     overlay.dispose();
-    expect(document.querySelector("[data-zui-devtools]")).toBeNull();
+    expect(document.querySelector("[data-rillio-devtools]")).toBeNull();
 
     disposeMount();
     document.body.removeChild(container);

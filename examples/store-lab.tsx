@@ -1,5 +1,5 @@
-import { createRoot, useRef } from "zui";
-import { create, shallow } from "zui/external-store";
+import { createRoot, useRef } from "rillio";
+import { create, shallow } from "rillio/external-store";
 
 interface StoreState {
   count: number;
@@ -74,7 +74,7 @@ function App() {
   const renders = useRenderTrace("App");
   return (
     <main class="lab-shell">
-      <div class="lab-topline"><a href="/demos.html">ZUI examples</a><span>/</span><span>Store selectors</span></div>
+      <div class="lab-topline"><a href="/demos.html">Rillio examples</a><span>/</span><span>Store selectors</span></div>
       <header class="lab-hero">
         <h1>Store selector lab</h1>
         <p>Update one field at a time, then compare the console. A selector should notify its component only when its selected value changes; the shallow object selector should update when either field changes.</p>

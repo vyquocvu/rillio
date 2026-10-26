@@ -95,7 +95,7 @@ export function Header() {
         <button
           type="button"
           onClick={toggleDevTools}
-          title="Toggle ZUI Flat Index DevTools HUD"
+          title="Toggle Rillio Flat Index DevTools HUD"
           style={{
             padding: "7px 12px",
             borderRadius: "6px",

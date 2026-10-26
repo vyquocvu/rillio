@@ -55,7 +55,7 @@ export class PatchEngine {
 
   transaction<T>(rootId: RootId, work: (tx: PatchTransaction) => T): T {
     if (this.activeTransaction) {
-      if (this.activeTransaction.rootId !== rootId) throw new Error("ZUI_NESTED_ROOT_TRANSACTION");
+      if (this.activeTransaction.rootId !== rootId) throw new Error("RILLIO_NESTED_ROOT_TRANSACTION");
       return this.join(this.activeTransaction, work);
     }
     const tx = new PatchTransaction(this, rootId);
@@ -225,13 +225,13 @@ export class PatchEngine {
     attachment: { container: Element }
   ): Element | null {
     const node = this.registry.getNode(nodeId);
-    if (node.kind !== "boundary" || node.disposed) throw new Error("ZUI_TRANSACTION_PORTAL");
+    if (node.kind !== "boundary" || node.disposed) throw new Error("RILLIO_TRANSACTION_PORTAL");
     if (!container || container.nodeType !== 1 || typeof container.appendChild !== "function") {
-      throw new Error("ZUI_INVALID_PORTAL_CONTAINER");
+      throw new Error("RILLIO_INVALID_PORTAL_CONTAINER");
     }
     const oldParent = node.domStart.parentNode;
     if (node.domEnd.parentNode !== oldParent || (oldParent && oldParent.nodeType !== 1)) {
-      throw new Error("ZUI_DOM_RANGE_CORRUPT");
+      throw new Error("RILLIO_DOM_RANGE_CORRUPT");
     }
     if (oldParent === container) {
       attachment.container = container;
@@ -275,10 +275,10 @@ export class PatchEngine {
       for (let index = 0; index < movingIds.length; index++) {
         const node = movingRecords[index]!;
         const beforeId = beforeIds[index]!;
-        if (node.disposed || node.parentId !== parentId) throw new Error("ZUI_TRANSACTION_NODE");
+        if (node.disposed || node.parentId !== parentId) throw new Error("RILLIO_TRANSACTION_NODE");
         const before = beforeRecords[index] ?? undefined;
         if (beforeId !== null && (!before || before.disposed || before.parentId !== parentId)) {
-          throw new Error("ZUI_TRANSACTION_ANCHOR");
+          throw new Error("RILLIO_TRANSACTION_ANCHOR");
         }
         const beforeDom = before?.domStart ?? pAnchor;
         if (node.domStart === node.domEnd) pDom.insertBefore(node.domStart, beforeDom);
@@ -318,7 +318,7 @@ export class PatchEngine {
 
   applyText(nodeId: NodeId, value: string, cachedNode?: FlatNode, knownPrevious?: string): string {
     const node = cachedNode ?? this.registry.getNode(nodeId);
-    if (node.kind !== "text") throw new Error("ZUI_TRANSACTION_TEXT");
+    if (node.kind !== "text") throw new Error("RILLIO_TRANSACTION_TEXT");
     const previous = knownPrevious ?? (typeof node.value === "string" ? node.value : (node.domStart as CharacterData).data);
     if (previous !== value) {
       (node.domStart as CharacterData).data = value;
@@ -336,7 +336,7 @@ export class PatchEngine {
     deferRef = false
   ): (() => void) | undefined {
     const record = this.registry.getNode(nodeId);
-    if (record.kind !== "element" || !(record.domStart instanceof Element)) throw new Error("ZUI_TRANSACTION_PROPS");
+    if (record.kind !== "element" || !(record.domStart instanceof Element)) throw new Error("RILLIO_TRANSACTION_PROPS");
     const names = changedKeys ?? new Set([...Object.keys(previous), ...Object.keys(next)]);
     let attachRef: (() => void) | undefined;
     for (const name of names) {

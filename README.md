@@ -1,29 +1,29 @@
-# ZUI
+# Rillio
 
-ZUI is an experimental addressable-DOM runtime for client-side apps. JSX and explicit reactive views share one Flat Index and one transactional `PatchEngine`.
+Rillio is an experimental addressable-DOM runtime for client-side apps. JSX and explicit reactive views share one Flat Index and one transactional `PatchEngine`.
 
 <p align="center">
-  <img src="docs/assets/zui-studio-dashboard.png" alt="ZUI Studio workspace dashboard rendered with ZUI" width="100%" />
+  <img src="docs/assets/rillio-studio-dashboard.png" alt="Rillio Studio workspace dashboard rendered with Rillio" width="100%" />
 </p>
-<p align="center"><em>ZUI Studio dashboard built with the ZUI runtime.</em></p>
+<p align="center"><em>Rillio Studio dashboard built with the Rillio runtime.</em></p>
 
 ## 🚀 Quick start
 
 Clone the repository and run the examples locally:
 
 ```sh
-git clone https://github.com/vyquocvu/zui.git
-cd zui
+git clone https://github.com/vyquocvu/rillio.git
+cd rillio
 npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/` for the ZUI landing page, then follow its links to the showcases and docs.
+Open `http://127.0.0.1:5173/` for the Rillio landing page, then follow its links to the showcases and docs.
 
 ## ⚛️ JSX runtime
 
 ```tsx
-import { createRoot, useState } from "zui";
+import { createRoot, useState } from "rillio";
 
 function Counter() {
   const [count, setCount] = useState(0);
@@ -33,16 +33,15 @@ function Counter() {
 createRoot(document.getElementById("app")!).render(<Counter />);
 ```
 
-Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "zui"`.
+Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "rillio"`.
 
 ## 🧰 API surfaces
 
 | Import | Use |
 |---|---|
-| `zui` | JSX runtime, `createRoot`, and component hooks |
-| `zui/ui` | Accessible UI primitives such as `Button`, `Card`, `Input`, and `Modal` |
-| `zui/external-store` | External store hooks and selectors: `create`, `useStore`, `shallow`, and `useShallow` |
-| `zui/reactive` + `zui/dom` | Reactive stores and mount-once DOM bindings such as `select`, `Show`, and `For` |
+| `rillio` | JSX runtime, `createRoot`, and component hooks |
+| `rillio/external-store` | External store hooks and selectors: `create`, `useStore`, `shallow`, and `useShallow` |
+| `rillio/reactive` + `rillio/dom` | Reactive stores and mount-once DOM bindings such as `select`, `Show`, and `For` |
 
 See the [API contract](docs/API.md) for usage and behavior details.
 
@@ -52,7 +51,7 @@ Both planners turn JSX or reactive updates into addressable operations. A shared
 
 ```mermaid
 flowchart LR
-    accTitle: ZUI addressable architecture
+    accTitle: Rillio addressable architecture
     accDescr: JSX and explicit reactive planners share one transaction, registry, and patch engine before the browser DOM is updated.
 
     jsx_input([📥 JSX input])
@@ -90,8 +89,8 @@ Run `npm run dev`, then open:
 
 | Page | What it shows |
 |---|---|
-| `/` | ZUI landing page with an interactive code sample and counter |
-| `/admin.html` | ZUI Studio dashboard |
+| `/` | Rillio landing page with an interactive code sample and counter |
+| `/admin.html` | Rillio Studio dashboard |
 | `/realworld.html` | TaskFlow workspace with a Kanban board and issue views |
 | `/demos.html` | Interactive demo catalog |
 | `/benchmarks.html` | Keyed-list benchmarks in the current browser |
@@ -115,4 +114,4 @@ Documentation: [performance](docs/PERFORMANCE.md) · [testing](docs/TESTING.md) 
 
 ## ⚠️ Scope
 
-ZUI targets small client-side browser apps. JSX syntax is familiar, but React and Preact behavioral, scheduling, event, and ecosystem compatibility are not promised. SSR and hydration are out of scope. See the [API contract](docs/API.md) and [current status](docs/STATUS.md) for limitations.
+Rillio targets small client-side browser apps. JSX syntax is familiar, but React and Preact behavioral, scheduling, event, and ecosystem compatibility are not promised. SSR and hydration are out of scope. See the [API contract](docs/API.md) and [current status](docs/STATUS.md) for limitations.

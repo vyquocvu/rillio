@@ -1,11 +1,11 @@
-# ZUI API — experimental v0.1
+# Rillio API — experimental v0.1
 
-ZUI uses standard JSX syntax through `jsxImportSource: "zui"`, but its runtime semantics are ZUI-owned. The Flat Index and Patch Engine are the implementation contract behind both public rendering surfaces.
+Rillio uses standard JSX syntax through `jsxImportSource: "rillio"`, but its runtime semantics are Rillio-owned. The Flat Index and Patch Engine are the implementation contract behind both public rendering surfaces.
 
 ## JSX runtime
 
 ```tsx
-import { createRoot, useState, useEffect } from "zui";
+import { createRoot, useState, useEffect } from "rillio";
 
 function Counter() {
   const [count, setCount] = useState(0);
@@ -28,15 +28,7 @@ Supported JSX output includes:
 
 The automatic JSX runtimes provide checked intrinsic tags, common HTML/SVG props, `aria-*`/`data-*`, style records, and element-specific `currentTarget` types for common events. Unknown attributes fail typechecking; applications can add custom elements by augmenting the exported `JSX.IntrinsicElements`. This is a practical baseline, not complete DOM/SVG typings.
 
-`createRoot(container)` returns `{ render(value), unmount() }`. `render(value, container)` reuses the addressable root for that container. A container may have only one live root across the JSX and explicit reactive APIs; creating another root throws `ZUI_ROOT_OCCUPIED` instead of silently replacing the existing tree.
-
-## UI primitives
-
-`zui/ui` is an optional visual layer on top of the runtime. It exports `tokens`, `uiStyles`, `StyleSheet`, and composable primitives: `Button`, `IconButton`, `Badge`, `Avatar`, `Card`, `Field`, `Input`, `Progress`, `Modal`, `Stack`, `Inline`, and `EmptyState`.
-
-Mount `<StyleSheet />` once near the application root. `Input` creates an id when needed and associates labels, hints, and errors with the control. `Progress` requires an accessible `label` and clamps its ARIA value to the advertised range. The primitives use ordinary ZUI VNodes, so their children, event handlers, refs, controlled values, and lifecycle follow the same Flat Index and PatchEngine contract as application JSX.
-
-`Modal` associates each dialog with a unique accessible title, focuses its first control, traps Tab navigation, closes on Escape or backdrop click, and restores focus to the previously focused element when dismissed. With multiple dialogs, keyboard handling is limited to the topmost dialog.
+`createRoot(container)` returns `{ render(value), unmount() }`. `render(value, container)` reuses the addressable root for that container. A container may have only one live root across the JSX and explicit reactive APIs; creating another root throws `RILLIO_ROOT_OCCUPIED` instead of silently replacing the existing tree.
 
 ## Hooks
 
@@ -48,16 +40,16 @@ The current component hooks are:
 - `useCallback(fn, deps?)` — memoized callback slot.
 - `useRef(initial)` — stable mutable ref slot.
 
-Hook ordering is checked. State writes during component evaluation throw `ZUI_RENDER_PHASE_UPDATE`; updates after disposal are ignored.
+Hook ordering is checked. State writes during component evaluation throw `RILLIO_RENDER_PHASE_UPDATE`; updates after disposal are ignored.
 
-ZUI does not claim React hook scheduling, batching, synthetic event, Context, Suspense, or ecosystem compatibility.
+Rillio does not claim React hook scheduling, batching, synthetic event, Context, Suspense, or ecosystem compatibility.
 
 ## External store integration
 
-`zui/external-store` provides first-class, zero-dependency Zustand-compatible external store integration without importing React. It exports `create`, `createStore`, `useStore`, `shallow`, and `useShallow`:
+`rillio/external-store` provides first-class, zero-dependency Zustand-compatible external store integration without importing React. It exports `create`, `createStore`, `useStore`, `shallow`, and `useShallow`:
 
 ```tsx
-import { create, useShallow } from "zui/external-store";
+import { create, useShallow } from "rillio/external-store";
 
 interface CounterState {
   count: number;
@@ -89,7 +81,7 @@ function Counter() {
 }
 ```
 
-The adapter also accepts standalone vanilla stores via `create(existingStore)` or `useStore(store, selector, equalityFn)`. When selecting objects or arrays, use `useShallow(selector)` or pass `shallow` as the equality function to prevent redundant re-renders. Do not import `create` or `useStore` from `"zustand"` in ZUI components, as Zustand's default React entry point expects React's `useSyncExternalStore`. The old `zui/zustand` compatibility path has been removed; import from `zui/external-store`.
+The adapter also accepts standalone vanilla stores via `create(existingStore)` or `useStore(store, selector, equalityFn)`. When selecting objects or arrays, use `useShallow(selector)` or pass `shallow` as the equality function to prevent redundant re-renders. Do not import `create` or `useStore` from `"zustand"` in Rillio components, as Zustand's default React entry point expects React's `useSyncExternalStore`. The old `rillio/zustand` compatibility path has been removed; import from `rillio/external-store`.
 
 ## Addressable DOM API
 
@@ -101,22 +93,22 @@ import {
   PatchEngine,
   nodeRegistry,
   patchEngine
-} from "zui";
+} from "rillio";
 ```
 
 `NodeRegistry` exposes stable `NodeId`, `RootId`, and `OwnerId` records, linked parent/sibling structure, ownership, and versions. Disposed records are stripped of DOM/component references and retained as lightweight diagnostics up to `maxTombstones` (default 1,000); older ids become unknown. `nodeRegistry.diagnostics()` returns a `RegistryDiagnostics` snapshot with live counts (`activeNodes`, `tombstoneNodes`, `totalNodes`, `activeOwners`, `tombstoneOwners`, `totalOwners`, `totalRoots`, `maxTombstones`) for continuous leak and lifecycle verification. `PatchEngine` exposes transactional operations for renderer authors. Application code normally uses the JSX or explicit reactive planner rather than calling low-level patch methods.
 
 Full-root consistency verification is opt-in after each transaction to avoid a tree-wide walk in the production update path. Advanced/debug callers can enable it with `new PatchEngine(registry, document, { assertAfterCommit: true })`; `assertAddressableRoot(container)` remains available for an explicit check.
 
-The low-level implementation is also available from `zui/flat`.
+The low-level implementation is also available from `rillio/flat`.
 
 ## Explicit reactive DOM API
 
-The canonical subpath for the mount-once explicit reactive DOM surface is `zui/dom` (`zui/legacy` remains as a deprecated compatibility alias):
+The canonical subpath for the mount-once explicit reactive DOM surface is `rillio/dom` (`rillio/legacy` remains as a deprecated compatibility alias):
 
 ```tsx
-import { createStore } from "zui/reactive";
-import { select, mount } from "zui/dom";
+import { createStore } from "rillio/reactive";
+import { select, mount } from "rillio/dom";
 
 const count = createStore(0);
 mount(() => <button onClick={() => count.set(n => n + 1)}>
@@ -124,14 +116,14 @@ mount(() => <button onClick={() => count.set(n => n + 1)}>
 </button>, document.getElementById("app")!);
 ```
 
-`zui/reactive` exports the shared reactive engine and store primitives, including `createStore`, `computed`, `batch`, and `untrack`. `zui/dom` exports:
+`rillio/reactive` exports the shared reactive engine and store primitives, including `createStore`, `computed`, `batch`, and `untrack`. `rillio/dom` exports:
 
 - `select(store, selector)` — deferred binding descriptor;
 - `derive(read)` — deferred binding descriptor;
 - `resource(fetcher, options)` — asynchronous resource store (`.loading`, `.data`, `.error`, `.status`, `.mutate()`, `.refetch()`);
 - `mount`, `Show`, and `For`.
 
-The same reactive engine backs both subpaths, so stores created through `zui/reactive` can be consumed by bindings in `zui/dom`. The DOM subpath intentionally owns rendering and bindings, while the reactive subpath owns store creation and computation APIs.
+The same reactive engine backs both subpaths, so stores created through `rillio/reactive` can be consumed by bindings in `rillio/dom`. The DOM subpath intentionally owns rendering and bindings, while the reactive subpath owns store creation and computation APIs.
 
 `Show` owns a conditional boundary. `For` requires stable unique keys and preserves the boundary `NodeId` for an item while its position or current value changes.
 
@@ -149,10 +141,10 @@ Ordinary `store.get()` reads during mount are snapshots. Use a binding or a reac
 
 ## DevTools and Flat Index inspection
 
-`zui/devtools` exposes real-time inspection, node range highlighting, transaction tracking, and an in-browser HUD overlay:
+`rillio/devtools` exposes real-time inspection, node range highlighting, transaction tracking, and an in-browser HUD overlay:
 
 ```ts
-import { inspectRoot, highlightNode, trackTransactions, createInspectorOverlay } from "zui/devtools";
+import { inspectRoot, highlightNode, trackTransactions, createInspectorOverlay } from "rillio/devtools";
 
 // Inspect serialized node hierarchy
 const snapshot = inspectRoot(document.getElementById("app")!);
@@ -166,10 +158,10 @@ const overlay = createInspectorOverlay({ targetRoot: document.getElementById("ap
 
 ## Reactive engine
 
-`zui/reactive` exposes the standalone `ReactiveEngine` used by the explicit runtime:
+`rillio/reactive` exposes the standalone `ReactiveEngine` used by the explicit runtime:
 
 ```ts
-import { createEngine } from "zui/reactive";
+import { createEngine } from "rillio/reactive";
 
 const engine = createEngine("graph");
 const state = engine.createStore(0);
@@ -184,7 +176,7 @@ The graph engine tracks dependencies, batches writes, bounds flush rounds, rejec
 
 Renderers must use `PatchEngine` for every browser DOM write. A transaction validates operations before writes, attempts to undo structural/property writes if commit fails, and then disposes removed subtrees. Rollback is best-effort: user ref callbacks and cleanup side effects cannot be made atomic, and cleanup failures may be reported after the DOM commit. Direct `createElement`, `insertBefore`, `remove`, event-listener, attribute, style, and ref writes belong only in `src/flat/`.
 
-Any `innerHTML`, `outerHTML`, or `srcdoc` prop is rejected with `ZUI_UNSAFE_HTML_PROP`, including empty values; these sinks can bypass the indexed child tree. String-valued inline event-handler props are rejected with `ZUI_UNSAFE_EVENT_PROP`; use function listeners such as `onClick`. `javascript:`/`vbscript:` URLs and `data:text/html` are rejected with `ZUI_UNSAFE_URL_PROP`. Render untrusted content as text children; ZUI does not sanitize arbitrary application data or CSS.
+Any `innerHTML`, `outerHTML`, or `srcdoc` prop is rejected with `RILLIO_UNSAFE_HTML_PROP`, including empty values; these sinks can bypass the indexed child tree. String-valued inline event-handler props are rejected with `RILLIO_UNSAFE_EVENT_PROP`; use function listeners such as `onClick`. `javascript:`/`vbscript:` URLs and `data:text/html` are rejected with `RILLIO_UNSAFE_URL_PROP`. Render untrusted content as text children; Rillio does not sanitize arbitrary application data or CSS.
 
 ## Not currently guaranteed
 

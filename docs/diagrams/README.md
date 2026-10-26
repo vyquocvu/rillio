@@ -1,4 +1,4 @@
-# ZUI diagrams
+# Rillio diagrams
 
 These diagrams describe the current checkout for repo contributors. Each standalone HTML file is interactive; its adjacent JSON file is the editable Archify source.
 

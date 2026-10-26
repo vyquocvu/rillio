@@ -164,7 +164,7 @@ export function Sidebar({ projects }: SidebarProps) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
           <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#10b981" }} />
-          <strong style={{ color: "#10b981" }}>ZUI Runtime</strong>
+          <strong style={{ color: "#10b981" }}>Rillio Runtime</strong>
         </div>
         <div style={{ color: "#64748b", lineHeight: 1.3 }}>
           Flat Index: Single source of truth. Zero VDOM tree diffing.

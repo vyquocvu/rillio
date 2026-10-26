@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "dataflow",
   "meta": {
-    "title": "ZUI Performance Research Flows",
+    "title": "Rillio Performance Research Flows",
     "locale": "en",
     "quality_profile": "showcase",
     "viewBox": [1080, 560]
@@ -14,7 +14,7 @@
   ],
   "nodes": [
     { "id": "browser-workloads", "type": "database", "label": "Browser list cases", "sublabel": "mount · no-op · text · reorder", "stage": 0, "row": 0, "width": 152 },
-    { "id": "chromium-runner", "type": "backend", "label": "Playwright + Chromium", "sublabel": "ZUI · React · Preact · Vue", "stage": 1, "row": 0, "width": 176 },
+    { "id": "chromium-runner", "type": "backend", "label": "Playwright + Chromium", "sublabel": "Rillio · React · Preact · Vue", "stage": 1, "row": 0, "width": 176 },
     { "id": "browser-report", "type": "external", "label": "CPU + memory JSON", "sublabel": "CDP · heap · DOM counters", "stage": 2, "row": 0, "width": 176 },
     { "id": "planner-workloads", "type": "database", "label": "Deterministic key sets", "sublabel": "unchanged · reverse · churn", "stage": 0, "row": 2, "width": 152 },
     { "id": "planner-candidates", "type": "backend", "label": "Planner candidates", "sublabel": "naive · LIS · range · cost-aware", "stage": 1, "row": 2, "width": 176, "tag": "research only" },

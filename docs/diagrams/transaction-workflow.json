@@ -36,7 +36,7 @@
     { "id": "finalize-telemetry", "from": "finalize", "to": "telemetry", "label": "publish final status" }
   ],
   "cards": [
-    { "dot": "emerald", "title": "Before commit writes", "items": ["Validation checks roots, anchors, cycles, and portal targets before transactional DOM writes", "Same-root savepoints restore queued ops, created nodes, and cleanup attachments on callback failure", "An outer callback failure seals its transaction; cross-root nesting raises ZUI_NESTED_ROOT_TRANSACTION"] },
+    { "dot": "emerald", "title": "Before commit writes", "items": ["Validation checks roots, anchors, cycles, and portal targets before transactional DOM writes", "Same-root savepoints restore queued ops, created nodes, and cleanup attachments on callback failure", "An outer callback failure seals its transaction; cross-root nesting raises RILLIO_NESTED_ROOT_TRANSACTION"] },
     { "dot": "rose", "title": "After commit", "items": ["PatchEngine applies DOM and Flat Index writes; failed later callbacks restore moved portal ranges", "Commit telemetry records operation counts and finalization status"] }
   ]
 }

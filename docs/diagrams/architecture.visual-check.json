@@ -6,9 +6,9 @@
   "status": "pass",
   "visualReview": "pending",
   "artifact": {
-    "path": "/Users/vyquocvu/Develop/zui/docs/diagrams/architecture.html",
-    "sha256": "ea98c2ba24a0378de193abe30d9c79cffe7af75ef5d4f83c656570855655d891",
-    "bytes": 810186
+    "path": "docs/diagrams/architecture.html",
+    "sha256": "38791ede7da35190bf5554cfa16113e826a5ffcdd97350051866cea8ab1c69f6",
+    "bytes": 810195
   },
   "state": {
     "detail": "read",

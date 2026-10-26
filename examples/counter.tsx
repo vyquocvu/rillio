@@ -1,6 +1,6 @@
 /** Compile with jsxImportSource pointed to the project's src directory. */
-import { createStore } from "zui/reactive";
-import { select, mount, Show, For } from "zui/dom";
+import { createStore } from "rillio/reactive";
+import { select, mount, Show, For } from "rillio/dom";
 
 const store = createStore({ count: 0, show: true, items: [{ id: 1, text: "First" }] });
 let renderCount = 0;
@@ -8,7 +8,7 @@ let renderCount = 0;
 function App() {
   renderCount++;
   return <main>
-    <h1>ZUI — mount-once counter</h1>
+    <h1>Rillio — mount-once counter</h1>
     <p>Count: {select(store, s => s.count)}</p>
     <p>Component calls: {renderCount}</p>
     <button onClick={() => store.set(s => ({ ...s, count: s.count + 1 }))}>Increment</button>

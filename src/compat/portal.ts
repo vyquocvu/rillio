@@ -10,7 +10,7 @@ export const PORTAL_TYPE: Component<{ children?: Child; container: Element }> = 
 
 export function createPortal(children: Child, container: Element, key?: Key): VNode {
   if (!container || typeof container !== "object" || (container as any).nodeType !== 1) {
-    throw new Error("ZUI_INVALID_PORTAL_CONTAINER");
+    throw new Error("RILLIO_INVALID_PORTAL_CONTAINER");
   }
   return {
     type: PORTAL_TYPE,

@@ -1,12 +1,12 @@
 /**
- * ZUI Studio — a small, production-shaped dashboard built with the runtime.
+ * Rillio Studio — a small, production-shaped dashboard built with the runtime.
  *
  * The example intentionally stays dependency-free. It exercises the things a
- * UI library needs to feel good in a real app: composed components, controlled
+ * App-local components need to feel good in a real app: composed controls, controlled
  * forms, keyed tables, focusable dialogs, responsive layout and live state.
  */
 
-import { createRoot, useEffect, useMemo, useState } from "zui";
+import { createRoot, useEffect, useMemo, useState } from "rillio";
 
 type TabId = "overview" | "users" | "settings";
 type Period = "7d" | "30d" | "90d";
@@ -32,12 +32,12 @@ interface UserDraft {
 }
 
 const initialUsers: User[] = [
-  { id: 1, name: "Olivia Rhye", email: "olivia@zui.studio", role: "Admin", status: "Active", lastActive: "2 min ago", initials: "OR", color: "#7c3aed" },
-  { id: 2, name: "Phoenix Baker", email: "phoenix@zui.studio", role: "Editor", status: "Active", lastActive: "18 min ago", initials: "PB", color: "#0ea5e9" },
-  { id: 3, name: "Lana Steiner", email: "lana@zui.studio", role: "Editor", status: "Invited", lastActive: "Yesterday", initials: "LS", color: "#f97316" },
-  { id: 4, name: "Demi Wilkinson", email: "demi@zui.studio", role: "Viewer", status: "Active", lastActive: "Yesterday", initials: "DW", color: "#16a34a" },
-  { id: 5, name: "Candice Wu", email: "candice@zui.studio", role: "Viewer", status: "Suspended", lastActive: "Oct 08, 2026", initials: "CW", color: "#db2777" },
-  { id: 6, name: "Natali Craig", email: "natali@zui.studio", role: "Editor", status: "Active", lastActive: "Oct 07, 2026", initials: "NC", color: "#0891b2" },
+  { id: 1, name: "Olivia Rhye", email: "olivia@rillio.studio", role: "Admin", status: "Active", lastActive: "2 min ago", initials: "OR", color: "#7c3aed" },
+  { id: 2, name: "Phoenix Baker", email: "phoenix@rillio.studio", role: "Editor", status: "Active", lastActive: "18 min ago", initials: "PB", color: "#0ea5e9" },
+  { id: 3, name: "Lana Steiner", email: "lana@rillio.studio", role: "Editor", status: "Invited", lastActive: "Yesterday", initials: "LS", color: "#f97316" },
+  { id: 4, name: "Demi Wilkinson", email: "demi@rillio.studio", role: "Viewer", status: "Active", lastActive: "Yesterday", initials: "DW", color: "#16a34a" },
+  { id: 5, name: "Candice Wu", email: "candice@rillio.studio", role: "Viewer", status: "Suspended", lastActive: "Oct 08, 2026", initials: "CW", color: "#db2777" },
+  { id: 6, name: "Natali Craig", email: "natali@rillio.studio", role: "Editor", status: "Active", lastActive: "Oct 07, 2026", initials: "NC", color: "#0891b2" },
 ];
 
 const periodData: Record<Period, {
@@ -296,7 +296,7 @@ function Avatar({ initials, color, size = "normal" }: { initials: string; color:
 }
 
 function StyleSheet() {
-  return <style data-zui-studio="true">{styles}</style>;
+  return <style data-rillio-studio="true">{styles}</style>;
 }
 
 function Button({ children, variant = "primary", icon, onClick, type = "button", className = "" }: { children?: any; variant?: "primary" | "secondary" | "danger"; icon?: IconName; onClick?: () => void; type?: "button" | "submit"; className?: string }) {
@@ -310,14 +310,14 @@ function Sidebar({ activeTab, onTabChange, collapsed, onToggle, open }: { active
     { id: "settings", label: "Settings", icon: "settings" },
   ];
   return <aside class={`sidebar ${collapsed ? "sidebar--collapsed" : ""} ${open ? "sidebar--open" : ""}`}>
-    <div class="brand-row"><span class="brand-mark">z</span><span class="brand-name">zui<span>.</span>studio</span><button class="collapse-button" onClick={onToggle} aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}><Icon name="menu" size={14} /></button></div>
-    <div class="workspace"><span class="workspace-avatar">ZS</span><div class="workspace-copy"><div class="workspace-label">Workspace</div><div class="workspace-name">ZUI Studio / Production</div></div><Icon name="dots" size={15} /></div>
+    <div class="brand-row"><span class="brand-mark">r</span><span class="brand-name">rillio<span>.</span>studio</span><button class="collapse-button" onClick={onToggle} aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}><Icon name="menu" size={14} /></button></div>
+    <div class="workspace"><span class="workspace-avatar">ZS</span><div class="workspace-copy"><div class="workspace-label">Workspace</div><div class="workspace-name">Rillio Studio / Production</div></div><Icon name="dots" size={15} /></div>
     <div class="sidebar-section">Workspace</div>
     <nav class="sidebar-nav" aria-label="Main navigation">{items.map(item => <button key={item.id} data-tab={item.id} class={`nav-item ${activeTab === item.id ? "nav-item--active" : ""}`} onClick={() => onTabChange(item.id)} aria-current={activeTab === item.id ? "page" : undefined}><Icon name={item.icon} size={16} /><span class="nav-item__label">{item.label}</span>{item.count !== undefined && <span class="nav-item__count">{item.count}</span>}</button>)}</nav>
     <div class="sidebar-section">Resources</div>
     <nav class="sidebar-nav"><button class="nav-item" onClick={() => window.open("/README.md", "_blank")}><Icon name="help" size={16} /><span class="nav-item__label">Documentation</span></button><button class="nav-item" onClick={() => window.open("/CHANGELOG.md", "_blank")}><Icon name="activity" size={16} /><span class="nav-item__label">Changelog</span></button></nav>
-    <div class="sidebar-spacer" /><div class="upgrade-card"><div class="upgrade-card__eyebrow">ZUI Pro</div><p>Unlock advanced analytics and unlimited seats.</p><button onClick={() => alert("Upgrade flow coming soon")}>Explore Pro</button></div>
-    <div class="sidebar-user"><Avatar initials="VK" color="#334155" /><div class="sidebar-user__copy"><div class="sidebar-user__name">Vy Quoc Vu</div><div class="sidebar-user__email">vy@zui.studio</div></div><Icon name="dots" size={15} /></div>
+    <div class="sidebar-spacer" /><div class="upgrade-card"><div class="upgrade-card__eyebrow">Rillio Pro</div><p>Unlock advanced analytics and unlimited seats.</p><button onClick={() => alert("Upgrade flow coming soon")}>Explore Pro</button></div>
+    <div class="sidebar-user"><Avatar initials="VK" color="#334155" /><div class="sidebar-user__copy"><div class="sidebar-user__name">Vy Quoc Vu</div><div class="sidebar-user__email">vy@rillio.studio</div></div><Icon name="dots" size={15} /></div>
   </aside>;
 }
 
@@ -377,11 +377,11 @@ function UserModal({ user, open, onClose, onSave }: { user?: User; open: boolean
   useEffect(() => { setName(user?.name ?? ""); setEmail(user?.email ?? ""); setRole(user?.role ?? "Viewer"); setStatus(user?.status ?? "Active"); setError(""); }, [user, open]);
   if (!open) return null;
   const submit = (event: Event) => { event.preventDefault(); if (!name.trim() || !email.trim()) { setError("Add a name and email to continue."); return; } onSave({ name: name.trim(), email: email.trim(), role, status }); };
-  return <div class="modal-backdrop" role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="member-modal-title"><div class="modal__header"><div><div class="modal__eyebrow">{user ? "Edit profile" : "New teammate"}</div><h2 id="member-modal-title">{user ? "Update member" : "Add a team member"}</h2><p>{user ? "Change this member’s role or access status." : "Invite someone to your ZUI Studio workspace."}</p></div><button class="close-button" onClick={onClose} aria-label="Close dialog"><Icon name="close" size={15} /></button></div><form class="modal__body" onSubmit={submit}><div class="form-grid"><div class="form-field form-field--full"><label for="member-name">Full name</label><input id="member-name" value={name} onInput={(event: Event) => setName((event.currentTarget as HTMLInputElement).value)} placeholder="e.g. Ada Lovelace" /></div><div class="form-field form-field--full"><label for="member-email">Work email</label><input id="member-email" type="email" value={email} onInput={(event: Event) => setEmail((event.currentTarget as HTMLInputElement).value)} placeholder="name@company.com" /></div><div class="form-field"><label for="member-role">Role</label><select id="member-role" value={role} onChange={(event: Event) => setRole((event.currentTarget as HTMLSelectElement).value as UserRole)}><option>Admin</option><option>Editor</option><option>Viewer</option></select></div><div class="form-field"><label for="member-status">Status</label><select id="member-status" value={status} onChange={(event: Event) => setStatus((event.currentTarget as HTMLSelectElement).value as UserStatus)}><option>Active</option><option>Invited</option><option>Suspended</option></select></div></div>{error && <div class="form-error">{error}</div>}<div class="modal__footer"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" icon="check">{user ? "Save changes" : "Send invite"}</Button></div></form></div></div>;
+  return <div class="modal-backdrop" role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="member-modal-title"><div class="modal__header"><div><div class="modal__eyebrow">{user ? "Edit profile" : "New teammate"}</div><h2 id="member-modal-title">{user ? "Update member" : "Add a team member"}</h2><p>{user ? "Change this member’s role or access status." : "Invite someone to your Rillio Studio workspace."}</p></div><button class="close-button" onClick={onClose} aria-label="Close dialog"><Icon name="close" size={15} /></button></div><form class="modal__body" onSubmit={submit}><div class="form-grid"><div class="form-field form-field--full"><label for="member-name">Full name</label><input id="member-name" value={name} onInput={(event: Event) => setName((event.currentTarget as HTMLInputElement).value)} placeholder="e.g. Ada Lovelace" /></div><div class="form-field form-field--full"><label for="member-email">Work email</label><input id="member-email" type="email" value={email} onInput={(event: Event) => setEmail((event.currentTarget as HTMLInputElement).value)} placeholder="name@company.com" /></div><div class="form-field"><label for="member-role">Role</label><select id="member-role" value={role} onChange={(event: Event) => setRole((event.currentTarget as HTMLSelectElement).value as UserRole)}><option>Admin</option><option>Editor</option><option>Viewer</option></select></div><div class="form-field"><label for="member-status">Status</label><select id="member-status" value={status} onChange={(event: Event) => setStatus((event.currentTarget as HTMLSelectElement).value as UserStatus)}><option>Active</option><option>Invited</option><option>Suspended</option></select></div></div>{error && <div class="form-error">{error}</div>}<div class="modal__footer"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" icon="check">{user ? "Save changes" : "Send invite"}</Button></div></form></div></div>;
 }
 
 function SettingsView({ preferences, onToggle, onNotify }: { preferences: { email: boolean; product: boolean; security: boolean }; onToggle: (key: "email" | "product" | "security") => void; onNotify: (message: string) => void }) {
-  const rows: Array<{ key: "email" | "product" | "security"; title: string; description: string }> = [{ key: "email", title: "Email notifications", description: "Get a daily digest of important workspace activity." }, { key: "product", title: "Product updates", description: "Hear about new ZUI features and early access releases." }, { key: "security", title: "Security alerts", description: "Be notified whenever a sign-in or permission changes." }];
+  const rows: Array<{ key: "email" | "product" | "security"; title: string; description: string }> = [{ key: "email", title: "Email notifications", description: "Get a daily digest of important workspace activity." }, { key: "product", title: "Product updates", description: "Hear about new Rillio features and early access releases." }, { key: "security", title: "Security alerts", description: "Be notified whenever a sign-in or permission changes." }];
   return <><div class="page-heading"><div><div class="eyebrow">Workspace controls</div><h1>Settings</h1><p>Keep your workspace preferences clear and under control.</p></div><Button icon="check" onClick={() => onNotify("Settings saved successfully")}>Save changes</Button></div><div class="settings-grid"><div><section class="panel settings-card"><div class="settings-card__heading"><h2>Notifications</h2><p>Choose what you want to hear about from your workspace.</p></div>{rows.map(row => <div class="setting-row" key={row.key}><div class="setting-row__copy"><strong>{row.title}</strong><span>{row.description}</span></div><button class={`switch ${preferences[row.key] ? "switch--on" : ""}`} onClick={() => onToggle(row.key)} aria-label={`${preferences[row.key] ? "Disable" : "Enable"} ${row.title}`} aria-pressed={preferences[row.key]} /></div>)}</section><section class="panel settings-card"><div class="settings-card__heading"><h2>Security</h2><p>Protect your account with sensible defaults.</p></div><div class="setting-row"><div class="setting-row__copy"><strong>Two-factor authentication</strong><span>Required for all workspace owners and admins.</span></div><span class="pill pill--active">Enabled</span></div></section></div><UsagePanel /></div></>;
 }
 
@@ -401,7 +401,7 @@ function Dashboard() {
   const [preferences, setPreferences] = useState({ email: true, product: false, security: true });
 
   const notify = (message: string) => setToast(message);
-  useEffect(() => { document.title = `ZUI Studio — ${activeTab[0].toUpperCase()}${activeTab.slice(1)}`; }, [activeTab]);
+  useEffect(() => { document.title = `Rillio Studio — ${activeTab[0].toUpperCase()}${activeTab.slice(1)}`; }, [activeTab]);
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 2800); return () => window.clearTimeout(timer); }, [toast]);
   const openCreate = () => { setModalUser(undefined); setModalOpen(true); };
   const openEdit = (user: User) => { setModalUser(user); setModalOpen(true); };
@@ -439,7 +439,7 @@ if (new URLSearchParams(window.location.search).has("e2e")) {
     assert(name && email, "member dialog did not open");
     name.value = "Ada Lovelace";
     name.dispatchEvent(new Event("input", { bubbles: true }));
-    email.value = "ada@zui.studio";
+    email.value = "ada@rillio.studio";
     email.dispatchEvent(new Event("input", { bubbles: true }));
     document.querySelector<HTMLButtonElement>(".modal__footer .button--primary")?.click();
     await nextFrame();

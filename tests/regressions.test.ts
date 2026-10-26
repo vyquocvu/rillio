@@ -92,7 +92,7 @@ describe("instrumentation and lifecycle regressions", () => {
         state.set(2);
         return state.get();
       });
-      expect(() => invalid.get()).toThrow("ZUI_COMPUTED_WRITE");
+      expect(() => invalid.get()).toThrow("RILLIO_COMPUTED_WRITE");
       expect(state.get()).toBe(1);
     });
 
@@ -113,7 +113,7 @@ describe("instrumentation and lifecycle regressions", () => {
       const e = createEngine(mode);
       let expr!: { get(): number };
       expr = e.computed(() => expr.get() + 1);
-      expect(() => expr.get()).toThrow("ZUI_REACTIVE_CYCLE");
+      expect(() => expr.get()).toThrow("RILLIO_REACTIVE_CYCLE");
       expect(e.diagnostics().dependencyEdges).toBe(0);
     });
 

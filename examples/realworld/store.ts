@@ -1,4 +1,4 @@
-import { create } from "zui/external-store";
+import { create } from "rillio/external-store";
 import type { ActivityLog, FilterState, Issue, ToastMessage, ViewMode } from "./types.js";
 
 export interface AppState {

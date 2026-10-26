@@ -10,7 +10,7 @@ describe("addressable lifecycle", () => {
     const container = document.createElement("div");
     const disposeReactive = mount(jsx("span", { children: value }), container);
 
-    expect(() => createRoot(container)).toThrow("ZUI_ROOT_OCCUPIED");
+    expect(() => createRoot(container)).toThrow("RILLIO_ROOT_OCCUPIED");
     expect(container.textContent).toBe("before");
     value.set("after");
     expect(container.textContent).toBe("after");

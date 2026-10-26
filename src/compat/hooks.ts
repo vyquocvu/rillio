@@ -15,7 +15,7 @@ const equalDeps = (a?: readonly unknown[], b?: readonly unknown[]): boolean =>
   a !== undefined && b !== undefined && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
 
 function hook(): Hook {
-  if (!active) throw new Error("ZUI_INVALID_HOOK_CALL");
+  if (!active) throw new Error("RILLIO_INVALID_HOOK_CALL");
   const slot = (active.hooks[active.cursor] ??= {});
   slot.ownerNodeId = active.nodeId;
   active.cursor++;
@@ -30,7 +30,7 @@ export function useState<T>(initial: T | (() => T)): [T, (next: T | ((prev: T) =
     slot.value as T,
     next => {
       if (!owner || owner.disposed) return;
-      if (renderingDepth > 0) throw new Error("ZUI_RENDER_PHASE_UPDATE");
+      if (renderingDepth > 0) throw new Error("RILLIO_RENDER_PHASE_UPDATE");
       const previous = slot.value as T;
       const value = typeof next === "function" ? (next as (previous: T) => T)(previous) : next;
       if (Object.is(value, slot.value)) return;

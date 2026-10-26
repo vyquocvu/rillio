@@ -6,7 +6,7 @@
   "status": "pass",
   "visualReview": "pending",
   "artifact": {
-    "path": "/Users/vyquocvu/Develop/zui/docs/diagrams/node-owner-lifecycle.html",
+    "path": "docs/diagrams/node-owner-lifecycle.html",
     "sha256": "3bcf0fd5a4a1f8bd9c97fe8c5ee02b63e3b43dd67ae8ce6cc8595740a1f3828f",
     "bytes": 805222
   },

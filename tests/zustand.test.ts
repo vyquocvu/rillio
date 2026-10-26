@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 import { createRoot, jsx } from "../src/compat.js";
-import { useStore, create as createZuiBound, shallow, useShallow, createStore as createZuiStore } from "../src/external-store.js";
+import { useStore, create as createRillioBound, shallow, useShallow, createStore as createRillioStore } from "../src/external-store.js";
 
 interface CounterStore {
   count: number;
@@ -166,7 +166,7 @@ describe("Zustand adapter", () => {
         addItem: (item: string) => void;
       }
 
-      const useItems = createZuiBound<ItemStore>((set) => ({
+      const useItems = createRillioBound<ItemStore>((set) => ({
         items: ["apple"],
         filter: "all",
         addItem: item => set(state => ({ items: [...state.items, item] }))
@@ -205,13 +205,13 @@ describe("Zustand adapter", () => {
         unrelated: string;
       }
 
-      const store = createZuiStore<ComplexStore>(set => ({
+      const store = createRillioStore<ComplexStore>(set => ({
         count: 5,
         multiplier: 2,
         unrelated: "init"
       }));
 
-      const useBound = createZuiBound(store);
+      const useBound = createRillioBound(store);
       const container = document.createElement("div");
       const root = createRoot(container);
       let renders = 0;
@@ -244,7 +244,7 @@ describe("Zustand adapter", () => {
     });
 
     it("supports shallow comparison function passed as second argument to bound store", () => {
-      const useStore = createZuiBound<{ a: number; b: number; c: number }>((set) => ({
+      const useStore = createRillioBound<{ a: number; b: number; c: number }>((set) => ({
         a: 1,
         b: 2,
         c: 3

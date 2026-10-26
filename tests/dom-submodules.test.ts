@@ -50,7 +50,7 @@ describe("src/dom submodules isolated tests", () => {
     });
 
     it("evaluates, stringifies, and resolves children correctly", () => {
-      const name = createStore("ZUI");
+      const name = createStore("Rillio");
       const bound = select(name, n => n.toUpperCase());
 
       expect(stringify(null)).toBe("");
@@ -60,8 +60,8 @@ describe("src/dom submodules isolated tests", () => {
       expect(stringify("text")).toBe("text");
       expect(stringify(42)).toBe("42");
 
-      expect(evaluate(name)).toBe("ZUI");
-      expect(evaluate(bound)).toBe("ZUI");
+      expect(evaluate(name)).toBe("Rillio");
+      expect(evaluate(bound)).toBe("Rillio");
       expect(evaluate(100)).toBe(100);
 
       expect(resolveChild("static")).toBe("static");

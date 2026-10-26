@@ -1,4 +1,4 @@
-# ZUI v0.5 preregistration (2026-10-09)
+# Rillio v0.5 preregistration (2026-10-09)
 
 This document freezes research intent before official benchmarking. No performance measurements have been reported.
 

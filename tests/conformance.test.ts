@@ -96,7 +96,7 @@ for (const mode of ["scan", "graph"] as Mode[]) {
         const v = s.get();
         if (v > 0) s.set(v + 1);
       });
-      expect(() => s.set(1)).toThrow("ZUI_MAX_FLUSH_ROUNDS");
+      expect(() => s.set(1)).toThrow("RILLIO_MAX_FLUSH_ROUNDS");
     });
   });
 }

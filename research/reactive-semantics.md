@@ -6,8 +6,8 @@
 2. Effects run once at registration. After writes, observers see settled computed values, not intermediate diamond nodes.
 3. A batch of writes flushes observers only after the outermost batch exits.
 4. Writes triggered within an effect do not recursively flush; they schedule the next round.
-5. A runaway effect-write cycle exceeds maxRounds and throws ZUI_MAX_FLUSH_ROUNDS.
-6. Computed values detect recursive self-evaluation with ZUI_REACTIVE_CYCLE.
+5. A runaway effect-write cycle exceeds maxRounds and throws RILLIO_MAX_FLUSH_ROUNDS.
+6. Computed values detect recursive self-evaluation with RILLIO_REACTIVE_CYCLE.
 7. Dependencies are re-collected on evaluation; branch changes remove stale subscriptions.
 8. Owner disposal is idempotent, disposes children before parent callbacks, and skips disposed queued effects.
 9. Explicit flush is synchronous; automatic writes outside batch trigger synchronous flush. DOM scheduler policies are intentionally out of scope.

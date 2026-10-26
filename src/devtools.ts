@@ -1,5 +1,5 @@
 /**
- * ZUI DevTools & Live Flat Index Inspector.
+ * Rillio DevTools & Live Flat Index Inspector.
  *
  * Real-time inspection utility and browser HUD leveraging NodeRegistry diagnostics,
  * addressable nodes, and PatchEngine transaction telemetry.
@@ -152,7 +152,7 @@ export function inspectRoot(
     root = registry.rootFor(target);
   }
 
-  if (!root) throw new Error("ZUI_ROOT_NOT_FOUND");
+  if (!root) throw new Error("RILLIO_ROOT_NOT_FOUND");
 
   const tree = inspectNode(root.nodeId, registry);
 
@@ -270,7 +270,7 @@ export function createInspectorOverlay(
   const tracker = trackTransactions(engine, 20);
 
   const panel = document.createElement("div");
-  panel.setAttribute("data-zui-devtools", "true");
+  panel.setAttribute("data-rillio-devtools", "true");
 
   const pos = options.position ?? "bottom-right";
   const posStyles: Record<string, string> = {
@@ -313,7 +313,7 @@ export function createInspectorOverlay(
   });
 
   const title = document.createElement("span");
-  title.innerHTML = `<strong style="color: #38bdf8;">ZUI</strong> Flat Index`;
+  title.innerHTML = `<strong style="color: #38bdf8;">Rillio</strong> Flat Index`;
   header.appendChild(title);
 
   const controls = document.createElement("div");

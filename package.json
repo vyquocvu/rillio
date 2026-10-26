@@ -1,13 +1,14 @@
 {
-  "name": "zui",
+  "name": "rillio",
   "version": "0.1.0",
-  "description": "Experimental addressable-DOM UI runtime and component primitives.",
+  "description": "Experimental addressable-DOM UI runtime.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vyquocvu/zui.git"
+    "url": "git+https://github.com/vyquocvu/rillio.git"
   },
   "author": "Vy Quoc Vu <vyquocvu@gmail.com>",
   "license": "MIT",
+  "sideEffects": false,
   "keywords": [
     "ui",
     "jsx",
@@ -22,8 +23,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "build:package": "tsc -p tsconfig.build.json",
-    "test:smoke": "tsc src/reactive.ts --outDir .zui-test --target es2022 --module nodenext --strict --skipLibCheck && node tests/smoke.cjs",
+    "build:package": "node scripts/clean-package-output.mjs && tsc -p tsconfig.build.json",
+    "test:smoke": "tsc src/reactive.ts --outDir .rillio-test --target es2022 --module nodenext --strict --skipLibCheck && node tests/smoke.cjs",
     "bench:smoke": "npm run test:smoke && node benchmarks/smoke.cjs",
     "bench:reactive": "npm run test:smoke && node benchmarks/reactive.cjs",
     "bench:compat": "npm run build:package && node benchmarks/compat.cjs",
@@ -76,11 +77,6 @@
       "types": "./dist/package/jsx-dev-runtime.d.ts",
       "import": "./dist/package/jsx-dev-runtime.js",
       "default": "./dist/package/jsx-dev-runtime.js"
-    },
-    "./ui": {
-      "types": "./dist/package/ui.d.ts",
-      "import": "./dist/package/ui.js",
-      "default": "./dist/package/ui.js"
     },
     "./external-store": {
       "types": "./dist/package/external-store.d.ts",

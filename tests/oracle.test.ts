@@ -94,7 +94,7 @@ describe("error handling and diagnostics", () => {
       const stop = engine.effect(() => {
         if (source.get() > 0) source.set(source.get() + 1);
       });
-      expect(() => source.set(1)).toThrow("ZUI_MAX_FLUSH_ROUNDS");
+      expect(() => source.set(1)).toThrow("RILLIO_MAX_FLUSH_ROUNDS");
       stop();
       expect(() => engine.flush()).not.toThrow();
     });

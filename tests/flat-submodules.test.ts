@@ -64,12 +64,12 @@ describe("src/flat submodules isolated tests", () => {
     });
 
     it("rejects forbidden HTML injection sinks and executable URLs with precise error codes", () => {
-      expect(() => validateProperty("innerHTML", "<b>hi</b>")).toThrow("ZUI_UNSAFE_HTML_PROP");
-      expect(() => validateProperty("outerHTML", "<b>hi</b>")).toThrow("ZUI_UNSAFE_HTML_PROP");
-      expect(() => validateProperty("srcdoc", "<b>hi</b>")).toThrow("ZUI_UNSAFE_HTML_PROP");
-      expect(() => validateProperty("href", "javascript:void(0)")).toThrow("ZUI_UNSAFE_URL_PROP");
-      expect(() => validateProperty("src", "vbscript:run()")).toThrow("ZUI_UNSAFE_URL_PROP");
-      expect(() => validateProperty("onClick", "alert(1)")).toThrow("ZUI_UNSAFE_EVENT_PROP");
+      expect(() => validateProperty("innerHTML", "<b>hi</b>")).toThrow("RILLIO_UNSAFE_HTML_PROP");
+      expect(() => validateProperty("outerHTML", "<b>hi</b>")).toThrow("RILLIO_UNSAFE_HTML_PROP");
+      expect(() => validateProperty("srcdoc", "<b>hi</b>")).toThrow("RILLIO_UNSAFE_HTML_PROP");
+      expect(() => validateProperty("href", "javascript:void(0)")).toThrow("RILLIO_UNSAFE_URL_PROP");
+      expect(() => validateProperty("src", "vbscript:run()")).toThrow("RILLIO_UNSAFE_URL_PROP");
+      expect(() => validateProperty("onClick", "alert(1)")).toThrow("RILLIO_UNSAFE_EVENT_PROP");
 
       // Valid properties do not throw
       expect(() => validateProperty("className", "btn btn-primary")).not.toThrow();

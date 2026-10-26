@@ -43,9 +43,9 @@ export function isUnsafeUrlProperty(name: string, value: unknown): boolean {
 
 export function validateProperty(name: string, value: unknown): void {
   const classification = classifyProperty(name);
-  if (classification.blockedHTML) throw new Error("ZUI_UNSAFE_HTML_PROP");
+  if (classification.blockedHTML) throw new Error("RILLIO_UNSAFE_HTML_PROP");
   if (classification.event && value != null && typeof value !== "function") {
-    throw new Error("ZUI_UNSAFE_EVENT_PROP");
+    throw new Error("RILLIO_UNSAFE_EVENT_PROP");
   }
-  if (isUnsafeUrlProperty(name, value)) throw new Error("ZUI_UNSAFE_URL_PROP");
+  if (isUnsafeUrlProperty(name, value)) throw new Error("RILLIO_UNSAFE_URL_PROP");
 }

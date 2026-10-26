@@ -7,7 +7,7 @@ import type { FlatNode } from "./types.js";
 export function parentDom(parent: FlatNode): Node {
   if (parent.kind === "root" || parent.kind === "element") return parent.domStart;
   const domParent = parent.domStart.parentNode;
-  if (!domParent) throw new Error("ZUI_DETACHED_PARENT");
+  if (!domParent) throw new Error("RILLIO_DETACHED_PARENT");
   return domParent;
 }
 
@@ -29,7 +29,7 @@ export function extractRange(doc: Document, node: FlatNode): DocumentFragment {
     if (current === node.domEnd) break;
     current = next;
   }
-  if (current !== node.domEnd) throw new Error("ZUI_DOM_RANGE_CORRUPT");
+  if (current !== node.domEnd) throw new Error("RILLIO_DOM_RANGE_CORRUPT");
   return fragment;
 }
 
@@ -41,5 +41,5 @@ export function appendRange(fragment: DocumentFragment, node: FlatNode): void {
     if (current === node.domEnd) return;
     current = next;
   }
-  throw new Error("ZUI_DOM_RANGE_CORRUPT");
+  throw new Error("RILLIO_DOM_RANGE_CORRUPT");
 }

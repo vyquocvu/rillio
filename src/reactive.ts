@@ -1,5 +1,5 @@
 /**
- * ZUI Spike 0: one observable contract, two invalidation strategies.
+ * Rillio Spike 0: one observable contract, two invalidation strategies.
  * Scan visits every active effect per state commit.
  * Graph tracks dependencies and schedules only affected effects.
  * Effects observe settled computed values, never intermediary diamond values.
@@ -81,7 +81,7 @@ class MemoryOwnerHost implements OwnerHost {
   private readonly owners = new Map<OwnerId, MemoryOwner>();
 
   createOwner(rootId: RootId, parentId: OwnerId | null = null): OwnerId {
-    if (parentId !== null && this.get(parentId).rootId !== rootId) throw new Error("ZUI_OWNER_ROOT_MISMATCH");
+    if (parentId !== null && this.get(parentId).rootId !== rootId) throw new Error("RILLIO_OWNER_ROOT_MISMATCH");
     const id = this.nextId++;
     const owner: MemoryOwner = { id, rootId, parentId, children: new Set(), disposed: false };
     this.owners.set(id, owner);
@@ -108,7 +108,7 @@ class MemoryOwnerHost implements OwnerHost {
 
   private get(ownerId: OwnerId): MemoryOwner {
     const owner = this.owners.get(ownerId);
-    if (!owner) throw new Error("ZUI_UNKNOWN_OWNER");
+    if (!owner) throw new Error("RILLIO_UNKNOWN_OWNER");
     return owner;
   }
 }
@@ -156,7 +156,7 @@ export class ReactiveEngine {
 
   private evaluate(node: Computation): unknown {
     if (node.disposed) return node.value;
-    if (node.evaluating) throw new Error("ZUI_REACTIVE_CYCLE");
+    if (node.evaluating) throw new Error("RILLIO_REACTIVE_CYCLE");
     if (node.kind === "computed" && node.initialized && !node.dirty) {
       return node.value;
     }
@@ -205,7 +205,7 @@ export class ReactiveEngine {
       get: () => { this.track(source); return value; },
       set: (update) => {
         if (this.current?.kind === "computed") {
-          throw new Error("ZUI_COMPUTED_WRITE");
+          throw new Error("RILLIO_COMPUTED_WRITE");
         }
         const next = typeof update === "function"
           ? (update as (previous: T) => T)(value) : update;
@@ -225,7 +225,7 @@ export class ReactiveEngine {
     return {
       get: () => {
         // Do not create a self-edge on recursive computed reads.
-        if (node.evaluating) throw new Error("ZUI_REACTIVE_CYCLE");
+        if (node.evaluating) throw new Error("RILLIO_REACTIVE_CYCLE");
         const value = this.evaluate(node) as T;
         this.track(node);
         return value;
@@ -300,7 +300,7 @@ export class ReactiveEngine {
     const parentId = this.ownerId ?? null;
     const ownerId = options.ownerId ?? this.ownerHost.createOwner(options.rootId ?? this.ownerRootId, parentId);
     if (options.ownerId !== undefined && parentId !== null && this.ownerHost.ownerParent(ownerId) !== parentId) {
-      throw new Error("ZUI_OWNER_PARENT_MISMATCH");
+      throw new Error("RILLIO_OWNER_PARENT_MISMATCH");
     }
     this.ownerId = ownerId;
     let value: T;
@@ -311,7 +311,7 @@ export class ReactiveEngine {
   }
 
   onCleanup(fn: Dispose): void {
-    if (this.ownerId === undefined) throw new Error("ZUI_NO_OWNER");
+    if (this.ownerId === undefined) throw new Error("RILLIO_NO_OWNER");
     let cleanups = this.cleanupsByOwner.get(this.ownerId);
     if (!cleanups) this.cleanupsByOwner.set(this.ownerId, cleanups = new Set());
     cleanups.add(fn);
@@ -355,7 +355,7 @@ export class ReactiveEngine {
       while (this.pending) {
         if (++rounds > this.maxRounds) {
           this.pending = false;
-          throw new Error("ZUI_MAX_FLUSH_ROUNDS");
+          throw new Error("RILLIO_MAX_FLUSH_ROUNDS");
         }
         this.pending = false;
         // Scan visits every active effect. Graph dequeues only invalidated

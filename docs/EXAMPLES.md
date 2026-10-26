@@ -1,34 +1,33 @@
 # Examples and benchmarks
 
-ZUI ships a dashboard showcase for the JSX runtime, an external Zustand store adapter, an explicit mount-once reactive DOM surface, and benchmark suites.
+Rillio ships a dashboard showcase for the JSX runtime, an external Zustand store adapter, an explicit mount-once reactive DOM surface, and benchmark suites.
 
 | Page / Subpath | Focus |
 |---|---|
-| `/` or `/admin.html` | ZUI Studio dashboard showcase with responsive layout and interactive team management |
+| `/` or `/admin.html` | Rillio Studio dashboard showcase with responsive layout and interactive team management |
 | `/realworld.html` | TaskFlow real-world project management application (Kanban, issues table, analytics, team, settings, Portals, ErrorBoundary, Zustand, DevTools) |
 | `/render-lab.html` | Console-traced comparison of local component state, parent state, and external-store selector updates |
 | `/store-lab.html` | Atomic and shallow Zustand selectors with visible render logs |
 | `/data-lab.html` | Mount-once reactive bindings, keyed list updates, DOM identity, and async resources |
 | `/benchmarks.html` | Live browser comparison of keyed-list cases with rendered DOM previews, timing, node counts, and browser usage signals |
-| [`docs/COMPONENT-LIFECYCLE.md`](COMPONENT-LIFECYCLE.md) | 100 logged lifecycle tests and current ZUI/React/Preact/Vue browser comparison |
-| `zui/ui` | Reusable visual primitives, tokens, and accessible controls |
-| `zui/external-store` | First-class, zero-dependency external stores (`create`, `shallow`, `useShallow`, `useStore`) |
-| `zui/reactive` + `zui/dom` | Reactive stores (`createStore`) with the explicit mount-once DOM API (`select`, `mount`, `Show`, `For`) |
-| `zui/devtools` | Live in-browser Flat Index inspector overlay and diagnostics |
+| [`docs/COMPONENT-LIFECYCLE.md`](COMPONENT-LIFECYCLE.md) | 100 logged lifecycle tests and current Rillio/React/Preact/Vue browser comparison |
+| `rillio/external-store` | First-class, zero-dependency external stores (`create`, `shallow`, `useShallow`, `useStore`) |
+| `rillio/reactive` + `rillio/dom` | Reactive stores (`createStore`) with the explicit mount-once DOM API (`select`, `mount`, `Show`, `For`) |
+| `rillio/devtools` | Live in-browser Flat Index inspector overlay and diagnostics |
 | `npm run bench:all` | Node benchmark suites for reactive invalidation, keyed reconciliation, and Flat Index updates |
-| `npm run bench:browser` | Headless Playwright Chromium benchmark comparing keyed lists and component updates in ZUI, React, Preact, and Vue |
+| `npm run bench:browser` | Headless Playwright Chromium benchmark comparing keyed lists and component updates in Rillio, React, Preact, and Vue |
 
 Open `/demos.html` for a browser-friendly interactive index.
 
-The [Live Renderer Bench](../benchmarks.html) runs real DOM workloads in the current tab. All six keyed-list cases are visible on the page and can run individually or as a complete suite; set the row count, warmups, and samples to compare ZUI, React, Preact, and Vue. It reports median and P95 time, tree-build and renderer/layout phases, rendered node counts, and available page-level browser usage signals. It checks the resulting row order and text before marking a run passed. Heap is a page-wide Chromium estimate where exposed, not a per-framework allocation measurement.
+The [Live Renderer Bench](../benchmarks.html) runs real DOM workloads in the current tab. All six keyed-list cases are visible on the page and can run individually or as a complete suite; set the row count, warmups, and samples to compare Rillio, React, Preact, and Vue. It reports median and P95 time, tree-build and renderer/layout phases, rendered node counts, and available page-level browser usage signals. It checks the resulting row order and text before marking a run passed. Heap is a page-wide Chromium estimate where exposed, not a per-framework allocation measurement.
 
-## 1. External Store Integration (`zui/external-store`)
+## 1. External Store Integration (`rillio/external-store`)
 
 Create bound stores directly without React dependencies, and select slices with atomic or shallow comparison:
 
 ```tsx
-import { create, useShallow } from "zui/external-store";
-import { createRoot } from "zui";
+import { create, useShallow } from "rillio/external-store";
+import { createRoot } from "rillio";
 
 interface CartState {
   items: string[];
@@ -78,18 +77,18 @@ createRoot(document.getElementById("app")!).render(
 );
 ```
 
-## 2. Explicit Reactive DOM (`zui/dom`)
+## 2. Explicit Reactive DOM (`rillio/dom`)
 
 Mount-once reactive DOM API without component re-evaluation:
 
 ```tsx
-import { createStore } from "zui/reactive";
-import { select, mount, Show, For } from "zui/dom";
+import { createStore } from "rillio/reactive";
+import { select, mount, Show, For } from "rillio/dom";
 
 const store = createStore({
   count: 0,
   visible: true,
-  todos: [{ id: 1, text: "Explore ZUI" }]
+  todos: [{ id: 1, text: "Explore Rillio" }]
 });
 
 function App() {
@@ -118,12 +117,12 @@ mount(App, document.getElementById("app")!);
 
 ## 3. Real-World Application Showcase (`/realworld.html`)
 
-The TaskFlow application under `examples/realworld/` showcases a complete, production-grade workspace built with ZUI:
+The TaskFlow application under `examples/realworld/` showcases a complete, production-grade workspace built with Rillio:
 
-- **State Management (`zui/external-store`)**: Centralized store with atomic selection for filters, active project, search query, modals, theme toggling, and toasts.
+- **State Management (`rillio/external-store`)**: Centralized store with atomic selection for filters, active project, search query, modals, theme toggling, and toasts.
 - **Portals (`createPortal`)**: Floating toast notification manager mounted directly to `document.body`, and an accessible task creation/editing modal dialog with backdrop dismiss and escape handling.
 - **Error Boundaries (`ErrorBoundary`)**: Subtree resilience leveraging transactional savepoints (`savepoint()` / `rollbackTo()`) to catch and recover from isolated render failures without crashing parent layouts.
-- **DevTools HUD (`zui/devtools`)**: Embedded Flat Index inspector overlay displaying real-time `NodeId`, `Kind`, `OwnerId`, and transaction diagnostics.
+- **DevTools HUD (`rillio/devtools`)**: Embedded Flat Index inspector overlay displaying real-time `NodeId`, `Kind`, `OwnerId`, and transaction diagnostics.
 - **Rich Interactive Views**:
   - **Kanban Board**: Drag-and-drop-style status progression across Backlog, Todo, In Progress, In Review, and Done.
   - **Issues Table**: Multi-column data grid with status, priority, assignee, tag filters, and sorting.
@@ -135,7 +134,7 @@ Run `npm run dev` and navigate to `http://localhost:5173/realworld.html` or sele
 
 ## 4. Render, Store, and Data Labs
 
-These small diagnostic pages are designed for the browser console. Each writes component or data events with a distinct prefix so you can connect a click to the work ZUI performs:
+These small diagnostic pages are designed for the browser console. Each writes component or data events with a distinct prefix so you can connect a click to the work Rillio performs:
 
 - **Render Scope Lab (`/render-lab.html`)**: Compare a local `useState` update, an App-owned update, and a Zustand slice update. Look for `[render-lab]` entries.
 - **Store Selector Lab (`/store-lab.html`)**: Update one selected field at a time and compare atomic selectors with a shallow object selector. Look for `[store-lab]` entries.

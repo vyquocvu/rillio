@@ -6,9 +6,9 @@
   "status": "pass",
   "visualReview": "pending",
   "artifact": {
-    "path": "/Users/vyquocvu/Develop/zui/docs/diagrams/performance-research.html",
-    "sha256": "4e9a54db9e61f0c7d1382dea6e35879b47cd56311c68db164d9d7d9e482d50ff",
-    "bytes": 803159
+    "path": "docs/diagrams/performance-research.html",
+    "sha256": "3d067f22a0bf8a11e9c4d3148d8d62bfe67b800d1037de158b62f0223310432a",
+    "bytes": 803180
   },
   "state": {
     "detail": "read",

@@ -3,9 +3,9 @@ import { createRoot as createReactRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { h as preactH, render as preactRender } from "preact";
 import { h as vueH, render as vueRender } from "vue";
-import { createRoot as createZuiRoot, jsx as zuiJsx } from "../src/compat.ts";
+import { createRoot as createRillioRoot, jsx as rillioJsx } from "../src/compat.ts";
 
-export type Framework = "zui" | "react" | "preact" | "vue";
+export type Framework = "rillio" | "react" | "preact" | "vue";
 export type Scenario = "mount" | "noop" | "text" | "append-remove" | "rotate" | "reverse";
 export type Row = { id: number; value: string };
 
@@ -80,8 +80,8 @@ export function makeTree(framework: Framework, rows: Row[]): unknown {
     )));
   }
 
-  return zuiJsx("ul", {
-    children: rows.map(row => zuiJsx("li", {
+  return rillioJsx("ul", {
+    children: rows.map(row => rillioJsx("li", {
       "data-id": String(row.id),
       children: row.value
     }, row.id))
@@ -116,7 +116,7 @@ export function createRenderer(framework: Framework, container: HTMLDivElement) 
     };
   }
 
-  const root = createZuiRoot(container);
+  const root = createRillioRoot(container);
   return {
     render: (tree: unknown) => root.render(tree as never),
     unmount: () => root.unmount()

@@ -130,7 +130,7 @@ export class PatchTransaction {
     return id;
   }
 
-  createBoundary(ownerId: OwnerId, startValue = "zui:start", endValue = "zui:end", key?: Key): NodeId {
+  createBoundary(ownerId: OwnerId, startValue = "rillio:start", endValue = "rillio:end", key?: Key): NodeId {
     this.assertMutable();
     const start = this.engine.createComment(startValue);
     const end = this.engine.createComment(endValue);
@@ -170,7 +170,7 @@ export class PatchTransaction {
    * Contract: no other structural operation may overlap this batch — no
    * insert/move/remove targeting `parentId`, no move/remove of the moved ids,
    * and no second move-many on the same parent. `validate()` enforces this
-   * with ZUI_INVALID_CHILD_ORDER; the reconcilers uphold it by only batching
+   * with RILLIO_INVALID_CHILD_ORDER; the reconcilers uphold it by only batching
    * fully-reused reorderings (see reconcileChildren and renderList).
    */
   moveMany(
@@ -241,7 +241,7 @@ export class PatchTransaction {
   }
 
   commit(): void {
-    if (this.lifecycle !== "OPEN") throw new Error("ZUI_TRANSACTION_REUSED");
+    if (this.lifecycle !== "OPEN") throw new Error("RILLIO_TRANSACTION_REUSED");
     if (this.operations.length === 0) {
       // Creating records is already an observable registry mutation. A
       // transaction that never schedules any patch must not leak those nodes.
@@ -479,7 +479,7 @@ export class PatchTransaction {
         const operation = operations[index]!;
         const node = operation.cachedNode ?? this.engine.registry.getNode(operation.nodeId);
         if (node.id !== operation.nodeId || node.rootId !== this.rootId || node.disposed) {
-          throw new Error("ZUI_TRANSACTION_NODE");
+          throw new Error("RILLIO_TRANSACTION_NODE");
         }
         const previous = typeof node.value === "string" ? node.value : (node.domStart as CharacterData).data;
         operation.previous = previous;
@@ -514,28 +514,28 @@ export class PatchTransaction {
       if (operation.kind === "insert") {
         const nodeId = operation.nodeId;
         const parentId = operation.parentId;
-        if (nodeId === parentId) throw new Error("ZUI_TRANSACTION_CYCLE");
+        if (nodeId === parentId) throw new Error("RILLIO_TRANSACTION_CYCLE");
 
         const node = operation.cachedNode ?? this.engine.registry.getNode(nodeId);
         if (node.parentId !== null) {
-          throw new Error("ZUI_TRANSACTION_DUPLICATE_INSERT");
+          throw new Error("RILLIO_TRANSACTION_DUPLICATE_INSERT");
         }
 
         const parent = operation.cachedParent ?? this.engine.registry.getNode(parentId);
-        if (parent.rootId !== this.rootId || parent.disposed) throw new Error("ZUI_TRANSACTION_PARENT");
+        if (parent.rootId !== this.rootId || parent.disposed) throw new Error("RILLIO_TRANSACTION_PARENT");
 
         if (operation.beforeId !== null) {
           const before = this.engine.registry.getNode(operation.beforeId);
-          if (before.rootId !== this.rootId || before.disposed) throw new Error("ZUI_TRANSACTION_ANCHOR");
+          if (before.rootId !== this.rootId || before.disposed) throw new Error("RILLIO_TRANSACTION_ANCHOR");
           if (operation.beforeId === nodeId || before.parentId !== parentId) {
-            throw new Error("ZUI_INVALID_ANCHOR");
+            throw new Error("RILLIO_INVALID_ANCHOR");
           }
         }
 
         if (node.firstChild !== null) {
           let ancestor: NodeId | null = parentId;
           while (ancestor !== null) {
-            if (ancestor === nodeId) throw new Error("ZUI_TRANSACTION_CYCLE");
+            if (ancestor === nodeId) throw new Error("RILLIO_TRANSACTION_CYCLE");
             ancestor = this.engine.registry.getNode(ancestor).parentId;
           }
         }
@@ -543,7 +543,7 @@ export class PatchTransaction {
         this.engine.insertCreatedRange(nodeId, parentId, operation.beforeId, node, parent);
       } else if (operation.kind === "props") {
         const node = this.engine.registry.getNode(operation.nodeId);
-        if (node.kind !== "element") throw new Error("ZUI_TRANSACTION_PROPS");
+        if (node.kind !== "element") throw new Error("RILLIO_TRANSACTION_PROPS");
         for (const name of operation.changedKeys) {
           validateProperty(name, operation.next[name]);
         }
@@ -557,7 +557,7 @@ export class PatchTransaction {
         if (attachRef) deferredRefs.push(attachRef);
       } else if (operation.kind === "text") {
         const node = operation.cachedNode ?? this.engine.registry.getNode(operation.nodeId);
-        if (node.kind !== "text") throw new Error("ZUI_TRANSACTION_TEXT");
+        if (node.kind !== "text") throw new Error("RILLIO_TRANSACTION_TEXT");
         this.engine.applyText(operation.nodeId, operation.value, node);
       } else if (operation.kind === "meta") {
         this.engine.registry.updateNode(operation.nodeId, operation.patch);
@@ -581,7 +581,7 @@ export class PatchTransaction {
 
   private assertMutable(): void {
     if (this.lifecycle !== "OPEN" && this.lifecycle !== "COMMITTING") {
-      throw new Error("ZUI_TRANSACTION_PHASE");
+      throw new Error("RILLIO_TRANSACTION_PHASE");
     }
   }
 
@@ -616,39 +616,39 @@ export class PatchTransaction {
           continue;
         }
         const node = this.engine.registry.getNode(operation.nodeId);
-        if (node.rootId !== this.rootId || node.disposed) throw new Error("ZUI_TRANSACTION_NODE");
+        if (node.rootId !== this.rootId || node.disposed) throw new Error("RILLIO_TRANSACTION_NODE");
         if (operation.kind === "portal") {
           if (
             node.kind !== "boundary" || node.parentId !== null ||
             !operation.container || operation.container.nodeType !== 1 ||
             typeof operation.container.appendChild !== "function" ||
             !operation.attachment || typeof operation.attachment !== "object"
-          ) throw new Error("ZUI_TRANSACTION_PORTAL");
+          ) throw new Error("RILLIO_TRANSACTION_PORTAL");
           continue;
         }
         if (operation.kind === "remove") {
-          if (removed.has(operation.nodeId)) throw new Error("ZUI_TRANSACTION_DUPLICATE_REMOVE");
+          if (removed.has(operation.nodeId)) throw new Error("RILLIO_TRANSACTION_DUPLICATE_REMOVE");
           removed.add(operation.nodeId);
           continue;
         }
-        if (removed.has(operation.nodeId)) throw new Error("ZUI_TRANSACTION_AFTER_REMOVE");
+        if (removed.has(operation.nodeId)) throw new Error("RILLIO_TRANSACTION_AFTER_REMOVE");
         if (operation.kind === "insert" || operation.kind === "move") {
           const parent = this.engine.registry.getNode(operation.parentId);
-          if (parent.rootId !== this.rootId || parent.disposed) throw new Error("ZUI_TRANSACTION_PARENT");
+          if (parent.rootId !== this.rootId || parent.disposed) throw new Error("RILLIO_TRANSACTION_PARENT");
           if (operation.beforeId !== null) {
             const before = this.engine.registry.getNode(operation.beforeId);
-            if (before.rootId !== this.rootId || before.disposed) throw new Error("ZUI_TRANSACTION_ANCHOR");
+            if (before.rootId !== this.rootId || before.disposed) throw new Error("RILLIO_TRANSACTION_ANCHOR");
             if (operation.beforeId === operation.nodeId || projectedParent(operation.beforeId) !== operation.parentId) {
-              throw new Error("ZUI_INVALID_ANCHOR");
+              throw new Error("RILLIO_INVALID_ANCHOR");
             }
           }
           if (operation.kind === "insert" && projectedParent(operation.nodeId) !== null) {
-            throw new Error("ZUI_TRANSACTION_INSERT_ATTACHED");
+            throw new Error("RILLIO_TRANSACTION_INSERT_ATTACHED");
           }
           if (inserted.has(operation.nodeId) && operation.kind === "insert") {
-            throw new Error("ZUI_TRANSACTION_DUPLICATE_INSERT");
+            throw new Error("RILLIO_TRANSACTION_DUPLICATE_INSERT");
           }
-          if (operation.nodeId === operation.parentId) throw new Error("ZUI_TRANSACTION_CYCLE");
+          if (operation.nodeId === operation.parentId) throw new Error("RILLIO_TRANSACTION_CYCLE");
           inserted.add(operation.nodeId);
           const isSameParentMove = operation.kind === "move" &&
             projectedParent(operation.nodeId) === operation.parentId;
@@ -657,16 +657,16 @@ export class PatchTransaction {
           if (!isSameParentMove && !newLeafInsert) {
             let ancestor: NodeId | null = operation.parentId;
             while (ancestor !== null) {
-              if (ancestor === operation.nodeId) throw new Error("ZUI_TRANSACTION_CYCLE");
+              if (ancestor === operation.nodeId) throw new Error("RILLIO_TRANSACTION_CYCLE");
               ancestor = projectedParent(ancestor);
             }
           }
           projectedParents.set(operation.nodeId, operation.parentId);
           projectedChildren.add(operation.parentId);
         }
-        if (operation.kind === "text" && node.kind !== "text") throw new Error("ZUI_TRANSACTION_TEXT");
+        if (operation.kind === "text" && node.kind !== "text") throw new Error("RILLIO_TRANSACTION_TEXT");
         if (operation.kind === "props") {
-          if (node.kind !== "element") throw new Error("ZUI_TRANSACTION_PROPS");
+          if (node.kind !== "element") throw new Error("RILLIO_TRANSACTION_PROPS");
           for (const name of operation.changedKeys) {
             validateProperty(name, operation.next[name]);
           }
@@ -689,9 +689,9 @@ export class PatchTransaction {
     conflicts: MoveManyConflictIndex
   ): void {
     const parent = this.engine.registry.getNode(operation.parentId);
-    if (parent.rootId !== this.rootId || parent.disposed) throw new Error("ZUI_TRANSACTION_PARENT");
+    if (parent.rootId !== this.rootId || parent.disposed) throw new Error("RILLIO_TRANSACTION_PARENT");
     if (operation.movingIds.length !== operation.beforeIds.length || operation.finalIds.length !== operation.originalIds.length) {
-      throw new Error("ZUI_INVALID_CHILD_ORDER");
+      throw new Error("RILLIO_INVALID_CHILD_ORDER");
     }
     const batchedIds = new Set(operation.originalIds);
     if (
@@ -699,23 +699,23 @@ export class PatchTransaction {
       conflicts.movedParentIds.has(operation.parentId) ||
       conflicts.moveManyParentCounts.get(operation.parentId)! > 1
     ) {
-      throw new Error("ZUI_INVALID_CHILD_ORDER");
+      throw new Error("RILLIO_INVALID_CHILD_ORDER");
     }
     for (const nodeId of batchedIds) {
       if (conflicts.movedNodeIds.has(nodeId) || conflicts.removedNodeIds.has(nodeId)) {
-        throw new Error("ZUI_INVALID_CHILD_ORDER");
+        throw new Error("RILLIO_INVALID_CHILD_ORDER");
       }
     }
 
     const originalRecords = this.engine.registry.childRecords(operation.parentId);
     if (originalRecords.length !== operation.originalIds.length) {
-      throw new Error("ZUI_INDEX_CORRUPT");
+      throw new Error("RILLIO_INDEX_CORRUPT");
     }
     const indexesById = new Map<NodeId, number>();
     for (let index = 0; index < originalRecords.length; index++) {
       const record = originalRecords[index]!;
       if (record.id !== operation.originalIds[index] || record.rootId !== this.rootId) {
-        throw new Error("ZUI_INDEX_CORRUPT");
+        throw new Error("RILLIO_INDEX_CORRUPT");
       }
       indexesById.set(record.id, index);
     }
@@ -725,7 +725,7 @@ export class PatchTransaction {
     for (let index = 0; index < operation.finalIds.length; index++) {
       const originalIndex = indexesById.get(operation.finalIds[index]!);
       if (originalIndex === undefined || seenFinalIndexes[originalIndex] !== 0) {
-        throw new Error("ZUI_INVALID_CHILD_ORDER");
+        throw new Error("RILLIO_INVALID_CHILD_ORDER");
       }
       seenFinalIndexes[originalIndex] = 1;
       finalRecords[index] = originalRecords[originalIndex]!;
@@ -739,14 +739,14 @@ export class PatchTransaction {
       const beforeId = operation.beforeIds[index]!;
       const originalIndex = indexesById.get(nodeId);
       if (originalIndex === undefined || movedIndexes[originalIndex] !== 0 || beforeId === nodeId) {
-        throw new Error("ZUI_INVALID_MOVE");
+        throw new Error("RILLIO_INVALID_MOVE");
       }
       movedIndexes[originalIndex] = 1;
       movingRecords[index] = originalRecords[originalIndex]!;
       if (beforeId === null) beforeRecords[index] = null;
       else {
         const beforeIndex = indexesById.get(beforeId);
-        if (beforeIndex === undefined) throw new Error("ZUI_INVALID_ANCHOR");
+        if (beforeIndex === undefined) throw new Error("RILLIO_INVALID_ANCHOR");
         beforeRecords[index] = originalRecords[beforeIndex]!;
       }
     }

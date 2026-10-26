@@ -40,7 +40,8 @@ a:focus-visible, button:focus-visible { outline: 3px solid rgba(105, 68, 220, .2
 
 .hero { display: grid; grid-template-columns: minmax(0, .92fr) minmax(500px, 1.08fr); align-items: center; gap: 58px; padding-block: 80px 98px; }
 .hero__copy { position: relative; z-index: 1; }
-.hero__badge { margin-bottom: 23px; padding: 7px 10px; font-size: 10px; letter-spacing: .01em; }
+.hero__badge { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 23px; padding: 7px 10px; border-radius: 999px; color: #7041d6; background: #f0eaff; font-size: 10px; font-weight: 750; letter-spacing: .01em; line-height: 1; }
+.hero__badge::before { width: 5px; height: 5px; border-radius: 50%; background: currentColor; content: ""; }
 .hero h1 { max-width: 610px; margin: 0; color: #181827; font-size: clamp(50px, 5.6vw, 73px); font-weight: 770; letter-spacing: -.045em; line-height: .99; }
 .hero h1 span { color: var(--landing-purple); }
 .hero__description { max-width: 480px; margin: 24px 0 0; color: var(--landing-muted); font-size: 16px; line-height: 1.75; }
@@ -82,7 +83,7 @@ a:focus-visible, button:focus-visible { outline: 3px solid rgba(105, 68, 220, .2
 .counter-preview__hint { color: #888a9c; font-size: 10px; }
 .counter-preview__control { display: flex; align-items: center; gap: 10px; }
 .counter-preview__value { display: grid; min-width: 35px; height: 35px; place-items: center; border: 1px solid #eeeaf9; border-radius: 10px; color: var(--landing-purple); background: #f6f3ff; font-size: 15px; font-weight: 790; }
-.counter-preview__button { min-height: 35px !important; padding-inline: 11px !important; font-size: 10px !important; }
+.counter-preview__button { min-height: 35px; padding: 0 11px; border: 0; border-radius: 8px; color: #fff; background: var(--landing-purple); cursor: pointer; font-size: 10px; font-weight: 730; }
 .visual-caption { position: relative; display: flex; align-items: center; gap: 8px; margin: 16px 2px 0; color: #838296; font-size: 10px; font-weight: 620; }
 .visual-caption__dot { width: 6px; height: 6px; border-radius: 50%; background: #46b786; box-shadow: 0 0 0 3px #dff6ec; }
 

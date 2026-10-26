@@ -1,4 +1,4 @@
-import { useState, ErrorBoundary } from "zui";
+import { useState, ErrorBoundary } from "rillio";
 import { api } from "../api.js";
 import { useAppStore } from "../store.js";
 import { AlertIcon, CheckIcon, MoonIcon, SunIcon } from "./Icons.js";
@@ -11,7 +11,7 @@ let simulatedErrorTriggered = false;
 
 function FragileSubtree() {
   if (simulatedErrorTriggered) {
-    throw new Error("Simulated rendering exception caught by ZUI ErrorBoundary!");
+    throw new Error("Simulated rendering exception caught by Rillio ErrorBoundary!");
   }
 
   return (
@@ -132,10 +132,10 @@ export function SettingsView({ onResetDatabase }: SettingsViewProps) {
           }}
         >
           <h3 style={{ margin: "0 0 8px", fontSize: "14px", fontWeight: 600, color: "#f8fafc" }}>
-            ZUI ErrorBoundary & Transaction Savepoints
+            Rillio ErrorBoundary & Transaction Savepoints
           </h3>
           <p style={{ margin: "0 0 16px", fontSize: "12px", color: "#94a3b8", lineHeight: 1.4 }}>
-            In ZUI, <code>ErrorBoundary</code> uses transactional savepoints (<code>savepoint()</code> / <code>rollbackTo()</code>).
+            In Rillio, <code>ErrorBoundary</code> uses transactional savepoints (<code>savepoint()</code> / <code>rollbackTo()</code>).
             When a child subtree throws during rendering, only the failed sub-transaction is rolled back while the parent boundary remains stable.
           </p>
 

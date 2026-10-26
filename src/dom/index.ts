@@ -1,7 +1,7 @@
 /**
  * Modular explicit reactive DOM API.
  *
- * This is the mount-once surface of ZUI. It shares the addressable registry
+ * This is the mount-once surface of Rillio. It shares the addressable registry
  * and PatchEngine with the JSX runtime; it does not maintain a second DOM
  * tree or mutate browser nodes directly.
  */

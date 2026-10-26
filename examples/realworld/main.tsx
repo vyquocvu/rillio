@@ -1,5 +1,5 @@
-import { createRoot, useEffect, useState, ErrorBoundary } from "zui";
-import { createInspectorOverlay, type InspectorOverlayHandle } from "zui/devtools";
+import { createRoot, useEffect, useState, ErrorBoundary } from "rillio";
+import { createInspectorOverlay, type InspectorOverlayHandle } from "rillio/devtools";
 import { api } from "./api.js";
 import { AnalyticsView } from "./components/AnalyticsView.js";
 import { Header } from "./components/Header.js";

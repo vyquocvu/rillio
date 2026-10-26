@@ -111,7 +111,7 @@ export function renderChild(
 
   if (typeof value === "function") {
     const scope = createScope(root.rootId, parentOwnerId, ownerId => {
-      const nodeId = tx.createBoundary(ownerId, "zui:start", "zui:end");
+      const nodeId = tx.createBoundary(ownerId, "rillio:start", "rillio:end");
       tx.insert(nodeId, parentId);
       engine.effect(() => {
         const child = (value as () => Child)();
@@ -138,7 +138,7 @@ export function renderChild(
 
   if (isConditional(value)) {
     const scope = createScope(root.rootId, parentOwnerId, ownerId => {
-      const nodeId = tx.createBoundary(ownerId, "zui:show:start", "zui:show:end");
+      const nodeId = tx.createBoundary(ownerId, "rillio:show:start", "rillio:show:end");
       tx.insert(nodeId, parentId);
       let present: boolean | undefined;
       engine.effect(() => {
@@ -163,7 +163,7 @@ export function renderChild(
   const vnodeType = vnode.type;
   if (typeof vnodeType === "function") {
     const scope = createScope(root.rootId, parentOwnerId, ownerId => {
-      const nodeId = tx.createBoundary(ownerId, "zui:component", "/zui:component", vnode.key);
+      const nodeId = tx.createBoundary(ownerId, "rillio:component", "/rillio:component", vnode.key);
       tx.setMeta(nodeId, { type: vnodeType, key: vnode.key, props: vnode.props, value: vnode });
       tx.insert(nodeId, parentId);
       const child = vnodeType({ ...vnode.props, key: vnode.key });
@@ -194,7 +194,7 @@ export function renderList<T>(
   tx: PatchTransaction
 ): NodeId[] {
   const scope = createScope(root.rootId, parentOwnerId, ownerId => {
-    const regionId = tx.createBoundary(ownerId, "zui:for:start", "zui:for:end");
+    const regionId = tx.createBoundary(ownerId, "rillio:for:start", "rillio:for:end");
     tx.insert(regionId, parentId);
     type Entry = { nodeId: NodeId; value: T; state: Store<T> };
     let entries = new Map<Key, Entry>();
@@ -202,7 +202,7 @@ export function renderList<T>(
       const next = evaluate(spec.each);
       const keys = next.map(spec.by);
       const unique = new Set(keys);
-      if (unique.size !== keys.length) throw new Error("ZUI_DUPLICATE_KEY");
+      if (unique.size !== keys.length) throw new Error("RILLIO_DUPLICATE_KEY");
       const oldIds = registry.children(regionId);
       const oldIndexById = new Map(oldIds.map((id, index) => [id, index] as const));
       patches.update(root.rootId, update => {
@@ -214,7 +214,7 @@ export function renderList<T>(
           let entry = entries.get(key);
           if (!entry) {
             const itemScope = createScope(root.rootId, ownerId, itemOwnerId => {
-              const itemNodeId = update.createBoundary(itemOwnerId, "zui:item:start", "zui:item:end", key);
+              const itemNodeId = update.createBoundary(itemOwnerId, "rillio:item:start", "rillio:item:end", key);
               const state = createStore<T>(item);
               update.insert(itemNodeId, regionId);
               renderChild(spec.children(item, () => state.get()), itemNodeId, itemOwnerId, root, update);
@@ -271,7 +271,7 @@ export function longestIncreasingIds(
 
 /** Mount a reactive subtree and return its lifecycle disposer. */
 export function mount(component: (() => Child) | Child, target: Element): Dispose {
-  if (registry.rootFor(target)) throw new Error("ZUI_ROOT_OCCUPIED");
+  if (registry.rootFor(target)) throw new Error("RILLIO_ROOT_OCCUPIED");
   const root = registry.createRoot(target);
   let disposed = false;
   let rootScope: { dispose(): void } | undefined;

@@ -6,7 +6,7 @@
     "cpu": "Apple M1 Pro",
     "node": "v26.5.0",
     "frameworkVersions": {
-      "zui": "0.1.0",
+      "rillio": "0.1.0",
       "react": "19.3.0",
       "preact": "11.0.1",
       "vue": "3.5.43"
@@ -26,7 +26,7 @@
         "reverse"
       ],
       "frameworks": [
-        "zui",
+        "rillio",
         "react",
         "preact",
         "vue"
@@ -36,7 +36,7 @@
       "pairedRepeats": 3
     },
     "orderPositionCounts": {
-      "zui": [
+      "rillio": [
         10,
         9,
         12,
@@ -102,7 +102,7 @@
   },
   "results": [
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 100,
       "mountCpuThreadMsMedian": 1.481999999999997,
@@ -574,7 +574,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 100,
       "mountCpuThreadMsMedian": 1.580000000000005,
@@ -1046,7 +1046,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 100,
       "mountCpuThreadMsMedian": 1.5410000000000008,
@@ -1518,7 +1518,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 100,
       "mountCpuThreadMsMedian": 1.467000000000003,
@@ -1990,7 +1990,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 100,
       "mountCpuThreadMsMedian": 1.563999999999996,
@@ -2462,7 +2462,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 1000,
       "mountCpuThreadMsMedian": 8.273000000000003,
@@ -2934,7 +2934,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 1000,
       "mountCpuThreadMsMedian": 10.200999999999988,
@@ -3406,7 +3406,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 1000,
       "mountCpuThreadMsMedian": 10.200000000000001,
@@ -3878,7 +3878,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 1000,
       "mountCpuThreadMsMedian": 8.653999999999995,
@@ -4350,7 +4350,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 1000,
       "mountCpuThreadMsMedian": 8.229999999999988,
@@ -4822,7 +4822,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 2000,
       "mountCpuThreadMsMedian": 18.578999999999997,
@@ -5294,7 +5294,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 2000,
       "mountCpuThreadMsMedian": 19.502999999999993,
@@ -5766,7 +5766,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 2000,
       "mountCpuThreadMsMedian": 19.069000000000003,
@@ -6238,7 +6238,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 2000,
       "mountCpuThreadMsMedian": 18.781999999999993,
@@ -6710,7 +6710,7 @@
       "runCount": 3
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 2000,
       "mountCpuThreadMsMedian": 19.001000000000047,
@@ -7184,7 +7184,7 @@
   ],
   "rawRuns": [
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 2000,
       "mountCpuThreadMs": 18.206,
@@ -7225,7 +7225,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 2000,
       "mountCpuThreadMs": 18.578999999999997,
@@ -7266,7 +7266,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 2000,
       "mountCpuThreadMs": 19.242000000000008,
@@ -7799,7 +7799,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 1000,
       "mountCpuThreadMs": 10.236999999999997,
@@ -7840,7 +7840,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 1000,
       "mountCpuThreadMs": 8.229999999999988,
@@ -7881,7 +7881,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 1000,
       "mountCpuThreadMs": 8.165000000000006,
@@ -8168,7 +8168,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 2000,
       "mountCpuThreadMs": 18.781999999999993,
@@ -8209,7 +8209,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 2000,
       "mountCpuThreadMs": 18.494999999999983,
@@ -8250,7 +8250,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 2000,
       "mountCpuThreadMs": 19.109000000000016,
@@ -8660,7 +8660,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 1000,
       "mountCpuThreadMs": 8.858000000000004,
@@ -8701,7 +8701,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 1000,
       "mountCpuThreadMs": 8.408000000000012,
@@ -8742,7 +8742,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 1000,
       "mountCpuThreadMs": 8.653999999999995,
@@ -9521,7 +9521,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 2000,
       "mountCpuThreadMs": 18.89099999999999,
@@ -9562,7 +9562,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 2000,
       "mountCpuThreadMs": 19.555999999999962,
@@ -9603,7 +9603,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 2000,
       "mountCpuThreadMs": 19.001000000000047,
@@ -9767,7 +9767,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 100,
       "mountCpuThreadMs": 1.563999999999996,
@@ -9808,7 +9808,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 100,
       "mountCpuThreadMs": 1.5260000000000065,
@@ -9849,7 +9849,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "reverse",
       "size": 100,
       "mountCpuThreadMs": 1.6289999999999984,
@@ -10505,7 +10505,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 1000,
       "mountCpuThreadMs": 8.958000000000007,
@@ -10546,7 +10546,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 1000,
       "mountCpuThreadMs": 10.925000000000004,
@@ -10587,7 +10587,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 1000,
       "mountCpuThreadMs": 10.200000000000001,
@@ -10874,7 +10874,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 100,
       "mountCpuThreadMs": 1.468999999999998,
@@ -10915,7 +10915,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 100,
       "mountCpuThreadMs": 1.467000000000003,
@@ -10956,7 +10956,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "rotate",
       "size": 100,
       "mountCpuThreadMs": 1.460000000000003,
@@ -11120,7 +11120,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 100,
       "mountCpuThreadMs": 1.5480000000000007,
@@ -11161,7 +11161,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 100,
       "mountCpuThreadMs": 1.5410000000000008,
@@ -11202,7 +11202,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 100,
       "mountCpuThreadMs": 1.5049999999999994,
@@ -11735,7 +11735,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 1000,
       "mountCpuThreadMs": 10.604000000000003,
@@ -11776,7 +11776,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 1000,
       "mountCpuThreadMs": 10.200999999999988,
@@ -11817,7 +11817,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 1000,
       "mountCpuThreadMs": 8.261999999999992,
@@ -12473,7 +12473,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 1000,
       "mountCpuThreadMs": 8.319000000000006,
@@ -12514,7 +12514,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 1000,
       "mountCpuThreadMs": 8.273000000000003,
@@ -12555,7 +12555,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 1000,
       "mountCpuThreadMs": 8.236000000000008,
@@ -12965,7 +12965,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 100,
       "mountCpuThreadMs": 1.4470000000000038,
@@ -13006,7 +13006,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 100,
       "mountCpuThreadMs": 1.481999999999997,
@@ -13047,7 +13047,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "noop",
       "size": 100,
       "mountCpuThreadMs": 1.5150000000000023,
@@ -13457,7 +13457,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 2000,
       "mountCpuThreadMs": 19.148000000000014,
@@ -13498,7 +13498,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 2000,
       "mountCpuThreadMs": 18.610000000000003,
@@ -13539,7 +13539,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "append-remove",
       "size": 2000,
       "mountCpuThreadMs": 19.069000000000003,
@@ -13580,7 +13580,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 2000,
       "mountCpuThreadMs": 19.698999999999995,
@@ -13621,7 +13621,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 2000,
       "mountCpuThreadMs": 19.502999999999993,
@@ -13662,7 +13662,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 2000,
       "mountCpuThreadMs": 19.256999999999998,
@@ -14072,7 +14072,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 100,
       "mountCpuThreadMs": 1.5259999999999996,
@@ -14113,7 +14113,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 100,
       "mountCpuThreadMs": 1.693,
@@ -14154,7 +14154,7 @@
       "documentsAfterRelease": 1
     },
     {
-      "framework": "zui",
+      "framework": "rillio",
       "scenario": "text",
       "size": 100,
       "mountCpuThreadMs": 1.580000000000005,

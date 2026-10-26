@@ -22,7 +22,7 @@ describe("addressable DOM foundation", () => {
     const firstDomNode = registry.getNode(ids[0]!).domStart;
     patches.transaction(root.rootId, tx => ids.forEach(nodeId => tx.remove(nodeId)));
 
-    expect(() => registry.getNode(ids[0]!)).toThrow("ZUI_UNKNOWN_NODE");
+    expect(() => registry.getNode(ids[0]!)).toThrow("RILLIO_UNKNOWN_NODE");
     const retained = registry.getNode(ids[2]!);
     expect(retained.disposed).toBe(true);
     expect(retained.domStart).not.toBe(firstDomNode);
@@ -33,7 +33,7 @@ describe("addressable DOM foundation", () => {
 
     const owners = [0, 1, 2].map(() => registry.createOwner(root.rootId, root.ownerId));
     owners.forEach(ownerId => registry.disposeOwner(ownerId));
-    expect(() => registry.getOwner(owners[0]!)).toThrow("ZUI_UNKNOWN_OWNER");
+    expect(() => registry.getOwner(owners[0]!)).toThrow("RILLIO_UNKNOWN_OWNER");
     expect(registry.allOwners().filter(item => item.disposed)).toHaveLength(2);
     expect(registry.allNodes().filter(node => node.disposed)).toHaveLength(0);
   });
@@ -51,11 +51,11 @@ describe("addressable DOM foundation", () => {
     patches.transaction(root.rootId, tx => tx.remove(nodeId));
     registry.disposeOwner(owner);
 
-    expect(() => registry.getNode(nodeId)).toThrow("ZUI_UNKNOWN_NODE");
-    expect(() => registry.getOwner(owner)).toThrow("ZUI_UNKNOWN_OWNER");
+    expect(() => registry.getNode(nodeId)).toThrow("RILLIO_UNKNOWN_NODE");
+    expect(() => registry.getOwner(owner)).toThrow("RILLIO_UNKNOWN_OWNER");
     expect(registry.allNodes().some(node => node.disposed)).toBe(false);
     expect(registry.allOwners().some(item => item.disposed)).toBe(false);
-    expect(() => new NodeRegistry({ maxTombstones: -1 })).toThrow("ZUI_INVALID_TOMBSTONE_LIMIT");
+    expect(() => new NodeRegistry({ maxTombstones: -1 })).toThrow("RILLIO_INVALID_TOMBSTONE_LIMIT");
   });
 
   it("allocates listener and style bookkeeping only while those props are active", () => {
@@ -104,8 +104,8 @@ describe("addressable DOM foundation", () => {
       tx.insert(child, root.nodeId);
     });
 
-    expect(() => registry.createRoot(container)).toThrow("ZUI_ROOT_OCCUPIED");
-    expect(() => registry.disposeRoot(root.rootId)).toThrow("ZUI_ROOT_NOT_EMPTY");
+    expect(() => registry.createRoot(container)).toThrow("RILLIO_ROOT_OCCUPIED");
+    expect(() => registry.disposeRoot(root.rootId)).toThrow("RILLIO_ROOT_NOT_EMPTY");
     expect(registry.rootFor(container)?.rootId).toBe(root.rootId);
     expect(container.querySelector("span")).not.toBeNull();
   });
@@ -135,7 +135,7 @@ describe("addressable DOM foundation", () => {
     ] as const) {
       expect(() => patches.transaction(root.rootId, tx => {
         tx.patchProps(parent, { "data-safe": "retained" }, { "data-safe": "retained", [name]: value });
-      })).toThrow("ZUI_UNSAFE_HTML_PROP");
+      })).toThrow("RILLIO_UNSAFE_HTML_PROP");
       expect(container.innerHTML).toBe(originalHTML);
       registry.assertConsistent(root.rootId);
     }
@@ -152,7 +152,7 @@ describe("addressable DOM foundation", () => {
       const link = tx.createElement(owner, "a");
       tx.insert(link, root.nodeId);
       tx.patchProps(link, {}, { href: "java\nscript:alert(1)" });
-    })).toThrow("ZUI_UNSAFE_URL_PROP");
+    })).toThrow("RILLIO_UNSAFE_URL_PROP");
     expect(container.childNodes).toHaveLength(0);
   });
 
@@ -171,7 +171,7 @@ describe("addressable DOM foundation", () => {
 
     expect(() => patches.transaction(root.rootId, tx => {
       tx.patchProps(image, {}, { onerror: "alert(1)" });
-    })).toThrow("ZUI_UNSAFE_EVENT_PROP");
+    })).toThrow("RILLIO_UNSAFE_EVENT_PROP");
     expect(container.querySelector("img")?.getAttribute("onerror")).toBeNull();
 
     patches.transaction(root.rootId, tx => {
@@ -245,7 +245,7 @@ describe("addressable DOM foundation", () => {
     expect(() => patches.transaction(root.rootId, tx => {
       const child = tx.createElement(owner, "div");
       tx.insert(child, child);
-    })).toThrow("ZUI_TRANSACTION_CYCLE");
+    })).toThrow("RILLIO_TRANSACTION_CYCLE");
 
     expect(registry.children(root.nodeId)).toEqual([]);
     expect(registry.allNodes().filter(node => node.kind === "element" && !node.disposed)).toHaveLength(0);
@@ -261,7 +261,7 @@ describe("addressable DOM foundation", () => {
       ownerId: second.ownerId,
       kind: "element",
       domStart: document.createElement("span")
-    })).toThrow("ZUI_OWNER_ROOT_MISMATCH");
+    })).toThrow("RILLIO_OWNER_ROOT_MISMATCH");
     expect(registry.allNodes()).toHaveLength(2);
   });
 
@@ -290,7 +290,7 @@ describe("addressable DOM foundation", () => {
       const second = tx.createElement(owner, "span");
       tx.insert(first, second);
       tx.insert(second, first);
-    })).toThrow("ZUI_TRANSACTION_CYCLE");
+    })).toThrow("RILLIO_TRANSACTION_CYCLE");
     expect(registry.children(root.nodeId)).toEqual([]);
     expect(registry.allNodes().filter(node => node.kind === "element" && !node.disposed)).toHaveLength(0);
   });
@@ -380,22 +380,22 @@ describe("addressable DOM foundation", () => {
     expect(() => patches.transaction(root.rootId, tx => {
       tx.insert(tx.createElement(owner, "i"), root.nodeId);
       tx.moveMany(root.nodeId, ids, [third!, first!, second!], [third!], [first!]);
-    })).toThrow("ZUI_INVALID_CHILD_ORDER");
+    })).toThrow("RILLIO_INVALID_CHILD_ORDER");
 
     expect(() => patches.transaction(root.rootId, tx => {
       tx.moveMany(root.nodeId, ids, [third!, first!, second!], [third!], [first!]);
       tx.move(first!, root.nodeId, null);
-    })).toThrow("ZUI_INVALID_CHILD_ORDER");
+    })).toThrow("RILLIO_INVALID_CHILD_ORDER");
 
     expect(() => patches.transaction(root.rootId, tx => {
       tx.moveMany(root.nodeId, ids, [third!, first!, second!], [third!], [first!]);
       tx.remove(second!);
-    })).toThrow("ZUI_INVALID_CHILD_ORDER");
+    })).toThrow("RILLIO_INVALID_CHILD_ORDER");
 
     expect(() => patches.transaction(root.rootId, tx => {
       tx.moveMany(root.nodeId, ids, [third!, first!, second!], [third!], [first!]);
       tx.moveMany(root.nodeId, ids, [first!, second!, third!], [first!], [second!]);
-    })).toThrow("ZUI_INVALID_CHILD_ORDER");
+    })).toThrow("RILLIO_INVALID_CHILD_ORDER");
 
     expect(registry.children(root.nodeId)).toEqual(ids);
     expect([...container.children].map(node => node.tagName)).toEqual(["I", "I", "I"]);
@@ -420,7 +420,7 @@ describe("addressable DOM foundation", () => {
     expect(() => patches.transaction(root.rootId, tx => {
       tx.setText(first, "updated-first", registry.getNode(first));
       tx.setText(second, "updated-second", registry.getNode(first));
-    })).toThrow("ZUI_TRANSACTION_NODE");
+    })).toThrow("RILLIO_TRANSACTION_NODE");
 
     expect(container.textContent).toBe("firstsecond");
     expect(registry.getNode(first).value).toBe("first");
@@ -642,7 +642,7 @@ describe("addressable DOM foundation", () => {
     const root = registry.createRoot(container);
     const owner = registry.createOwner(root.rootId, root.ownerId);
 
-    const complexConfig = { enabled: true, tags: ["zui"] };
+    const complexConfig = { enabled: true, tags: ["rillio"] };
     let customBtnId!: number;
     let customElId!: number;
 
@@ -848,8 +848,8 @@ describe("nested transaction isolation", () => {
 
     expect(escaped.phase).toBe("ABORTED");
     expect(container.textContent).toBe("");
-    expect(() => escaped.setText(nodeId, "late write")).toThrow("ZUI_TRANSACTION_PHASE");
-    expect(() => escaped.commit()).toThrow("ZUI_TRANSACTION_REUSED");
+    expect(() => escaped.setText(nodeId, "late write")).toThrow("RILLIO_TRANSACTION_PHASE");
+    expect(() => escaped.commit()).toThrow("RILLIO_TRANSACTION_REUSED");
     expect(container.textContent).toBe("");
   });
 
@@ -943,7 +943,7 @@ describe("nested transaction isolation", () => {
 
     patches.transaction(root.rootId, () => {
       expect(() => patches.transaction(otherRoot.rootId, () => undefined))
-        .toThrow("ZUI_NESTED_ROOT_TRANSACTION");
+        .toThrow("RILLIO_NESTED_ROOT_TRANSACTION");
     });
   });
 });
@@ -1030,7 +1030,7 @@ describe("commit telemetry", () => {
       removalTransaction = tx;
       tx.remove(element);
     }))
-      .toThrow("ZUI_TRANSACTION_PHASE");
+      .toThrow("RILLIO_TRANSACTION_PHASE");
 
     expect(container.textContent).toBe("still here");
     expect(registry.getNode(element).disposed).toBe(true);

@@ -10,10 +10,10 @@ function readInteger(name, fallback, minimum = 1, maximum = Number.MAX_SAFE_INTE
   return value;
 }
 
-const size = readInteger("ZUI_PROFILE_SIZE", 2_000);
-const mountRoots = readInteger("ZUI_PROFILE_MOUNT_ROOTS", 20);
-const updateCount = readInteger("ZUI_PROFILE_UPDATES", 80);
-const samplingIntervalUs = readInteger("ZUI_PROFILE_INTERVAL_US", 100, 50, 10_000);
+const size = readInteger("RILLIO_PROFILE_SIZE", 2_000);
+const mountRoots = readInteger("RILLIO_PROFILE_MOUNT_ROOTS", 20);
+const updateCount = readInteger("RILLIO_PROFILE_UPDATES", 80);
+const samplingIntervalUs = readInteger("RILLIO_PROFILE_INTERVAL_US", 100, 50, 10_000);
 const viteServer = await createServer({
   configFile: "vite.config.mjs",
   logLevel: "error",
@@ -54,12 +54,12 @@ try {
       const roots = containers.map(container => runtime.createRoot(container));
       const state = { runtime, roots, containers, rows, makeTree, iteration: 0 };
       if (scenario !== "mount") roots[0].render(makeTree(rows));
-      window.__zuiProfileState = state;
+      window.__rillioProfileState = state;
     }, { scenario, size, mountRoots });
 
     await profiler.send("Profiler.start");
     await page.evaluate(({ scenario, updateCount }) => {
-      const state = window.__zuiProfileState;
+      const state = window.__rillioProfileState;
       if (scenario === "mount") {
         for (const root of state.roots) root.render(state.makeTree(state.rows));
         return;
@@ -104,10 +104,10 @@ try {
     }, null, 2)}\n`);
 
     await page.evaluate(() => {
-      const state = window.__zuiProfileState;
+      const state = window.__rillioProfileState;
       for (const root of state.roots) root.unmount();
       for (const container of state.containers) container.remove();
-      delete window.__zuiProfileState;
+      delete window.__rillioProfileState;
     });
   }
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createStore, engine } from "../src/reactive-api.js";
 import { jsx, mount } from "../src/dom.js";
 
-describe("React-friendly ZUI DX", () => {
+describe("React-friendly Rillio DX", () => {
   it("supports direct store children and controlled value props without rerender", () => {
     const count = createStore(0);
     const root = document.createElement("div");

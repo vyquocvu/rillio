@@ -5,13 +5,13 @@ const path = require("node:path");
 
 const repoRoot = path.resolve(__dirname, "..");
 const fixtureRoot = path.join(repoRoot, "tests", "consumer-fixture");
-const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "zui-consumer-"));
+const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "rillio-consumer-"));
 
 try {
   fs.cpSync(fixtureRoot, temporaryRoot, { recursive: true });
   const modulesRoot = path.join(temporaryRoot, "node_modules");
   fs.mkdirSync(modulesRoot);
-  fs.symlinkSync(repoRoot, path.join(modulesRoot, "zui"), "dir");
+  fs.symlinkSync(repoRoot, path.join(modulesRoot, "rillio"), "dir");
 
   const tsc = path.join(repoRoot, "node_modules", "typescript", "bin", "tsc");
   for (const config of ["tsconfig.json", "tsconfig.dev.json"]) {

@@ -1,5 +1,5 @@
-import { createStore } from "zui/reactive";
-import { For, Show, mount, select } from "zui/dom";
+import { createStore } from "rillio/reactive";
+import { For, Show, mount, select } from "rillio/dom";
 
 const API = "https://pokeapi.co/api/v2";
 const PAGE_SIZE = 24;
@@ -191,7 +191,7 @@ function App() {
   return (
     <main class="pokedex-shell">
       <nav class="pokedex-nav">
-        <a class="brand" href="/demos.html"><span class="brand-mark">Z</span><span>ZUI examples</span></a>
+        <a class="brand" href="/demos.html"><span class="brand-mark">Z</span><span>Rillio examples</span></a>
         <span class="nav-label">Public API demo</span>
       </nav>
 
@@ -270,7 +270,7 @@ function App() {
       </section>
 
       <footer class="pokedex-footer">
-        <span>Built with ZUI · Data from <a href="https://pokeapi.co/" target="_blank" rel="noreferrer">PokéAPI</a></span>
+        <span>Built with Rillio · Data from <a href="https://pokeapi.co/" target="_blank" rel="noreferrer">PokéAPI</a></span>
         <a href="/demos.html">Back to examples</a>
       </footer>
 

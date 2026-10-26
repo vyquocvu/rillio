@@ -1,5 +1,5 @@
 /**
- * Zustand-compatible external-store hook and store creator for ZUI components.
+ * Zustand-compatible external-store hook and store creator for Rillio components.
  *
  * This adapter accepts Zustand's vanilla/bound Store API structurally. It does
  * not import Zustand or React, so applications keep one renderer and can use
@@ -46,7 +46,7 @@ export function useShallow<State, Selection>(
 }
 
 /**
- * Select a value from a Zustand vanilla or bound store inside a ZUI component.
+ * Select a value from a Zustand vanilla or bound store inside a Rillio component.
  * The component updates only when the selected value fails `equalityFn`.
  */
 export function useStore<State, Selection = State>(
@@ -152,7 +152,7 @@ export function createStore<State>(initializer: StateCreator<State>): ZustandSto
 
 /**
  * Creates a bound store hook with full Zustand API (getState, setState, subscribe)
- * for ZUI components. Can take a state initializer or wrap an existing vanilla store.
+ * for Rillio components. Can take a state initializer or wrap an existing vanilla store.
  */
 export function create<State>(initializer: StateCreator<State>): BoundStore<State>;
 export function create<Store extends ZustandStore<any>>(

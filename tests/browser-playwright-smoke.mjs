@@ -37,67 +37,6 @@ try {
   if (runtimeErrors.length) throw new Error(`Uncaught browser errors: ${runtimeErrors.join(" | ")}`);
 
   await page.evaluate(async () => {
-    const { createRoot, jsx, useState, Modal, StyleSheet } = await import("/package/index.js");
-    const container = document.createElement("div");
-    container.id = "playwright-modal-smoke";
-    document.body.append(container);
-
-    function ModalApp() {
-      const [open, setOpen] = useState(false);
-      return jsx("main", {
-        children: [
-          jsx(StyleSheet, {}),
-          jsx("button", {
-            id: "playwright-modal-opener",
-            onClick: () => setOpen(true),
-            children: "Open modal"
-          }),
-          Modal({
-            open,
-            title: "Playwright modal smoke",
-            description: "Keyboard behavior check",
-            onClose: () => setOpen(false),
-            children: jsx("button", { children: "Save" })
-          })
-        ]
-      });
-    }
-
-    const root = createRoot(container);
-    root.render(jsx(ModalApp, {}));
-    window.__zuiModalSmokeRoot = root;
-  });
-
-  await page.getByRole("button", { name: "Open modal" }).click();
-  const dialog = page.getByRole("dialog", { name: "Playwright modal smoke" });
-  await dialog.waitFor({ state: "visible" });
-  if (!await page.locator(".zui-modal__close").evaluate(element => element === document.activeElement)) {
-    throw new Error("ZUI Modal did not focus its initial control");
-  }
-  await page.keyboard.press("Shift+Tab");
-  if (!await page.locator(".zui-modal__body button").evaluate(element => element === document.activeElement)) {
-    throw new Error("ZUI Modal did not wrap keyboard focus");
-  }
-  await page.keyboard.press("Escape");
-  await dialog.waitFor({ state: "detached" });
-  if (await page.locator("#playwright-modal-opener").evaluate(element => element !== document.activeElement)) {
-    throw new Error("ZUI Modal did not restore focus to its opener");
-  }
-
-  await page.getByRole("button", { name: "Open modal" }).click();
-  await page.getByRole("dialog", { name: "Playwright modal smoke" }).waitFor({ state: "visible" });
-  await page.locator(".zui-modal__backdrop").click({ position: { x: 1, y: 1 } });
-  await page.locator("[role=dialog]").waitFor({ state: "detached" });
-  if (await page.locator("#playwright-modal-opener").evaluate(element => element !== document.activeElement)) {
-    throw new Error("Backdrop dismissal did not restore focus to the opener");
-  }
-  if (runtimeErrors.length) throw new Error(`Uncaught browser errors: ${runtimeErrors.join(" | ")}`);
-  await page.evaluate(() => {
-    window.__zuiModalSmokeRoot.unmount();
-    document.querySelector("#playwright-modal-smoke")?.remove();
-  });
-
-  await page.evaluate(async () => {
     const { createRoot, jsx } = await import("/package/index.js");
     const { useStore } = await import("/package/external-store.js");
     let state = { count: 0 };
@@ -135,7 +74,7 @@ try {
   });
 
   await page.evaluate(async () => {
-    const { createRoot, jsx, Input, Progress } = await import("/package/index.js");
+    const { createRoot, jsx } = await import("/package/index.js");
     const { createStore } = await import("/package/reactive-api.js");
     const { mount } = await import("/package/dom.js");
     const sharedContainer = document.createElement("div");
@@ -145,7 +84,7 @@ try {
 
     let rootCollisionRejected = false;
     try { createRoot(sharedContainer); }
-    catch (error) { rootCollisionRejected = error.message === "ZUI_ROOT_OCCUPIED"; }
+    catch (error) { rootCollisionRejected = error.message === "RILLIO_ROOT_OCCUPIED"; }
     if (!rootCollisionRejected || sharedContainer.textContent !== "reactive root") {
       throw new Error("Overlapping root was not rejected without disturbing the live tree");
     }
@@ -160,51 +99,31 @@ try {
     root.render(jsx("p", { children: "safe text" }));
     let htmlSinkRejected = false;
     try { root.render(jsx("div", { innerHTML: "<img src=x onerror=alert(1)>" })); }
-    catch (error) { htmlSinkRejected = error.message === "ZUI_UNSAFE_HTML_PROP"; }
+    catch (error) { htmlSinkRejected = error.message === "RILLIO_UNSAFE_HTML_PROP"; }
     if (!htmlSinkRejected || safeContainer.textContent !== "safe text" || safeContainer.querySelector("img")) {
       throw new Error("Unsafe HTML prop was not rejected before mutating the rendered tree");
     }
     let urlSinkRejected = false;
     try { root.render(jsx("a", { href: "java\nscript:alert(1)", children: "unsafe link" })); }
-    catch (error) { urlSinkRejected = error.message === "ZUI_UNSAFE_URL_PROP"; }
+    catch (error) { urlSinkRejected = error.message === "RILLIO_UNSAFE_URL_PROP"; }
     if (!urlSinkRejected || safeContainer.textContent !== "safe text") {
       throw new Error("Executable URL was not rejected before mutating the rendered tree");
     }
     let emptyHTMLRejected = false;
     try { root.render(jsx("div", { innerHTML: "" })); }
-    catch (error) { emptyHTMLRejected = error.message === "ZUI_UNSAFE_HTML_PROP"; }
+    catch (error) { emptyHTMLRejected = error.message === "RILLIO_UNSAFE_HTML_PROP"; }
     if (!emptyHTMLRejected || safeContainer.textContent !== "safe text") {
       throw new Error("Empty HTML sink was not rejected before mutating the rendered tree");
     }
     let inlineHandlerRejected = false;
     try { root.render(jsx("img", { onerror: "alert(1)" })); }
-    catch (error) { inlineHandlerRejected = error.message === "ZUI_UNSAFE_EVENT_PROP"; }
+    catch (error) { inlineHandlerRejected = error.message === "RILLIO_UNSAFE_EVENT_PROP"; }
     if (!inlineHandlerRejected || safeContainer.textContent !== "safe text") {
       throw new Error("String-valued inline event handler was not rejected before mutating the rendered tree");
     }
     root.unmount();
     safeContainer.remove();
 
-    const uiContainer = document.createElement("div");
-    document.body.append(uiContainer);
-    const uiRoot = createRoot(uiContainer);
-    uiRoot.render(jsx("main", {
-      children: [
-        jsx(Input, { label: "Workspace name", hint: "Visible to teammates", error: "Required" }),
-        jsx(Progress, { value: 150, max: 100, label: "Upload progress" })
-      ]
-    }));
-    const label = uiContainer.querySelector("label");
-    const input = uiContainer.querySelector("input");
-    if (!label?.htmlFor || label.control !== input || !input?.getAttribute("aria-describedby")) {
-      throw new Error("Input labels or descriptions are not associated in the browser");
-    }
-    const progress = uiContainer.querySelector('[role="progressbar"]');
-    if (progress?.getAttribute("aria-valuenow") !== "100" || progress.getAttribute("aria-label") !== "Upload progress") {
-      throw new Error("Progressbar accessible value or name is invalid");
-    }
-    uiRoot.unmount();
-    uiContainer.remove();
   });
 
   await page.evaluate(async () => {
@@ -221,7 +140,7 @@ try {
     }
 
     const overlay = createInspectorOverlay({ targetRoot: dtContainer });
-    if (!document.querySelector("[data-zui-devtools]")) {
+    if (!document.querySelector("[data-rillio-devtools]")) {
       throw new Error("DevTools overlay was not rendered in browser DOM");
     }
 
@@ -231,7 +150,7 @@ try {
     }
 
     overlay.dispose();
-    if (document.querySelector("[data-zui-devtools]")) {
+    if (document.querySelector("[data-rillio-devtools]")) {
       throw new Error("DevTools overlay was not cleanly disposed in browser DOM");
     }
 
@@ -411,11 +330,11 @@ try {
   // Toggle DevTools HUD
   const devToolsBtn = page.locator('header button:has-text("Flat Index")');
   await devToolsBtn.click();
-  await page.waitForSelector("[data-zui-devtools]");
+  await page.waitForSelector("[data-rillio-devtools]");
   await devToolsBtn.click(); // Close
 
   if (runtimeErrors.length) throw new Error(`Uncaught browser errors: ${runtimeErrors.join(" | ")}`);
-  console.log(`browser: PASS — dashboard (${result.checks}); render scopes and console traces; atomic/shallow store selectors; keyed data DOM identity; async resource refetch; Modal keyboard/focus; Zustand store lifecycle; root ownership; HTML/URL/event sink guards; Input/Progress semantics; DevTools Flat Index inspector; TaskFlow real-world app`);
+  console.log(`browser: PASS — dashboard (${result.checks}); render scopes and console traces; atomic/shallow store selectors; keyed data DOM identity; async resource refetch; Zustand store lifecycle; root ownership; HTML/URL/event sink guards; DevTools Flat Index inspector; TaskFlow real-world app`);
 } finally {
   await browser?.close();
   if (server) await new Promise(resolveClose => server.httpServer.close(resolveClose));

@@ -21,7 +21,7 @@ export function createRoot(container: Element): Root {
   const root: RootController = {
     handle,
     render(value: Child) {
-      if (handle.disposed) throw new Error("ZUI_ROOT_UNMOUNTED");
+      if (handle.disposed) throw new Error("RILLIO_ROOT_UNMOUNTED");
       renderTransaction(handle.rootId, tx => {
         const rootNode = nodeRegistry.getNode(handle.nodeId);
         reconcileChildren(handle.nodeId, value, handle.ownerId, handle, tx, rootNode);
