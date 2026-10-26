@@ -1,4 +1,5 @@
 import "./interactive.css";
+import { installSourceViewer } from "../examples/source-viewer.js";
 import {
   assertRows,
   createRenderer,
@@ -446,3 +447,4 @@ function renderInitialPreviews() {
 
 updateEnvironment();
 renderInitialPreviews();
+installSourceViewer("benchmarks/interactive.ts", () => import("./interactive.ts?raw").then(module => module.default));

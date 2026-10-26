@@ -1,4 +1,5 @@
 import { createRoot, useState } from "rillio";
+import { installSourceViewer } from "./source-viewer.js";
 
 type CodeMode = "jsx" | "reactive";
 
@@ -240,3 +241,4 @@ function LandingPage() {
 }
 
 createRoot(document.getElementById("app")!).render(<LandingPage />);
+installSourceViewer("landing.tsx", () => import("./landing.tsx?raw").then(module => module.default));

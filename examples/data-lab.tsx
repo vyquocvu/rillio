@@ -1,5 +1,6 @@
 import { createStore } from "rillio/reactive";
 import { For, Show, derive, mount, resource, select } from "rillio/dom";
+import { installSourceViewer } from "./source-viewer.js";
 
 interface Task {
   id: number;
@@ -117,3 +118,4 @@ function App() {
 
 const container = document.getElementById("app");
 if (container) mount(App, container);
+installSourceViewer("data-lab.tsx", () => import("./data-lab.tsx?raw").then(module => module.default));

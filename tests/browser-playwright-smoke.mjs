@@ -36,6 +36,47 @@ try {
   if (result.status !== "pass") throw new Error(`Dashboard browser smoke failed: ${result.error ?? "unknown error"}`);
   if (runtimeErrors.length) throw new Error(`Uncaught browser errors: ${runtimeErrors.join(" | ")}`);
 
+  const sourceToggle = page.getByRole("button", { name: "View code" });
+  if (await sourceToggle.count() !== 1) throw new Error("Dashboard source viewer button did not mount");
+  await sourceToggle.click();
+  await page.waitForFunction(() => document.querySelector(".rillio-source-content code")?.textContent?.includes("function Dashboard"));
+  if (await page.locator(".rillio-source-filename").textContent() !== "admin-dashboard.tsx") {
+    throw new Error("Dashboard source viewer showed the wrong source file");
+  }
+  const sourceViewer = await page.locator(".rillio-source-panel").evaluate(panel => {
+    const style = getComputedStyle(panel);
+    return {
+      role: panel.getAttribute("role"),
+      modal: panel.getAttribute("aria-modal"),
+      position: style.position,
+      top: style.top,
+      left: style.left,
+      width: panel.getBoundingClientRect().width,
+      height: panel.getBoundingClientRect().height,
+      viewportWidth: innerWidth,
+      viewportHeight: innerHeight,
+      highlightedTokens: panel.querySelectorAll(".rillio-source-token-keyword, .rillio-source-token-tag").length,
+      lockedPageScroll: document.body.style.overflow
+    };
+  });
+  if (sourceViewer.role !== "dialog" || sourceViewer.modal !== "true" || sourceViewer.position !== "fixed" ||
+      sourceViewer.top !== "0px" || sourceViewer.left !== "0px" ||
+      sourceViewer.width !== sourceViewer.viewportWidth || sourceViewer.height !== sourceViewer.viewportHeight ||
+      sourceViewer.highlightedTokens === 0 || sourceViewer.lockedPageScroll !== "hidden") {
+    throw new Error(`Source viewer is missing full-screen or syntax highlighting behavior: ${JSON.stringify(sourceViewer)}`);
+  }
+  await page.keyboard.press("Tab");
+  if (!await page.locator(".rillio-source-content").evaluate(node => node === document.activeElement)) {
+    throw new Error("Source viewer code area is not keyboard-focusable for scrolling");
+  }
+  await page.keyboard.press("Escape");
+  if (await page.locator(".rillio-source-panel").isVisible()) {
+    throw new Error("Dashboard source viewer did not close with Escape");
+  }
+  if (await page.evaluate(() => document.body.style.overflow) !== "") {
+    throw new Error("Dashboard source viewer did not restore page scrolling");
+  }
+
   await page.evaluate(async () => {
     const { createRoot } = await import("/package/index.js");
     const { jsx } = await import("/package/jsx-runtime.js");

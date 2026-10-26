@@ -1,5 +1,6 @@
 import { createRoot, useEffect, useState, ErrorBoundary } from "rillio";
 import { createInspectorOverlay, type InspectorOverlayHandle } from "rillio/devtools";
+import { installSourceViewer } from "../source-viewer.js";
 import { api } from "./api.js";
 import { AnalyticsView } from "./components/AnalyticsView.js";
 import { Header } from "./components/Header.js";
@@ -313,3 +314,5 @@ if (typeof document !== "undefined") {
     createRoot(container).render(<App />);
   }
 }
+
+installSourceViewer("realworld/main.tsx", () => import("./main.tsx?raw").then(module => module.default));

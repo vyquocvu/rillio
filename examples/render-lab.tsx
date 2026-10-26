@@ -1,5 +1,6 @@
 import { createRoot, useRef, useState } from "rillio";
 import { create } from "../src/external-store.ts";
+import { installSourceViewer } from "./source-viewer.js";
 
 interface LabStore {
   count: number;
@@ -123,3 +124,4 @@ function App() {
 
 const container = document.getElementById("app");
 if (container) createRoot(container).render(<App />);
+installSourceViewer("render-lab.tsx", () => import("./render-lab.tsx?raw").then(module => module.default));

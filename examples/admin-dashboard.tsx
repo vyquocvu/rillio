@@ -7,6 +7,7 @@
  */
 
 import { createRoot, useEffect, useMemo, useState } from "rillio";
+import { installSourceViewer } from "./source-viewer.js";
 
 type TabId = "overview" | "users" | "settings";
 type Period = "7d" | "30d" | "90d";
@@ -444,7 +445,7 @@ if (new URLSearchParams(window.location.search).has("e2e")) {
     document.querySelector<HTMLButtonElement>(".modal__footer .button--primary")?.click();
     await nextFrame();
     assert(document.body.textContent?.includes("Ada Lovelace"), "member form did not add a row");
-    assert(!document.querySelector('[role="dialog"]'), "member dialog did not close");
+    assert(!document.querySelector('[role="dialog"]:not([hidden])'), "member dialog did not close");
     assert(errors.length === 0, `dashboard runtime errors: ${errors.join(" | ")}`);
     document.body.dataset.e2eStatus = "pass";
     document.body.dataset.e2eChecks = "metrics,chart,navigation,form,table,errors";
@@ -454,3 +455,5 @@ if (new URLSearchParams(window.location.search).has("e2e")) {
     document.body.dataset.e2eError = error instanceof Error ? error.message : String(error);
   });
 }
+
+installSourceViewer("admin-dashboard.tsx", () => import("./admin-dashboard.tsx?raw").then(module => module.default));

@@ -1,5 +1,6 @@
 import { createStore } from "rillio/reactive";
 import { For, Show, mount, select } from "rillio/dom";
+import { installSourceViewer } from "./source-viewer.js";
 
 const API = "https://pokeapi.co/api/v2";
 const PAGE_SIZE = 24;
@@ -296,3 +297,4 @@ function App() {
 
 const container = document.getElementById("app");
 if (container) mount(App, container);
+installSourceViewer("pokemon.tsx", () => import("./pokemon.tsx?raw").then(module => module.default));

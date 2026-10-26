@@ -1,14 +1,8 @@
 {
   "name": "rillio",
   "version": "0.1.0",
+  "private": false,
   "description": "Experimental addressable-DOM UI runtime.",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/vyquocvu/rillio.git"
-  },
-  "author": "Vy Quoc Vu <vyquocvu@gmail.com>",
-  "license": "MIT",
-  "sideEffects": false,
   "keywords": [
     "ui",
     "jsx",
@@ -16,50 +10,17 @@
     "typescript",
     "reactive"
   ],
-  "private": false,
+  "homepage": "https://github.com/vyquocvu/rillio#readme",
+  "bugs": {
+    "url": "https://github.com/vyquocvu/rillio/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vyquocvu/rillio.git"
+  },
+  "license": "MIT",
+  "author": "Vy Quoc Vu <vyquocvu@gmail.com>",
   "type": "module",
-  "scripts": {
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit",
-    "build:package": "node scripts/clean-package-output.mjs && tsc -p tsconfig.build.json",
-    "test:smoke": "tsc src/reactive.ts --outDir .rillio-test --target es2022 --module nodenext --strict --skipLibCheck && node tests/smoke.cjs",
-    "bench:smoke": "npm run test:smoke && node benchmarks/smoke.cjs",
-    "bench:reactive": "npm run test:smoke && node benchmarks/reactive.cjs",
-    "bench:compat": "npm run build:package && node benchmarks/compat.cjs",
-    "bench:flat": "npm run build:package && node benchmarks/flat.cjs",
-    "bench:patch-planning": "node research/patch-planning/run.mjs",
-    "bench:all": "npm run bench:reactive && npm run bench:compat && npm run bench:flat",
-    "bench:browser": "node benchmarks/browser-playwright.mjs",
-    "bench:cpu-memory": "node benchmarks/cpu-memory.mjs",
-    "profile:browser": "node benchmarks/profile-playwright.mjs",
-    "test:oracle": "npm run test:smoke && node tests/oracle-smoke.cjs",
-    "test:consumer": "npm run build:package && node tests/consumer-smoke.cjs",
-    "test:browser": "npm run build:release && node tests/browser-playwright-smoke.mjs",
-    "dev": "vite --host 127.0.0.1",
-    "build": "vite build",
-    "build:release": "npm run build && npm run build:package",
-    "prepack": "npm run build:package"
-  },
-  "devDependencies": {
-    "jsdom": "^26.1.0",
-    "playwright": "^1.64.0",
-    "preact": "^11.0.1",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "typescript": "^5.9.3",
-    "vite": "^6.3.5",
-    "vitest": "^5.0.3",
-    "vue": "^3.5.43",
-    "zustand": "^5.0.15"
-  },
-  "files": [
-    "dist/package",
-    "README.md",
-    "ROADMAP.md",
-    "CHANGELOG.md",
-    "LICENSE",
-    "docs"
-  ],
   "exports": {
     ".": {
       "types": "./dist/package/index.d.ts",
@@ -96,5 +57,55 @@
       "import": "./dist/package/devtools.js",
       "default": "./dist/package/devtools.js"
     }
-  }
+  },
+  "main": "./dist/package/index.js",
+  "types": "./dist/package/index.d.ts",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  },
+  "files": [
+    "dist/package",
+    "README.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "docs"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build:package": "node scripts/clean-package-output.mjs && tsc -p tsconfig.build.json",
+    "test:smoke": "tsc src/reactive.ts --outDir .rillio-test --target es2022 --module nodenext --strict --skipLibCheck && node tests/smoke.cjs",
+    "bench:smoke": "npm run test:smoke && node benchmarks/smoke.cjs",
+    "bench:reactive": "npm run test:smoke && node benchmarks/reactive.cjs",
+    "bench:compat": "npm run build:package && node benchmarks/compat.cjs",
+    "bench:flat": "npm run build:package && node benchmarks/flat.cjs",
+    "bench:patch-planning": "node research/patch-planning/run.mjs",
+    "bench:all": "npm run bench:reactive && npm run bench:compat && npm run bench:flat",
+    "bench:browser": "node benchmarks/browser-playwright.mjs",
+    "bench:cpu-memory": "node benchmarks/cpu-memory.mjs",
+    "profile:browser": "node benchmarks/profile-playwright.mjs",
+    "test:oracle": "npm run test:smoke && node tests/oracle-smoke.cjs",
+    "test:consumer": "npm run build:package && node tests/consumer-smoke.cjs",
+    "test:browser": "npm run build:release && node tests/browser-playwright-smoke.mjs",
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "build:release": "npm run build && npm run build:package",
+    "prepack": "npm run build:package"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0",
+    "playwright": "^1.64.0",
+    "preact": "^11.0.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "typescript": "^5.9.3",
+    "vite": "^6.3.5",
+    "vitest": "^5.0.3",
+    "vue": "^3.5.43",
+    "zustand": "^5.0.15"
+  },
+  "sideEffects": false
 }

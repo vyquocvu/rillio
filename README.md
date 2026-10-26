@@ -9,7 +9,13 @@ Rillio is an experimental addressable-DOM runtime for client-side apps. JSX and 
 
 ## 🚀 Quick start
 
-Clone the repository and run the examples locally:
+Install the published package in an existing app:
+
+```sh
+npm install rillio
+```
+
+Or clone the repository to run the examples locally:
 
 ```sh
 git clone https://github.com/vyquocvu/rillio.git
