@@ -60,8 +60,15 @@ const features = [
 
 const showcases = [
   {
-    tag: "DASHBOARD",
+    tag: "INTERACTIVE WORKBENCH",
     title: "Rillio Studio",
+    detail: "Interactive component sandbox, dynamic prop controls, live telemetry, and instant code generation.",
+    href: "/studio.html",
+    className: "showcase-card--studio"
+  },
+  {
+    tag: "DASHBOARD",
+    title: "Admin Workspace",
     detail: "A responsive workspace with analytics, team views, and editable members.",
     href: "/admin.html",
     className: "showcase-card--studio"
