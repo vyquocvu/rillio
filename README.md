@@ -18,7 +18,7 @@ npm install @vyquocvu/rillio
 ```
 
 See the [package on npm](https://www.npmjs.com/package/@vyquocvu/rillio) for
-published versions and package details.
+published versions and package details, or check out the standalone [quickstart project](examples/quickstart/README.md).
 
 Or clone the repository to run the examples locally:
 
@@ -99,12 +99,13 @@ Run `npm run dev`, then open:
 
 | Page | What it shows |
 |---|---|
-| `/` | Rillio landing page with an interactive code sample and counter |
-| `/admin.html` | Rillio Studio dashboard |
-| `/realworld.html` | TaskFlow workspace with a Kanban board and issue views |
-| `/demos.html` | Interactive demo catalog |
-| `/benchmarks.html` | Keyed-list benchmarks in the current browser |
-| `/docs.html` | Browser-friendly documentation index |
+| [`/`](index.html) | Rillio landing page with an interactive code sample and counter |
+| [`/studio.html`](studio.html) | Rillio Studio interactive component workbench |
+| [`/admin.html`](admin.html) | Admin Workspace dashboard |
+| [`/realworld.html`](realworld.html) | TaskFlow workspace with a Kanban board and issue views |
+| [`/demos.html`](demos.html) | Interactive demo catalog |
+| [`/benchmarks.html`](benchmarks.html) | Keyed-list benchmarks in the current browser |
+| [`/docs.html`](docs.html) | Browser-friendly documentation index |
 
 The [examples guide](docs/EXAMPLES.md) covers the labs and benchmark commands.
 

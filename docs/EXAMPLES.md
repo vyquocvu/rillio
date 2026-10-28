@@ -14,7 +14,9 @@ repository checkout.
 
 | Page / Subpath | Focus |
 |---|---|
-| `/` or `/admin.html` | Rillio Studio dashboard showcase with responsive layout and interactive team management |
+| [`examples/quickstart`](../examples/quickstart/README.md) | Standalone Vite project installing `@vyquocvu/rillio` via npm |
+| `/admin.html` | Admin Workspace dashboard showcase with responsive layout and interactive team management |
+| `/studio.html` | Rillio Studio interactive component workbench |
 | `/realworld.html` | TaskFlow real-world project management application (Kanban, issues table, analytics, team, settings, Portals, ErrorBoundary, app state, DevTools) |
 | `/render-lab.html` | Console-traced comparison of local component state, parent state, and store selector updates |
 | `/store-lab.html` | Atomic and shallow selectors with visible render logs |
@@ -26,7 +28,7 @@ repository checkout.
 | `npm run bench:all` | Node benchmark suites for reactive invalidation, keyed reconciliation, and Flat Index updates |
 | `npm run bench:browser` | Headless Playwright Chromium benchmark comparing keyed lists and component updates in Rillio, React, Preact, and Vue |
 
-Open `/demos.html` for a browser-friendly interactive index.
+Open [`/demos.html`](../demos.html) for a browser-friendly interactive index.
 
 The [Live Renderer Bench](../benchmarks.html) runs real DOM workloads in the current tab. All six keyed-list cases are visible on the page and can run individually or as a complete suite; set the row count, warmups, and samples to compare Rillio, React, Preact, and Vue. It reports median and P95 time, tree-build and renderer/layout phases, rendered node counts, and available page-level browser usage signals. It checks the resulting row order and text before marking a run passed. Heap is a page-wide Chromium estimate where exposed, not a per-framework allocation measurement.
 
